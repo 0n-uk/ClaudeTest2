@@ -10,11 +10,55 @@ public class CardViewer {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             List<Card> cards = loadCards("cards.txt");
-            buildUI(cards);
+            JFrame frame = new JFrame("Card Viewer");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(900, 650);
+            frame.setLocationRelativeTo(null);
+            frame.add(buildPanel(cards, null, null, null));
+            frame.setVisible(true);
         });
     }
 
-    private static List<Card> loadCards(String filename) {
+    static JPanel buildPanel(List<Card> cards, Runnable onBack, JPanel root, CardLayout layout) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(30, 30, 40));
+
+        // Header
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(20, 20, 30));
+        header.setBorder(new EmptyBorder(12, 14, 8, 14));
+
+        if (onBack != null) {
+            JButton backBtn = MenuScreen.menuButton("Back", new Color(180, 180, 200));
+            backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+            backBtn.setBorder(BorderFactory.createCompoundBorder(
+                    new LineBorder(new Color(180, 180, 200), 2, true),
+                    new EmptyBorder(6, 18, 6, 18)));
+            backBtn.addActionListener(e -> onBack.run());
+            header.add(backBtn, BorderLayout.WEST);
+        }
+
+        JLabel title = new JLabel("Card Collection (" + cards.size() + " cards)", SwingConstants.CENTER);
+        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        title.setForeground(Color.WHITE);
+        header.add(title, BorderLayout.CENTER);
+
+        // Grid
+        JPanel grid = new JPanel(new GridLayout(0, 3, 12, 12));
+        grid.setBorder(new EmptyBorder(8, 14, 14, 14));
+        grid.setBackground(new Color(30, 30, 40));
+        for (Card card : cards) grid.add(buildCardPanel(card));
+
+        JScrollPane scroll = new JScrollPane(grid);
+        scroll.getVerticalScrollBar().setUnitIncrement(20);
+        scroll.setBorder(null);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(scroll,  BorderLayout.CENTER);
+        return panel;
+    }
+
+    static List<Card> loadCards(String filename) {
         List<Card> cards = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
@@ -52,35 +96,7 @@ public class CardViewer {
         return line.substring(start, end).trim();
     }
 
-    private static void buildUI(List<Card> cards) {
-        JFrame frame = new JFrame("Card Viewer");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(900, 650);
-        frame.setLocationRelativeTo(null);
-
-        JLabel title = new JLabel("Card Collection (" + cards.size() + " cards)", SwingConstants.CENTER);
-        title.setFont(new Font("SansSerif", Font.BOLD, 22));
-        title.setBorder(new EmptyBorder(12, 0, 8, 0));
-
-        JPanel grid = new JPanel(new GridLayout(0, 3, 12, 12));
-        grid.setBorder(new EmptyBorder(8, 14, 14, 14));
-        grid.setBackground(new Color(30, 30, 40));
-
-        for (Card card : cards) {
-            grid.add(buildCardPanel(card));
-        }
-
-        JScrollPane scroll = new JScrollPane(grid);
-        scroll.getVerticalScrollBar().setUnitIncrement(20);
-        scroll.setBorder(null);
-
-        frame.getContentPane().setBackground(new Color(30, 30, 40));
-        frame.add(title, BorderLayout.NORTH);
-        frame.add(scroll, BorderLayout.CENTER);
-        frame.setVisible(true);
-    }
-
-    private static JPanel buildCardPanel(Card card) {
+    static JPanel buildCardPanel(Card card) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(new Color(50, 50, 70));
@@ -96,9 +112,9 @@ public class CardViewer {
 
         JPanel stats = new JPanel(new GridLayout(1, 3));
         stats.setOpaque(false);
-        stats.add(statBox("ATK", card.getAttack(), new Color(220, 80, 80)));
-        stats.add(statBox("HP", card.getHp(), new Color(80, 200, 100)));
-        stats.add(statBox("COST", card.getCost(), new Color(100, 160, 220)));
+        stats.add(statBox("ATK",  card.getAttack(), new Color(220, 80, 80)));
+        stats.add(statBox("HP",   card.getHp(),     new Color(80, 200, 100)));
+        stats.add(statBox("COST", card.getCost(),   new Color(100, 160, 220)));
         panel.add(stats);
 
         panel.add(Box.createVerticalStrut(6));
@@ -110,7 +126,7 @@ public class CardViewer {
         return panel;
     }
 
-    private static JLabel label(String text, int style, int size, Color color) {
+    static JLabel label(String text, int style, int size, Color color) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", style, size));
         l.setForeground(color);
@@ -131,7 +147,7 @@ public class CardViewer {
         return box;
     }
 
-    private static Color typeColor(String type) {
+    static Color typeColor(String type) {
         switch (type.toLowerCase()) {
             case "dragon":    return new Color(220, 80,  60);
             case "elemental": return new Color(80,  180, 220);
