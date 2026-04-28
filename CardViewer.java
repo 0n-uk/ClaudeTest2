@@ -14,12 +14,12 @@ public class CardViewer {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(900, 650);
             frame.setLocationRelativeTo(null);
-            frame.add(buildPanel(cards, null, null, null));
+            frame.add(buildPanel(cards, "Card Collection", null, null, null));
             frame.setVisible(true);
         });
     }
 
-    static JPanel buildPanel(List<Card> cards, Runnable onBack, JPanel root, CardLayout layout) {
+    static JPanel buildPanel(List<Card> cards, String customTitle, Runnable onBack, JPanel root, CardLayout layout) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(30, 30, 40));
 
@@ -38,23 +38,34 @@ public class CardViewer {
             header.add(backBtn, BorderLayout.WEST);
         }
 
-        JLabel title = new JLabel("Card Collection (" + cards.size() + " cards)", SwingConstants.CENTER);
+        String titleText = (customTitle != null ? customTitle : "Cards") + " (" + cards.size() + ")";
+        JLabel title = new JLabel(titleText, SwingConstants.CENTER);
         title.setFont(new Font("SansSerif", Font.BOLD, 22));
         title.setForeground(Color.WHITE);
         header.add(title, BorderLayout.CENTER);
 
-        // Grid
-        JPanel grid = new JPanel(new GridLayout(0, 3, 12, 12));
-        grid.setBorder(new EmptyBorder(8, 14, 14, 14));
-        grid.setBackground(new Color(30, 30, 40));
-        for (Card card : cards) grid.add(buildCardPanel(card));
-
-        JScrollPane scroll = new JScrollPane(grid);
-        scroll.getVerticalScrollBar().setUnitIncrement(20);
-        scroll.setBorder(null);
-
         panel.add(header, BorderLayout.NORTH);
-        panel.add(scroll,  BorderLayout.CENTER);
+
+        if (cards.isEmpty()) {
+            JPanel empty = new JPanel(new GridBagLayout());
+            empty.setBackground(new Color(30, 30, 40));
+            JLabel msg = new JLabel("<html><center>You don't own any cards yet.<br>Cards can be obtained from packs.</center></html>", SwingConstants.CENTER);
+            msg.setFont(new Font("SansSerif", Font.ITALIC, 16));
+            msg.setForeground(new Color(140, 140, 165));
+            empty.add(msg);
+            panel.add(empty, BorderLayout.CENTER);
+        } else {
+            JPanel grid = new JPanel(new GridLayout(0, 3, 12, 12));
+            grid.setBorder(new EmptyBorder(8, 14, 14, 14));
+            grid.setBackground(new Color(30, 30, 40));
+            for (Card card : cards) grid.add(buildCardPanel(card));
+
+            JScrollPane scroll = new JScrollPane(grid);
+            scroll.getVerticalScrollBar().setUnitIncrement(20);
+            scroll.setBorder(null);
+            panel.add(scroll, BorderLayout.CENTER);
+        }
+
         return panel;
     }
 
@@ -69,7 +80,7 @@ public class CardViewer {
                 if (card != null) cards.add(card);
             }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Could not load cards.txt: " + e.getMessage(),
+            JOptionPane.showMessageDialog(null, "Could not load " + filename + ": " + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
         return cards;

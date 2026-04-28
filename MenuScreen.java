@@ -5,29 +5,15 @@ import java.util.List;
 
 public class MenuScreen {
 
-    private static final Color BG       = new Color(20, 20, 30);
-    private static final Color BTN_BG   = new Color(50, 50, 75);
+    private static final Color BG        = new Color(20, 20, 30);
+    private static final Color BTN_BG    = new Color(50, 50, 75);
     private static final Color BTN_HOVER = new Color(70, 70, 105);
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Card Game");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(900, 650);
-            frame.setLocationRelativeTo(null);
-
-            CardLayout layout = new CardLayout();
-            JPanel root = new JPanel(layout);
-
-            root.add(buildMenuPanel(root, layout, frame), "menu");
-            layout.show(root, "menu");
-
-            frame.add(root);
-            frame.setVisible(true);
-        });
+        LoginScreen.main(args);
     }
 
-    static JPanel buildMenuPanel(JPanel root, CardLayout layout, JFrame frame) {
+    static JPanel buildMenuPanel(JPanel root, CardLayout layout, JFrame frame, User user) {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG);
 
@@ -35,18 +21,32 @@ public class MenuScreen {
         title.setFont(new Font("SansSerif", Font.BOLD, 42));
         title.setForeground(Color.WHITE);
 
-        JLabel subtitle = new JLabel("What would you like to do?", SwingConstants.CENTER);
-        subtitle.setFont(new Font("SansSerif", Font.ITALIC, 16));
-        subtitle.setForeground(new Color(160, 160, 180));
+        JLabel welcome = new JLabel("Welcome, " + user.getUsername() + "!", SwingConstants.CENTER);
+        welcome.setFont(new Font("SansSerif", Font.ITALIC, 16));
+        welcome.setForeground(new Color(160, 160, 180));
 
-        JButton viewBtn   = menuButton("View Cards",   new Color(80, 180, 220));
-        JButton createBtn = menuButton("Create Card",  new Color(100, 220, 130));
+        JButton viewAllBtn  = menuButton("View Cards",   new Color(80, 180, 220));
+        JButton viewOwnBtn  = menuButton("View Owned",   new Color(220, 160, 80));
+        JButton createBtn   = menuButton("Create Card",  new Color(100, 220, 130));
 
-        viewBtn.addActionListener(e -> {
+        viewAllBtn.addActionListener(e -> {
             List<Card> cards = CardViewer.loadCards("cards.txt");
-            JPanel viewerPanel = CardViewer.buildPanel(cards, () -> layout.show(root, "menu"), root, layout);
+            JPanel viewerPanel = CardViewer.buildPanel(cards, "Card Collection", () -> layout.show(root, "menu"), root, layout);
             root.add(viewerPanel, "viewer");
             layout.show(root, "viewer");
+            frame.revalidate();
+        });
+
+        viewOwnBtn.addActionListener(e -> {
+            List<Card> owned = user.getOwnedCards();
+            JPanel viewerPanel = CardViewer.buildPanel(
+                owned,
+                owned.isEmpty() ? null : "My Collection",
+                () -> layout.show(root, "menu"),
+                root, layout
+            );
+            root.add(viewerPanel, "owned");
+            layout.show(root, "owned");
             frame.revalidate();
         });
 
@@ -55,7 +55,7 @@ public class MenuScreen {
                 () -> layout.show(root, "menu"),
                 () -> {
                     List<Card> cards = CardViewer.loadCards("cards.txt");
-                    JPanel viewerPanel = CardViewer.buildPanel(cards, () -> layout.show(root, "menu"), root, layout);
+                    JPanel viewerPanel = CardViewer.buildPanel(cards, "Card Collection", () -> layout.show(root, "menu"), root, layout);
                     root.add(viewerPanel, "viewer");
                     layout.show(root, "viewer");
                     frame.revalidate();
@@ -67,12 +67,13 @@ public class MenuScreen {
         });
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0; gbc.insets = new Insets(12, 0, 12, 0);
+        gbc.gridx = 0;
 
-        gbc.gridy = 0; panel.add(title,     gbc);
-        gbc.gridy = 1; panel.add(subtitle,  gbc);
-        gbc.gridy = 2; gbc.insets = new Insets(30, 0, 12, 0); panel.add(viewBtn,   gbc);
-        gbc.gridy = 3; gbc.insets = new Insets(0, 0, 12, 0);  panel.add(createBtn, gbc);
+        gbc.gridy = 0; gbc.insets = new Insets(12, 0, 4,  0); panel.add(title,      gbc);
+        gbc.gridy = 1; gbc.insets = new Insets(0,  0, 30, 0); panel.add(welcome,    gbc);
+        gbc.gridy = 2; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewAllBtn, gbc);
+        gbc.gridy = 3; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewOwnBtn, gbc);
+        gbc.gridy = 4; gbc.insets = new Insets(0,  0, 12, 0); panel.add(createBtn,  gbc);
 
         return panel;
     }
