@@ -27,6 +27,7 @@ public class MenuScreen {
 
         JButton viewAllBtn  = menuButton("View Cards",   new Color(80, 180, 220));
         JButton viewOwnBtn  = menuButton("View Owned",   new Color(220, 160, 80));
+        JButton packsBtn    = menuButton("Open Packs",   new Color(180, 100, 220));
         JButton createBtn   = menuButton("Create Card",  new Color(100, 220, 130));
 
         viewAllBtn.addActionListener(e -> {
@@ -47,6 +48,13 @@ public class MenuScreen {
             );
             root.add(viewerPanel, "owned");
             layout.show(root, "owned");
+            frame.revalidate();
+        });
+
+        packsBtn.addActionListener(e -> {
+            JPanel packPanel = PackScreen.buildPanel(user, () -> layout.show(root, "menu"));
+            root.add(packPanel, "packs");
+            layout.show(root, "packs");
             frame.revalidate();
         });
 
@@ -73,7 +81,8 @@ public class MenuScreen {
         gbc.gridy = 1; gbc.insets = new Insets(0,  0, 30, 0); panel.add(welcome,    gbc);
         gbc.gridy = 2; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewAllBtn, gbc);
         gbc.gridy = 3; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewOwnBtn, gbc);
-        gbc.gridy = 4; gbc.insets = new Insets(0,  0, 12, 0); panel.add(createBtn,  gbc);
+        gbc.gridy = 4; gbc.insets = new Insets(0,  0, 12, 0); panel.add(packsBtn,   gbc);
+        gbc.gridy = 5; gbc.insets = new Insets(0,  0, 12, 0); panel.add(createBtn,  gbc);
 
         return panel;
     }
