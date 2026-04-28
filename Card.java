@@ -1,5 +1,5 @@
 public class Card {
-    private int id;
+    private String id;
     private String name;
     private String type;
     private int attack;
@@ -7,7 +7,7 @@ public class Card {
     private int cost;
     private String ability;
 
-    public Card(int id, String name, String type, int attack, int hp, int cost, String ability) {
+    public Card(String id, String name, String type, int attack, int hp, int cost, String ability) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -17,7 +17,7 @@ public class Card {
         this.ability = ability;
     }
 
-    public int getId() { return id; }
+    public String getId() { return id; }
     public String getName() { return name; }
     public String getType() { return type; }
     public int getAttack() { return attack; }
@@ -25,7 +25,7 @@ public class Card {
     public int getCost() { return cost; }
     public String getAbility() { return ability; }
 
-    public void setId(int id) { this.id = id; }
+    public void setId(String id) { this.id = id; }
     public void setName(String name) { this.name = name; }
     public void setType(String type) { this.type = type; }
     public void setAttack(int attack) { this.attack = attack; }
