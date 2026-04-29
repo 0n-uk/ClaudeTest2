@@ -148,9 +148,10 @@ public class DeckBuilderScreen {
         };
 
         // ── Deck combo action: load selected deck ─────────────────────────────
-        deckCombo.addActionListener(e -> {
+        deckCombo.addItemListener(e -> {
+            if (e.getStateChange() != java.awt.event.ItemEvent.SELECTED) return;
             if (skipCombo[0]) return;
-            String selected = (String) deckCombo.getSelectedItem();
+            String selected = (String) e.getItem();
             if (selected == null || selected.equals(PLACEHOLDER)) {
                 activeDeck[0] = null;
                 deck.clear();
@@ -161,7 +162,7 @@ public class DeckBuilderScreen {
                 deckCardData.clear();
                 for (Card c : user.loadDeck(selected)) {
                     deck.merge(c.getId(), 1, Integer::sum);
-                    deckCardData.putIfAbsent(c.getId(), c); // retain card info as fallback
+                    deckCardData.putIfAbsent(c.getId(), c);
                 }
             }
             ref[0].run();
