@@ -29,6 +29,38 @@ public class User {
         } catch (IOException ignored) {}
     }
 
+    // ── Named decks ───────────────────────────────────────────────────────────
+
+    public File getDeckDir() {
+        File dir = new File(CARDS_DIR + "/" + username + "_decks");
+        dir.mkdirs();
+        return dir;
+    }
+
+    public List<String> getDeckNames() {
+        File[] files = getDeckDir().listFiles((d, n) -> n.endsWith(".txt"));
+        if (files == null) return new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        for (File f : files)
+            names.add(f.getName().substring(0, f.getName().length() - 4));
+        Collections.sort(names);
+        return names;
+    }
+
+    public File getDeckFile(String deckName) {
+        return new File(getDeckDir(), sanitize(deckName) + ".txt");
+    }
+
+    public List<Card> loadDeck(String deckName) {
+        File f = getDeckFile(deckName);
+        if (!f.exists()) return new ArrayList<>();
+        return CardViewer.loadCards(f.getPath());
+    }
+
+    private static String sanitize(String name) {
+        return name.replaceAll("[/\\\\:*?\"<>|]", "_").trim();
+    }
+
     // ── Pack cooldowns ────────────────────────────────────────────────────────
 
     public boolean canOpenPack(String packId) {
