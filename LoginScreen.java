@@ -1,11 +1,11 @@
-import javax.swing.*;
-import javax.swing.border.*;
 import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.List;
+import javax.swing.*;
+import javax.swing.border.*;
 
+//this is a test comment to trigger a commit
 public class LoginScreen {
 
     private static final Color BG      = new Color(20, 20, 30);
