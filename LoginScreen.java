@@ -211,7 +211,6 @@ public class LoginScreen {
         p.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(ACCENT, 2, true),
                 new EmptyBorder(30, 40, 30, 40)));
-        p.setPreferredSize(new Dimension(380, 0));
         return p;
     }
 
@@ -259,6 +258,7 @@ public class LoginScreen {
         f.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(80, 80, 110), 1),
                 new EmptyBorder(6, 10, 6, 10)));
+        f.setPreferredSize(new Dimension(300, 38));
         f.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         f.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
