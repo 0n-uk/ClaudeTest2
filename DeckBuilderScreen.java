@@ -34,11 +34,12 @@ public class DeckBuilderScreen {
         }
 
         // Mutable state (arrays so lambdas can capture them)
-        Map<String, Integer> deck       = new LinkedHashMap<>();
-        Sort[]               sortBy     = { Sort.NAME };
-        String[]             search     = { "" };
-        String[]             activeDeck = { null };   // name of the loaded deck
-        boolean[]            skipCombo  = { false };  // prevents re-entrant combo events
+        Map<String, Integer> deck         = new LinkedHashMap<>();
+        Map<String, Card>    deckCardData = new LinkedHashMap<>(); // fallback card info for loaded decks
+        Sort[]               sortBy       = { Sort.NAME };
+        String[]             search       = { "" };
+        String[]             activeDeck   = { null };   // name of the loaded deck
+        boolean[]            skipCombo    = { false };  // prevents re-entrant combo events
 
         // ── UI elements referenced inside the refresh closure ─────────────────
         JPanel libGrid  = new JPanel(new GridLayout(0, 2, 8, 8));
@@ -101,7 +102,7 @@ public class DeckBuilderScreen {
                 for (Card c : cards) {
                     int ownCnt = owned.getOrDefault(c.getId(), 0);
                     int inDeck = deck.getOrDefault(c.getId(), 0);
-                    boolean canAdd = inDeck < MAX_COPIES && deckTotal < MAX_DECK;
+                    boolean canAdd = inDeck < ownCnt && inDeck < MAX_COPIES && deckTotal < MAX_DECK;
                     libGrid.add(libCard(c, ownCnt, inDeck, canAdd, deck, ref));
                 }
             }
@@ -130,7 +131,9 @@ public class DeckBuilderScreen {
             boolean first = true;
             for (Map.Entry<String, Integer> e : deck.entrySet()) {
                 if (e.getValue() <= 0) continue;
-                Card c = byId.get(e.getKey());
+                // prefer live owned-card data; fall back to data stored when deck was loaded
+                Card c = byId.containsKey(e.getKey()) ? byId.get(e.getKey())
+                                                       : deckCardData.get(e.getKey());
                 if (c == null) continue;
                 if (!first) deckList.add(Box.createVerticalStrut(4));
                 deckList.add(deckEntry(c, e.getValue(), deck, ref));
@@ -151,11 +154,15 @@ public class DeckBuilderScreen {
             if (selected == null || selected.equals(PLACEHOLDER)) {
                 activeDeck[0] = null;
                 deck.clear();
+                deckCardData.clear();
             } else {
                 activeDeck[0] = selected;
                 deck.clear();
-                for (Card c : user.loadDeck(selected))
+                deckCardData.clear();
+                for (Card c : user.loadDeck(selected)) {
                     deck.merge(c.getId(), 1, Integer::sum);
+                    deckCardData.putIfAbsent(c.getId(), c); // retain card info as fallback
+                }
             }
             ref[0].run();
         });
@@ -309,12 +316,15 @@ public class DeckBuilderScreen {
         panel.add(Box.createVerticalStrut(5));
 
         String ownLine = "Owned: " + ownedCount
-                + (inDeck > 0 ? "   In deck: " + inDeck + "/" + MAX_COPIES : "");
+                + (inDeck > 0 ? "   In deck: " + inDeck + "/" + Math.min(MAX_COPIES, ownedCount) : "");
         panel.add(lbl(ownLine, Font.PLAIN, 10,
                 canAdd ? new Color(145, 145, 172) : new Color(78, 78, 98)));
 
         if (!canAdd) {
-            String msg = inDeck >= MAX_COPIES ? "MAX COPIES IN DECK" : "DECK FULL";
+            String msg;
+            if (inDeck >= ownedCount)      msg = "ALL COPIES IN DECK";
+            else if (inDeck >= MAX_COPIES) msg = "MAX COPIES IN DECK";
+            else                           msg = "DECK FULL";
             panel.add(lbl(msg, Font.BOLD, 9, new Color(195, 85, 65)));
         }
 
