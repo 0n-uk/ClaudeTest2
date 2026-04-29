@@ -28,6 +28,7 @@ public class MenuScreen {
         JButton viewAllBtn  = menuButton("View Cards",   new Color(80, 180, 220));
         JButton viewOwnBtn  = menuButton("View Owned",   new Color(220, 160, 80));
         JButton packsBtn    = menuButton("Open Packs",   new Color(180, 100, 220));
+        JButton deckBtn     = menuButton("Build Deck",   new Color(80, 210, 200));
         JButton createBtn   = menuButton("Create Card",  new Color(100, 220, 130));
 
         viewAllBtn.addActionListener(e -> {
@@ -58,6 +59,13 @@ public class MenuScreen {
             frame.revalidate();
         });
 
+        deckBtn.addActionListener(e -> {
+            JPanel deckPanel = DeckBuilderScreen.buildPanel(user, () -> layout.show(root, "menu"));
+            root.add(deckPanel, "deck");
+            layout.show(root, "deck");
+            frame.revalidate();
+        });
+
         createBtn.addActionListener(e -> {
             JPanel creatorPanel = CardCreatorScreen.buildPanel(
                 () -> layout.show(root, "menu"),
@@ -82,7 +90,8 @@ public class MenuScreen {
         gbc.gridy = 2; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewAllBtn, gbc);
         gbc.gridy = 3; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewOwnBtn, gbc);
         gbc.gridy = 4; gbc.insets = new Insets(0,  0, 12, 0); panel.add(packsBtn,   gbc);
-        gbc.gridy = 5; gbc.insets = new Insets(0,  0, 12, 0); panel.add(createBtn,  gbc);
+        gbc.gridy = 5; gbc.insets = new Insets(0,  0, 12, 0); panel.add(deckBtn,    gbc);
+        gbc.gridy = 6; gbc.insets = new Insets(0,  0, 12, 0); panel.add(createBtn,  gbc);
 
         return panel;
     }
