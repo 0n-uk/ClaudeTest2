@@ -2,293 +2,306 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.*;
 import java.awt.*;
-import java.io.*;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class DeckBuilderScreen {
 
-    private static final Color BG        = new Color(20, 20, 30);
-    private static final Color LIB_BG    = new Color(25, 25, 38);
-    private static final Color DECK_BG   = new Color(30, 30, 45);
-    private static final Color ENTRY_BG  = new Color(42, 42, 62);
-    private static final Color HDR_BG    = new Color(20, 20, 32);
-    private static final int   MAX_DECK   = 20;
-    private static final int   MAX_COPIES = 4;
-    private static final String PLACEHOLDER = "── Select a Deck ──";
+    private static final Color BG       = new Color(20, 20, 30);
+    private static final Color LEFT_BG  = new Color(25, 25, 38);
+    private static final Color RIGHT_BG = new Color(30, 30, 45);
+    private static final Color HDR_BG   = new Color(20, 20, 32);
+    private static final int   MAX_DECK  = 20;
+    private static final int   MAX_DECKS = 20;
 
-    private enum Sort { NAME, TYPE, ATK, HP, ID, AMOUNT }
+    private enum Sort { NAME, TYPE, ATK, HP, ID }
 
     // ── Entry point ───────────────────────────────────────────────────────────
 
     public static JPanel buildPanel(User user, Runnable onBack) {
 
-        // Owned card data
-        List<Card> allOwned = user.getOwnedCards();
-        Map<String, Card>    byId  = new LinkedHashMap<>();
-        Map<String, Integer> owned = new LinkedHashMap<>();
-        for (Card c : allOwned) {
-            byId.putIfAbsent(c.getId(), c);
-            owned.merge(c.getId(), 1, Integer::sum);
-        }
+        // ── Card lookup (populated lazily from owned + deck files) ─────────────
+        Map<String, Card> cardById = new LinkedHashMap<>();
+        for (Card c : user.getOwnedCards()) cardById.put(c.getId(), c);
 
-        // Mutable state (arrays so lambdas can capture them)
-        Map<String, Integer> deck         = new LinkedHashMap<>();
-        Map<String, Card>    deckCardData = new LinkedHashMap<>(); // fallback card info for loaded decks
-        Sort[]               sortBy       = { Sort.NAME };
-        String[]             search       = { "" };
-        String[]             activeDeck   = { null };   // name of the loaded deck
-        boolean[]            skipCombo    = { false };  // prevents re-entrant combo events
+        // ── Mutable state ─────────────────────────────────────────────────────
+        Map<String, Integer> leftCounts  = new LinkedHashMap<>();
+        Map<String, Integer> rightCounts = new LinkedHashMap<>();
+        String[]  activeDeck = { null };
+        boolean[] skipCombo  = { false };
+        Sort[]    sortBy     = { Sort.NAME };
+        String[]  search     = { "" };
+        JButton[] sortBtns   = new JButton[Sort.values().length];
 
-        // ── UI elements referenced inside the refresh closure ─────────────────
-        JPanel libGrid  = new JPanel(new GridLayout(0, 2, 8, 8));
-        libGrid.setBackground(LIB_BG);
-        libGrid.setBorder(new EmptyBorder(8, 8, 8, 8));
+        // ── Shared grid panels ────────────────────────────────────────────────
+        JPanel leftGrid  = new JPanel();
+        leftGrid.setBackground(LEFT_BG);
+        leftGrid.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-        JPanel deckList = new JPanel();
-        deckList.setLayout(new BoxLayout(deckList, BoxLayout.Y_AXIS));
-        deckList.setBackground(DECK_BG);
-        deckList.setBorder(new EmptyBorder(6, 6, 6, 6));
+        JPanel rightGrid = new JPanel(new GridLayout(0, 4, 5, 5));
+        rightGrid.setBackground(RIGHT_BG);
+        rightGrid.setBorder(new EmptyBorder(8, 8, 8, 8));
 
         JLabel countLabel = new JLabel("0 / " + MAX_DECK, SwingConstants.CENTER);
-        countLabel.setFont(new Font("SansSerif", Font.BOLD, 15));
+        countLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
         countLabel.setForeground(Color.WHITE);
 
-        JButton saveBtn = smallButton("Save Deck", new Color(100, 180, 255));
-        saveBtn.setEnabled(false);
+        JButton saveBtn  = smallButton("Save Deck",  new Color(100, 180, 255));
+        JButton clearBtn = smallButton("Clear Deck", new Color(220, 80, 80));
+        JButton newBtn   = smallButton("New Deck",   new Color(100, 220, 130));
 
-        JButton[] sortBtnArr = new JButton[Sort.values().length];
-
-        // Deck selector combo
         JComboBox<String> deckCombo = styledCombo();
-        deckCombo.addItem(PLACEHOLDER);
-        for (String name : user.getDeckNames()) deckCombo.addItem(name);
+
+        // ── Initialise decks ──────────────────────────────────────────────────
+        skipCombo[0] = true;
+        List<String> deckNames = new ArrayList<>(user.getDeckNames());
+        if (deckNames.isEmpty()) {
+            user.saveDeck("deck1", Collections.emptyList());
+            deckNames.add("deck1");
+        }
+        for (String n : deckNames) deckCombo.addItem(n);
+
+        String first = deckNames.get(0);
+        activeDeck[0] = first;
+        deckCombo.setSelectedItem(first);
+
+        for (Card c : user.getUnassignedCards()) {
+            cardById.putIfAbsent(c.getId(), c);
+            leftCounts.merge(c.getId(), 1, Integer::sum);
+        }
+        for (Card c : user.loadDeck(first)) {
+            cardById.putIfAbsent(c.getId(), c);
+            rightCounts.merge(c.getId(), 1, Integer::sum);
+        }
+        skipCombo[0] = false;
 
         // ── Refresh closure ───────────────────────────────────────────────────
-        Runnable[] ref = new Runnable[1];
+        Runnable[] ref = { null };
         ref[0] = () -> {
-            // Filter + sort owned cards
-            List<Card> cards = byId.values().stream()
+            int total    = rightCounts.values().stream().mapToInt(i -> i).sum();
+            boolean full = total >= MAX_DECK;
+
+            // Left grid
+            List<Card> visible = cardById.values().stream()
+                .filter(c -> leftCounts.getOrDefault(c.getId(), 0) > 0)
                 .filter(c -> c.getName().toLowerCase().contains(search[0].toLowerCase()))
                 .collect(Collectors.toList());
 
             Comparator<Card> cmp;
             switch (sortBy[0]) {
-                case ID:     cmp = Comparator.comparing(Card::getId); break;
-                case ATK:    cmp = Comparator.comparingInt(Card::getAttack).reversed(); break;
-                case HP:     cmp = Comparator.comparingInt(Card::getHp).reversed(); break;
-                case TYPE:   cmp = Comparator.comparing(Card::getType); break;
-                case AMOUNT: cmp = Comparator.comparingInt(
-                                       (Card c) -> owned.getOrDefault(c.getId(), 0)).reversed(); break;
-                default:     cmp = Comparator.comparing(Card::getName); break;
+                case ID:   cmp = Comparator.comparing(Card::getId);                   break;
+                case ATK:  cmp = Comparator.comparingInt(Card::getAttack).reversed(); break;
+                case HP:   cmp = Comparator.comparingInt(Card::getHp).reversed();     break;
+                case TYPE: cmp = Comparator.comparing(Card::getType);                 break;
+                default:   cmp = Comparator.comparing(Card::getName);                 break;
             }
-            cards.sort(cmp);
+            visible.sort(cmp);
 
-            int deckTotal = deck.values().stream().mapToInt(Integer::intValue).sum();
-
-            // Rebuild library
-            libGrid.removeAll();
-            if (byId.isEmpty()) {
-                libGrid.setLayout(new GridBagLayout());
-                JLabel empty = new JLabel(
-                    "<html><center>You don't own any cards yet.<br>Open some packs first!</center></html>",
+            leftGrid.removeAll();
+            if (leftCounts.isEmpty()) {
+                leftGrid.setLayout(new GridBagLayout());
+                JLabel msg = new JLabel(
+                    "<html><center>All your cards are in decks.<br>"
+                    + "Clear a deck to free them up.</center></html>",
                     SwingConstants.CENTER);
-                empty.setFont(new Font("SansSerif", Font.ITALIC, 14));
-                empty.setForeground(new Color(140, 140, 165));
-                libGrid.add(empty);
+                msg.setFont(new Font("SansSerif", Font.ITALIC, 13));
+                msg.setForeground(new Color(140, 140, 165));
+                leftGrid.add(msg);
             } else {
-                libGrid.setLayout(new GridLayout(0, 2, 8, 8));
-                for (Card c : cards) {
-                    int ownCnt = owned.getOrDefault(c.getId(), 0);
-                    int inDeck = deck.getOrDefault(c.getId(), 0);
-                    boolean canAdd = inDeck < ownCnt && inDeck < MAX_COPIES && deckTotal < MAX_DECK;
-                    libGrid.add(libCard(c, ownCnt, inDeck, canAdd, deck, ref));
+                leftGrid.setLayout(new GridLayout(0, 2, 8, 8));
+                for (Card c : visible) {
+                    int cnt = leftCounts.getOrDefault(c.getId(), 0);
+                    if (cnt <= 0) continue;
+                    leftGrid.add(leftCardPanel(c, cnt, !full, leftCounts, rightCounts, ref));
                 }
             }
-            libGrid.revalidate();
-            libGrid.repaint();
+            leftGrid.revalidate();
+            leftGrid.repaint();
 
-            // Update sort button highlights
+            // Sort button styles
             Sort[] vals = Sort.values();
             for (int i = 0; i < vals.length; i++) {
-                if (sortBtnArr[i] == null) continue;
+                if (sortBtns[i] == null) continue;
                 boolean active = vals[i] == sortBy[0];
-                sortBtnArr[i].setBackground(active ? new Color(70, 70, 110) : new Color(40, 40, 60));
-                sortBtnArr[i].setForeground(active ? Color.WHITE : new Color(160, 160, 185));
-                sortBtnArr[i].setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(active ? new Color(100, 140, 255)
-                                         : new Color(65, 65, 95), 1, true),
+                sortBtns[i].setBackground(active ? new Color(70, 70, 110) : new Color(40, 40, 60));
+                sortBtns[i].setForeground(active ? Color.WHITE : new Color(160, 160, 185));
+                sortBtns[i].setBorder(BorderFactory.createCompoundBorder(
+                    new LineBorder(active ? new Color(100, 140, 255) : new Color(65, 65, 95), 1, true),
                     new EmptyBorder(3, 10, 3, 10)));
             }
 
-            // Rebuild deck list
-            boolean full = deckTotal >= MAX_DECK;
-            countLabel.setText(deckTotal + " / " + MAX_DECK);
+            // Right grid — expand to individual slots then pad to MAX_DECK
+            rightGrid.removeAll();
+            List<String> slots = new ArrayList<>();
+            for (Map.Entry<String, Integer> e : rightCounts.entrySet()) {
+                for (int i = 0; i < e.getValue(); i++) slots.add(e.getKey());
+            }
+            for (int i = 0; i < MAX_DECK; i++) {
+                if (i < slots.size()) {
+                    Card c = cardById.get(slots.get(i));
+                    rightGrid.add(c != null
+                        ? rightCardPanel(c, leftCounts, rightCounts, ref)
+                        : emptySlot());
+                } else {
+                    rightGrid.add(emptySlot());
+                }
+            }
+            rightGrid.revalidate();
+            rightGrid.repaint();
+
+            countLabel.setText(total + " / " + MAX_DECK);
             countLabel.setForeground(full ? new Color(220, 80, 80) : Color.WHITE);
 
-            deckList.removeAll();
-            boolean first = true;
-            for (Map.Entry<String, Integer> e : deck.entrySet()) {
-                if (e.getValue() <= 0) continue;
-                // prefer live owned-card data; fall back to data stored when deck was loaded
-                Card c = byId.containsKey(e.getKey()) ? byId.get(e.getKey())
-                                                       : deckCardData.get(e.getKey());
-                if (c == null) continue;
-                if (!first) deckList.add(Box.createVerticalStrut(4));
-                deckList.add(deckEntry(c, e.getValue(), deck, ref));
-                first = false;
-            }
-            deckList.add(Box.createVerticalGlue());
-            deckList.revalidate();
-            deckList.repaint();
-
-            // Save button only active when a deck is loaded
             saveBtn.setEnabled(activeDeck[0] != null);
+            clearBtn.setEnabled(activeDeck[0] != null && total > 0);
         };
 
-        // ── Deck combo action: load selected deck ─────────────────────────────
+        // ── Combo: switch deck ────────────────────────────────────────────────
         deckCombo.addItemListener(e -> {
             if (e.getStateChange() != java.awt.event.ItemEvent.SELECTED) return;
             if (skipCombo[0]) return;
             String selected = (String) e.getItem();
-            if (selected == null || selected.equals(PLACEHOLDER)) {
-                activeDeck[0] = null;
-                deck.clear();
-                deckCardData.clear();
-            } else {
-                activeDeck[0] = selected;
-                deck.clear();
-                deckCardData.clear();
-                for (Card c : user.loadDeck(selected)) {
-                    deck.merge(c.getId(), 1, Integer::sum);
-                    deckCardData.putIfAbsent(c.getId(), c);
-                }
+            activeDeck[0] = selected;
+            // Discard unsaved edits; reload from saved state
+            leftCounts.clear();
+            rightCounts.clear();
+            for (Card c : user.getUnassignedCards()) {
+                cardById.putIfAbsent(c.getId(), c);
+                leftCounts.merge(c.getId(), 1, Integer::sum);
+            }
+            for (Card c : user.loadDeck(selected)) {
+                cardById.putIfAbsent(c.getId(), c);
+                rightCounts.merge(c.getId(), 1, Integer::sum);
             }
             ref[0].run();
         });
 
-        // ── Save deck button ──────────────────────────────────────────────────
+        // ── Save ──────────────────────────────────────────────────────────────
         saveBtn.addActionListener(e -> {
             if (activeDeck[0] == null) return;
-            writeDeck(user, activeDeck[0], byId, deck);
+            List<Card> cards = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : rightCounts.entrySet()) {
+                Card c = cardById.get(entry.getKey());
+                if (c != null) for (int i = 0; i < entry.getValue(); i++) cards.add(c);
+            }
+            user.saveDeck(activeDeck[0], cards);
             flashLabel(countLabel, "Saved!", new Color(100, 220, 130), 1400);
         });
 
-        // ── Create deck button ────────────────────────────────────────────────
-        JButton createDeckBtn = smallButton("Create Deck", new Color(100, 220, 130));
-        createDeckBtn.addActionListener(e -> {
-            int total = deck.values().stream().mapToInt(Integer::intValue).sum();
-            if (total == 0) {
+        // ── Clear ─────────────────────────────────────────────────────────────
+        clearBtn.addActionListener(e -> {
+            if (activeDeck[0] == null) return;
+            for (Map.Entry<String, Integer> entry : rightCounts.entrySet())
+                if (entry.getValue() > 0)
+                    leftCounts.merge(entry.getKey(), entry.getValue(), Integer::sum);
+            rightCounts.clear();
+            user.saveDeck(activeDeck[0], Collections.emptyList());
+            ref[0].run();
+        });
+
+        // ── New Deck ──────────────────────────────────────────────────────────
+        newBtn.addActionListener(e -> {
+            if (user.getDeckNames().size() >= MAX_DECKS) {
                 JOptionPane.showMessageDialog(null,
-                    "Your deck is empty. Add some cards before saving.",
-                    "Empty Deck", JOptionPane.WARNING_MESSAGE);
+                    "You have reached the maximum of " + MAX_DECKS + " decks.",
+                    "Deck Limit", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             String name = JOptionPane.showInputDialog(null,
-                "Enter a name for this deck:", "Create Deck",
-                JOptionPane.PLAIN_MESSAGE);
+                "Enter a name for the new deck:", "New Deck", JOptionPane.PLAIN_MESSAGE);
             if (name == null || name.trim().isEmpty()) return;
             name = name.trim();
-
-            // Check for duplicate
-            List<String> existing = user.getDeckNames();
-            if (existing.contains(name)) {
-                int choice = JOptionPane.showConfirmDialog(null,
-                    "A deck named \"" + name + "\" already exists. Overwrite it?",
-                    "Overwrite?", JOptionPane.YES_NO_OPTION);
-                if (choice != JOptionPane.YES_OPTION) return;
+            if (user.getDeckNames().contains(name)) {
+                JOptionPane.showMessageDialog(null,
+                    "A deck named \"" + name + "\" already exists.",
+                    "Duplicate Name", JOptionPane.WARNING_MESSAGE);
+                return;
             }
+            final String finalName = name;
+            user.saveDeck(finalName, Collections.emptyList());
 
-            writeDeck(user, name, byId, deck);
+            // Discard unsaved edits and switch to the new empty deck
+            leftCounts.clear();
+            rightCounts.clear();
+            for (Card c : user.getUnassignedCards())
+                leftCounts.merge(c.getId(), 1, Integer::sum);
+            activeDeck[0] = finalName;
 
-            // Update combo (skip its listener while we do this)
             skipCombo[0] = true;
-            // Remove existing entry if overwriting
-            for (int i = 1; i < deckCombo.getItemCount(); i++) {
-                if (name.equals(deckCombo.getItemAt(i))) {
-                    deckCombo.removeItemAt(i);
-                    break;
-                }
-            }
-            deckCombo.addItem(name);
-            deckCombo.setSelectedItem(name);
-            activeDeck[0] = name;
+            deckCombo.addItem(finalName);
+            deckCombo.setSelectedItem(finalName);
             skipCombo[0] = false;
 
             ref[0].run();
-            flashLabel(countLabel, "Created!", new Color(100, 220, 130), 1400);
         });
 
-        // ── Clear button ──────────────────────────────────────────────────────
-        JButton clearBtn = smallButton("Clear", new Color(220, 80, 80));
-        clearBtn.addActionListener(e -> { deck.clear(); ref[0].run(); });
-
         // ── Left panel ────────────────────────────────────────────────────────
-        JPanel controls = buildControls(sortBy, search, ref, sortBtnArr);
-        JScrollPane libScroll = new JScrollPane(libGrid);
-        libScroll.setBorder(null);
-        libScroll.getVerticalScrollBar().setUnitIncrement(20);
+        JScrollPane leftScroll = new JScrollPane(leftGrid);
+        leftScroll.setBorder(null);
+        leftScroll.getVerticalScrollBar().setUnitIncrement(20);
 
         JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.setBackground(LIB_BG);
-        leftPanel.add(controls,  BorderLayout.NORTH);
-        leftPanel.add(libScroll, BorderLayout.CENTER);
+        leftPanel.setBackground(LEFT_BG);
+        leftPanel.add(buildLeftControls(sortBy, search, ref, sortBtns), BorderLayout.NORTH);
+        leftPanel.add(leftScroll, BorderLayout.CENTER);
 
         // ── Right panel ───────────────────────────────────────────────────────
-        JScrollPane deckScroll = new JScrollPane(deckList);
-        deckScroll.setBorder(null);
-        deckScroll.getVerticalScrollBar().setUnitIncrement(16);
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
+        btnRow.setOpaque(false);
+        btnRow.add(newBtn);
+        btnRow.add(saveBtn);
+        btnRow.add(clearBtn);
 
-        JPanel deckTopRow = new JPanel(new BorderLayout(8, 0));
-        deckTopRow.setBackground(HDR_BG);
-        deckTopRow.setBorder(new EmptyBorder(10, 12, 10, 12));
+        JPanel deckRow = new JPanel(new BorderLayout(8, 0));
+        deckRow.setOpaque(false);
+        JLabel deckLbl = new JLabel("Deck:");
+        deckLbl.setFont(new Font("SansSerif", Font.BOLD, 13));
+        deckLbl.setForeground(new Color(155, 155, 180));
+        deckRow.add(deckLbl,    BorderLayout.WEST);
+        deckRow.add(deckCombo,  BorderLayout.CENTER);
+        deckRow.add(countLabel, BorderLayout.EAST);
 
-        JLabel deckTitle = new JLabel("Your Deck");
-        deckTitle.setFont(new Font("SansSerif", Font.BOLD, 15));
-        deckTitle.setForeground(Color.WHITE);
+        JPanel rightHeader = new JPanel();
+        rightHeader.setLayout(new BoxLayout(rightHeader, BoxLayout.Y_AXIS));
+        rightHeader.setBackground(HDR_BG);
+        rightHeader.setBorder(new EmptyBorder(10, 12, 10, 12));
+        btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        deckRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        rightHeader.add(btnRow);
+        rightHeader.add(Box.createVerticalStrut(8));
+        rightHeader.add(deckRow);
 
-        JPanel titleAndCount = new JPanel(new BorderLayout(8, 0));
-        titleAndCount.setOpaque(false);
-        titleAndCount.add(deckTitle,  BorderLayout.WEST);
-        titleAndCount.add(countLabel, BorderLayout.CENTER);
-
-        JPanel deckBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
-        deckBtns.setOpaque(false);
-        deckBtns.add(clearBtn);
-        deckBtns.add(saveBtn);
-        deckBtns.add(createDeckBtn);
-
-        deckTopRow.add(titleAndCount, BorderLayout.CENTER);
-        deckTopRow.add(deckBtns,      BorderLayout.EAST);
+        JScrollPane rightScroll = new JScrollPane(rightGrid);
+        rightScroll.setBorder(null);
+        rightScroll.getVerticalScrollBar().setUnitIncrement(16);
 
         JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBackground(DECK_BG);
-        rightPanel.add(deckTopRow,  BorderLayout.NORTH);
-        rightPanel.add(deckScroll,  BorderLayout.CENTER);
+        rightPanel.setBackground(RIGHT_BG);
+        rightPanel.add(rightHeader, BorderLayout.NORTH);
+        rightPanel.add(rightScroll, BorderLayout.CENTER);
 
         // ── Split ─────────────────────────────────────────────────────────────
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
-        split.setDividerLocation(570);
+        split.setDividerLocation(480);
         split.setDividerSize(5);
         split.setBorder(null);
 
-        // ── Header ────────────────────────────────────────────────────────────
-        JPanel header = buildHeader("Deck Builder", onBack, deckCombo);
-
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG);
-        wrapper.add(header, BorderLayout.NORTH);
-        wrapper.add(split,  BorderLayout.CENTER);
+        wrapper.add(buildHeader("Deck Builder", onBack), BorderLayout.NORTH);
+        wrapper.add(split, BorderLayout.CENTER);
 
         ref[0].run();
         return wrapper;
     }
 
-    // ── Library card ──────────────────────────────────────────────────────────
+    // ── Left card panel (click → move to deck) ────────────────────────────────
 
-    private static JPanel libCard(Card card, int ownedCount, int inDeck, boolean canAdd,
-                                   Map<String, Integer> deck, Runnable[] ref) {
+    private static JPanel leftCardPanel(Card card, int count, boolean canAdd,
+                                         Map<String, Integer> leftCounts,
+                                         Map<String, Integer> rightCounts,
+                                         Runnable[] ref) {
         Color accent = CardViewer.typeColor(card.getType());
         Color bg     = canAdd ? new Color(45, 45, 65) : new Color(35, 35, 52);
 
@@ -300,8 +313,8 @@ public class DeckBuilderScreen {
             new EmptyBorder(6, 8, 6, 8)));
         if (canAdd) panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        Color nameClr = canAdd ? Color.WHITE : new Color(105, 105, 128);
-        Color typeClr = canAdd ? accent      : new Color(65, 65, 85);
+        Color nameClr = canAdd ? Color.WHITE          : new Color(105, 105, 128);
+        Color typeClr = canAdd ? accent               : new Color(65, 65, 85);
 
         panel.add(lbl(card.getName(), Font.BOLD, 13, nameClr));
         panel.add(Box.createVerticalStrut(2));
@@ -310,32 +323,31 @@ public class DeckBuilderScreen {
 
         JPanel stats = new JPanel(new GridLayout(1, 3, 2, 0));
         stats.setOpaque(false);
-        stats.add(miniStat("ATK", card.getAttack(), canAdd ? new Color(220, 80, 80)  : new Color(120, 60, 60)));
-        stats.add(miniStat("HP",  card.getHp(),     canAdd ? new Color(80, 200, 100) : new Color(60, 110, 70)));
-        stats.add(miniStat("CST", card.getCost(),   canAdd ? new Color(100, 160, 220): new Color(60, 90, 130)));
+        stats.add(miniStat("ATK", card.getAttack(), canAdd ? new Color(220, 80, 80)   : new Color(120, 60, 60)));
+        stats.add(miniStat("HP",  card.getHp(),     canAdd ? new Color(80, 200, 100)  : new Color(60, 110, 70)));
+        stats.add(miniStat("CST", card.getCost(),   canAdd ? new Color(100, 160, 220) : new Color(60, 90, 130)));
         panel.add(stats);
-        panel.add(Box.createVerticalStrut(5));
 
-        String ownLine = "Owned: " + ownedCount
-                + (inDeck > 0 ? "   In deck: " + inDeck + "/" + Math.min(MAX_COPIES, ownedCount) : "");
-        panel.add(lbl(ownLine, Font.PLAIN, 10,
-                canAdd ? new Color(145, 145, 172) : new Color(78, 78, 98)));
-
+        if (count > 1) {
+            panel.add(Box.createVerticalStrut(3));
+            panel.add(lbl("×" + count + " available", Font.PLAIN, 10,
+                canAdd ? new Color(180, 180, 100) : new Color(90, 90, 60)));
+        }
         if (!canAdd) {
-            String msg;
-            if (inDeck >= ownedCount)      msg = "ALL COPIES IN DECK";
-            else if (inDeck >= MAX_COPIES) msg = "MAX COPIES IN DECK";
-            else                           msg = "DECK FULL";
-            panel.add(lbl(msg, Font.BOLD, 9, new Color(195, 85, 65)));
+            panel.add(Box.createVerticalStrut(3));
+            panel.add(lbl("DECK FULL", Font.BOLD, 9, new Color(195, 85, 65)));
         }
 
         if (canAdd) {
             panel.addMouseListener(new java.awt.event.MouseAdapter() {
-                final Color orig = bg;
                 public void mouseEntered(java.awt.event.MouseEvent e) { panel.setBackground(new Color(58, 58, 85)); }
-                public void mouseExited(java.awt.event.MouseEvent e)  { panel.setBackground(orig); }
+                public void mouseExited(java.awt.event.MouseEvent e)  { panel.setBackground(bg); }
                 public void mouseClicked(java.awt.event.MouseEvent e) {
-                    deck.merge(card.getId(), 1, Integer::sum);
+                    String id = card.getId();
+                    int left = leftCounts.getOrDefault(id, 0);
+                    if (left <= 1) leftCounts.remove(id);
+                    else leftCounts.put(id, left - 1);
+                    rightCounts.merge(id, 1, Integer::sum);
                     ref[0].run();
                 }
             });
@@ -343,69 +355,74 @@ public class DeckBuilderScreen {
         return panel;
     }
 
-    // ── Deck entry row ────────────────────────────────────────────────────────
+    // ── Right card panel (click → return to available) ────────────────────────
 
-    private static JPanel deckEntry(Card card, int count,
-                                     Map<String, Integer> deck, Runnable[] ref) {
+    private static JPanel rightCardPanel(Card card,
+                                          Map<String, Integer> leftCounts,
+                                          Map<String, Integer> rightCounts,
+                                          Runnable[] ref) {
         Color accent = CardViewer.typeColor(card.getType());
+        Color bg     = new Color(42, 42, 62);
 
-        JPanel panel = new JPanel(new BorderLayout(8, 0));
-        panel.setBackground(ENTRY_BG);
-        panel.setAlignmentX(0f);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
-        panel.setPreferredSize(new Dimension(260, 58));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(bg);
         panel.setBorder(BorderFactory.createCompoundBorder(
-            new MatteBorder(0, 5, 0, 0, accent),
-            new EmptyBorder(6, 10, 6, 8)));
+            new LineBorder(accent, 2, true),
+            new EmptyBorder(5, 7, 5, 7)));
+        panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        JPanel info = new JPanel();
-        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
-        info.setOpaque(false);
-        info.add(lbl(card.getName(), Font.BOLD, 13, Color.WHITE));
-        info.add(lbl(card.getType() + "  ·  ATK " + card.getAttack()
-                     + "  HP " + card.getHp(), Font.PLAIN, 10, new Color(140, 140, 168)));
+        panel.add(lbl(card.getName(), Font.BOLD, 12, Color.WHITE));
+        panel.add(Box.createVerticalStrut(2));
+        panel.add(lbl(card.getType(), Font.ITALIC, 9, accent));
+        panel.add(Box.createVerticalStrut(3));
 
-        JLabel countLbl = new JLabel("×" + count, SwingConstants.CENTER);
-        countLbl.setFont(new Font("SansSerif", Font.BOLD, 18));
-        countLbl.setForeground(new Color(220, 200, 100));
-        countLbl.setPreferredSize(new Dimension(36, 0));
+        JPanel stats = new JPanel(new GridLayout(1, 3, 2, 0));
+        stats.setOpaque(false);
+        stats.add(miniStat("ATK", card.getAttack(), new Color(220, 80, 80)));
+        stats.add(miniStat("HP",  card.getHp(),     new Color(80, 200, 100)));
+        stats.add(miniStat("CST", card.getCost(),   new Color(100, 160, 220)));
+        panel.add(stats);
 
-        JButton removeBtn = new JButton("−");
-        removeBtn.setFont(new Font("SansSerif", Font.BOLD, 18));
-        removeBtn.setForeground(new Color(220, 80, 80));
-        removeBtn.setBackground(ENTRY_BG);
-        removeBtn.setBorderPainted(false);
-        removeBtn.setFocusPainted(false);
-        removeBtn.setContentAreaFilled(false);
-        removeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        removeBtn.addActionListener(e -> {
-            int cur = deck.getOrDefault(card.getId(), 0);
-            if (cur <= 1) deck.remove(card.getId());
-            else          deck.put(card.getId(), cur - 1);
-            ref[0].run();
+        panel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) { panel.setBackground(new Color(55, 55, 80)); }
+            public void mouseExited(java.awt.event.MouseEvent e)  { panel.setBackground(bg); }
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                String id = card.getId();
+                int right = rightCounts.getOrDefault(id, 0);
+                if (right <= 1) rightCounts.remove(id);
+                else rightCounts.put(id, right - 1);
+                leftCounts.merge(id, 1, Integer::sum);
+                ref[0].run();
+            }
         });
-
-        JPanel right = new JPanel(new BorderLayout(4, 0));
-        right.setOpaque(false);
-        right.add(countLbl,  BorderLayout.CENTER);
-        right.add(removeBtn, BorderLayout.EAST);
-
-        panel.add(info,  BorderLayout.CENTER);
-        panel.add(right, BorderLayout.EAST);
         return panel;
     }
 
-    // ── Controls bar ──────────────────────────────────────────────────────────
+    // ── Empty deck slot ───────────────────────────────────────────────────────
 
-    private static JPanel buildControls(Sort[] sortBy, String[] search,
-                                         Runnable[] ref, JButton[] sortBtnArr) {
+    private static JPanel emptySlot() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(28, 28, 42));
+        panel.setBorder(new LineBorder(new Color(42, 42, 60), 1, true));
+        JLabel l = new JLabel("—", SwingConstants.CENTER);
+        l.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        l.setForeground(new Color(50, 50, 68));
+        panel.add(l);
+        return panel;
+    }
+
+    // ── Left controls (search + sort) ─────────────────────────────────────────
+
+    private static JPanel buildLeftControls(Sort[] sortBy, String[] search,
+                                             Runnable[] ref, JButton[] sortBtns) {
         JPanel panel = new JPanel(new BorderLayout(0, 6));
         panel.setBackground(HDR_BG);
         panel.setBorder(new EmptyBorder(10, 10, 8, 10));
 
-        JLabel libTitle = new JLabel("Your Cards");
-        libTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
-        libTitle.setForeground(Color.WHITE);
+        JLabel title = new JLabel("Available Cards");
+        title.setFont(new Font("SansSerif", Font.BOLD, 16));
+        title.setForeground(Color.WHITE);
 
         JTextField searchField = new JTextField();
         searchField.setBackground(new Color(38, 38, 58));
@@ -424,7 +441,7 @@ public class DeckBuilderScreen {
 
         JPanel topRow = new JPanel(new BorderLayout(10, 0));
         topRow.setOpaque(false);
-        topRow.add(libTitle,    BorderLayout.WEST);
+        topRow.add(title,       BorderLayout.WEST);
         topRow.add(searchField, BorderLayout.CENTER);
 
         JPanel sortRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
@@ -434,16 +451,16 @@ public class DeckBuilderScreen {
         sortLbl.setForeground(new Color(125, 125, 150));
         sortRow.add(sortLbl);
 
-        String[] labels = { "Name", "Type", "ATK", "HP", "ID", "Owned" };
+        String[] labels = { "Name", "Type", "ATK", "HP", "ID" };
         Sort[]   vals   = Sort.values();
         for (int i = 0; i < vals.length; i++) {
             final Sort s = vals[i];
-            JButton btn  = new JButton(labels[i]);
+            JButton btn = new JButton(labels[i]);
             btn.setFont(new Font("SansSerif", Font.BOLD, 11));
             btn.setFocusPainted(false);
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            btn.addActionListener(e -> { sortBy[0] = s; ref[0].run(); });
-            sortBtnArr[i] = btn;
+            btn.addActionListener(ev -> { sortBy[0] = s; ref[0].run(); });
+            sortBtns[i] = btn;
             sortRow.add(btn);
         }
 
@@ -454,8 +471,8 @@ public class DeckBuilderScreen {
 
     // ── Header ────────────────────────────────────────────────────────────────
 
-    private static JPanel buildHeader(String text, Runnable onBack, JComboBox<String> deckCombo) {
-        JPanel header = new JPanel(new BorderLayout(10, 0));
+    private static JPanel buildHeader(String text, Runnable onBack) {
+        JPanel header = new JPanel(new BorderLayout());
         header.setBackground(BG);
         header.setBorder(new EmptyBorder(12, 14, 8, 14));
 
@@ -470,48 +487,20 @@ public class DeckBuilderScreen {
         title.setFont(new Font("SansSerif", Font.BOLD, 24));
         title.setForeground(Color.WHITE);
 
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        right.setOpaque(false);
-        JLabel lbl = new JLabel("Deck:");
-        lbl.setFont(new Font("SansSerif", Font.BOLD, 13));
-        lbl.setForeground(new Color(155, 155, 180));
-        right.add(lbl);
-        right.add(deckCombo);
-
         header.add(backBtn, BorderLayout.WEST);
         header.add(title,   BorderLayout.CENTER);
-        header.add(right,   BorderLayout.EAST);
         return header;
-    }
-
-    // ── File I/O ──────────────────────────────────────────────────────────────
-
-    private static void writeDeck(User user, String deckName,
-                                   Map<String, Card> byId, Map<String, Integer> deck) {
-        try (BufferedWriter w = new BufferedWriter(new FileWriter(user.getDeckFile(deckName)))) {
-            for (Map.Entry<String, Integer> e : deck.entrySet()) {
-                if (e.getValue() <= 0) continue;
-                Card c = byId.get(e.getKey());
-                if (c == null) continue;
-                for (int i = 0; i < e.getValue(); i++) {
-                    w.write(c.toString());
-                    w.newLine();
-                }
-            }
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(null, "Failed to save deck: " + ex.getMessage());
-        }
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────
 
     private static void flashLabel(JLabel label, String msg, Color color, int ms) {
-        String prevText = label.getText();
-        Color  prevClr  = label.getForeground();
+        String prev    = label.getText();
+        Color  prevClr = label.getForeground();
         label.setText(msg);
         label.setForeground(color);
         javax.swing.Timer t = new javax.swing.Timer(ms,
-            e -> { label.setText(prevText); label.setForeground(prevClr); });
+            e -> { label.setText(prev); label.setForeground(prevClr); });
         t.setRepeats(false);
         t.start();
     }
@@ -521,7 +510,6 @@ public class DeckBuilderScreen {
         box.setBackground(new Color(38, 38, 58));
         box.setForeground(Color.WHITE);
         box.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        box.setPreferredSize(new Dimension(200, 30));
         box.setRenderer(new DefaultListCellRenderer() {
             public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {
@@ -549,7 +537,7 @@ public class DeckBuilderScreen {
         top.setFont(new Font("SansSerif", Font.BOLD, 8));
         top.setForeground(new Color(135, 135, 158));
         JLabel val = new JLabel(String.valueOf(value), SwingConstants.CENTER);
-        val.setFont(new Font("SansSerif", Font.BOLD, 13));
+        val.setFont(new Font("SansSerif", Font.BOLD, 12));
         val.setForeground(color);
         p.add(top, BorderLayout.NORTH);
         p.add(val, BorderLayout.CENTER);

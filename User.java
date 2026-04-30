@@ -57,6 +57,38 @@ public class User {
         return CardViewer.loadCards(f.getPath());
     }
 
+    public void saveDeck(String deckName, List<Card> cards) {
+        try (BufferedWriter w = new BufferedWriter(new FileWriter(getDeckFile(deckName)))) {
+            for (Card c : cards) {
+                w.write(c.toString());
+                w.newLine();
+            }
+        } catch (IOException ignored) {}
+    }
+
+    public List<Card> getUnassignedCards() {
+        List<Card> owned = getOwnedCards();
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        Map<String, Card>    byId   = new LinkedHashMap<>();
+        for (Card c : owned) {
+            counts.merge(c.getId(), 1, Integer::sum);
+            byId.put(c.getId(), c);
+        }
+        for (String deckName : getDeckNames()) {
+            for (Card c : loadDeck(deckName)) {
+                int remaining = counts.getOrDefault(c.getId(), 0) - 1;
+                if (remaining <= 0) counts.remove(c.getId());
+                else counts.put(c.getId(), remaining);
+            }
+        }
+        List<Card> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            Card c = byId.get(e.getKey());
+            if (c != null) for (int i = 0; i < e.getValue(); i++) result.add(c);
+        }
+        return result;
+    }
+
     private static String sanitize(String name) {
         return name.replaceAll("[/\\\\:*?\"<>|]", "_").trim();
     }
