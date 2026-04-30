@@ -88,7 +88,7 @@ public class CardViewer {
 
     private static Card parseLine(String line) {
         try {
-            String id      = extract(line, "id='", "'");
+            String id      = extract(line, "id=", ",").replace("'", "");
             String name    = extract(line, "name='", "'");
             String type    = extract(line, "type='", "'");
             int attack     = Integer.parseInt(extract(line, "attack=", ","));
