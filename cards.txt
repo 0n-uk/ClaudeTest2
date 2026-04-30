@@ -48,3 +48,5 @@ Card{id='au5x9y3', name='Coralback Crab', type='aquatic', attack=3, hp=12, cost=
 Card{id='av0z6a1', name='Silverthorn Druid', type='nature', attack=4, hp=7, cost=4, ability='Overgrowth: summons a 1/3 Vine Wall'}
 Card{id='aw4b8c5', name='Doomhammer Berserker', type='warrior', attack=10, hp=7, cost=6, ability='Frenzy: gains +1 attack each time it deals damage'}
 Card{id='ax9d2e0', name='Gloomhaven Wraith', type='undead', attack=5, hp=5, cost=4, ability='Haunt: reduces all enemy HP by 1 on play'}
+
+Card{id=zpa4x1g6, name='Chungus', type='undead', attack=3, hp=3, cost=1, ability='Meteor: deals 4 damage to one enemy, 1 to all others'}
