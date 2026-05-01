@@ -197,7 +197,7 @@ public class BattleScreen {
         boolean isSel     = posKey.equals(selField[0]);
 
         boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0;
-        boolean canSelect = isMyField && !empty && myTurn && hasAct && !isChamp;
+        boolean canSelect = isMyField && !empty && myTurn && hasAct;
         // Champions can be selected for ability use via separate button; regular cards select for attack
         boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null
                              && (bypass[0] ? st.isTargetableBypass(fieldIsP1, isFront, idx)
