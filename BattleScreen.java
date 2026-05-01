@@ -350,7 +350,7 @@ public class BattleScreen {
         int dmg = AbilityResolver.effectiveAttack(atkC, atkPosKey, myChampId, tgtPosKey, st);
 
         // Shield Imp passive: -1 incoming damage
-        int reduction = CardAbilityResolver.passiveDamageReduction(tgtId);
+        int reduction = AbilityResolver.passiveDamageReduction(tgtId);
         dmg = Math.max(0, dmg - reduction);
 
         int newTgtHp = BattleState.slotHp(tgtSv) - dmg;
@@ -365,10 +365,9 @@ public class BattleScreen {
                 if (!"item".equals(tgtC.getType())) {
                     if (amP1) st.p1SoulCap++; else st.p2SoulCap++;
                 }
-                String onDeathMsg  = CardAbilityResolver.onDeath(st, tgtId, tgtIsP1);
-                String passiveMsg  = AbilityResolver.onCardDeath(st, tgtIsP1);
+                String onDeathMsg = AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
-                msg[0] += tgtC.getName() + " defeated! " + onDeathMsg + " " + passiveMsg;
+                msg[0] += tgtC.getName() + " defeated! " + onDeathMsg;
             } else {
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 Champion deadChamp = (Champion) tgtC;
@@ -422,7 +421,7 @@ public class BattleScreen {
         if (sv == null || sv.isEmpty()) return;
         String cardId = BattleState.slotId(sv);
 
-        String result = CardAbilityResolver.executeActive(st, cardId, amP1, cardMap);
+        String result = AbilityResolver.executeActive(st, cardId, amP1, cardMap);
         if (result != null) {
             st.useAction(fieldIsP1, isFront, idx);
             st.abilityUsedThisTurn.add(posKey);
@@ -453,9 +452,9 @@ public class BattleScreen {
                      : (srcIsP1 ? st.p1Back  : st.p2Back)[srcIdx]);
         if (srcCardId == null) { abilitySource[0] = null; rebuildRef[0].run(); return; }
 
-        String result = CardAbilityResolver.executeTargeted(st, srcCardId, amP1,
-                                                             tgtIsP1, tgtFront, tgtIdx,
-                                                             abilityChoice, cardMap);
+        String result = AbilityResolver.executeTargeted(st, srcCardId, amP1,
+                                                          tgtIsP1, tgtFront, tgtIdx,
+                                                          abilityChoice, cardMap);
         st.useAction(srcIsP1, srcFront, srcIdx);
         st.abilityUsedThisTurn.add(sourceKey);
         String harvestMsg = AbilityResolver.onAbilityUsed(st, amP1);
@@ -635,16 +634,17 @@ public class BattleScreen {
                 if (srcSv != null && !srcSv.isEmpty()) {
                     String srcCardId = BattleState.slotId(srcSv);
                     Card srcCard = cardMap.get(srcCardId);
-                    if (srcCard != null && "active".equals(CardAbilityResolver.abilityType(srcCardId))
+                    String aType = AbilityResolver.abilityType(srcCardId);
+                    if (srcCard != null && ("active".equals(aType) || "targeted".equals(aType))
                             && !(srcCard instanceof Champion)) {
                         int mySouls = amP1 ? stRef[0].p1Souls : stRef[0].p2Souls;
-                        boolean ablEnabled = CardAbilityResolver.canUseAbility(srcCardId, mySouls);
+                        boolean ablEnabled = AbilityResolver.canUseAbility(srcCardId, mySouls);
                         String lblTxt = srcCard.getName() + ": Use Ability"
                                         + (ablEnabled ? "" : " (need soul)");
                         JButton ablBtn = smallBtn(lblTxt, ablEnabled ? SEL_ABL : new Color(80, 80, 100));
                         ablBtn.setEnabled(ablEnabled);
                         ablBtn.addActionListener(e -> {
-                            if (CardAbilityResolver.needsTarget(srcCardId)) {
+                            if (AbilityResolver.needsTarget(srcCardId)) {
                                 // Upgrade Bot: ask ATK or HP choice before targeting
                                 if ("upb001".equals(srcCardId)) {
                                     String[] opts = {"+ 2 ATK", "+ 2 HP"};
@@ -656,7 +656,7 @@ public class BattleScreen {
                                     abilityChoice[0] = choice;
                                 }
                                 abilitySource[0]  = selField[0];
-                                abilityTgtType[0] = CardAbilityResolver.targetType(srcCardId);
+                                abilityTgtType[0] = AbilityResolver.TARGET_TYPE.get(srcCardId);
                                 selField[0]       = null;
                                 msg[0] = "Select a target for " + srcCard.getName() + "'s ability";
                             } else {
