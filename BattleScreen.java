@@ -362,7 +362,9 @@ public class BattleScreen {
             st.fieldAtkBonus.remove(tgtPosKey);
 
             if (!(tgtC instanceof Champion)) {
-                if (amP1) st.p1SoulCap++; else st.p2SoulCap++;
+                if (!"item".equals(tgtC.getType())) {
+                    if (amP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
                 String onDeathMsg  = CardAbilityResolver.onDeath(st, tgtId, tgtIsP1);
                 String passiveMsg  = AbilityResolver.onCardDeath(st, tgtIsP1);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
@@ -372,7 +374,7 @@ public class BattleScreen {
                 Champion deadChamp = (Champion) tgtC;
                 String lineId = deadChamp.getLineId();
                 ChampionLine line = champLines.get(lineId);
-                String deathAbilityMsg = AbilityResolver.onChampDeath(st, tgtId, !tgtIsP1, cardMap);
+                String deathAbilityMsg = AbilityResolver.onChampDeath(st, tgtId, tgtIsP1, cardMap);
 
                 if (line != null && !deadChamp.isFinalStage(line)) {
                     Champion next = line.getStageByIndex(deadChamp.getStage());
@@ -635,8 +637,12 @@ public class BattleScreen {
                     Card srcCard = cardMap.get(srcCardId);
                     if (srcCard != null && "active".equals(CardAbilityResolver.abilityType(srcCardId))
                             && !(srcCard instanceof Champion)) {
-                        String lblTxt = srcCard.getName() + ": Use Ability";
-                        JButton ablBtn = smallBtn(lblTxt, SEL_ABL);
+                        int mySouls = amP1 ? stRef[0].p1Souls : stRef[0].p2Souls;
+                        boolean ablEnabled = CardAbilityResolver.canUseAbility(srcCardId, mySouls);
+                        String lblTxt = srcCard.getName() + ": Use Ability"
+                                        + (ablEnabled ? "" : " (need soul)");
+                        JButton ablBtn = smallBtn(lblTxt, ablEnabled ? SEL_ABL : new Color(80, 80, 100));
+                        ablBtn.setEnabled(ablEnabled);
                         ablBtn.addActionListener(e -> {
                             if (CardAbilityResolver.needsTarget(srcCardId)) {
                                 // Upgrade Bot: ask ATK or HP choice before targeting

@@ -33,6 +33,18 @@ public class CardAbilityResolver {
         }
     }
 
+    /**
+     * Whether the player currently has enough resources to use this card's active ability.
+     * Used to enable/disable the ability button before the player clicks it.
+     */
+    public static boolean canUseAbility(String cardId, int currentSouls) {
+        switch (cardId) {
+            case "hd001":  return currentSouls >= 1; // Honeydew costs 1 soul
+            case "wsp001": return currentSouls >= 1; // Wisp costs 1 soul
+            default:       return true;              // no soul cost
+        }
+    }
+
     /** Whether the active ability requires the player to click a target on the field. */
     public static boolean needsTarget(String cardId) {
         return "hd001".equals(cardId) || "upb001".equals(cardId);

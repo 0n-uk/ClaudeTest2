@@ -32,7 +32,7 @@ public class AbilityResolver {
     public static String onChampDeath(BattleState bs, String champId, boolean isP1,
                                        Map<String, Card> cardMap) {
         switch (champId) {
-            case "B1": return dewDrop(bs, isP1, cardMap);
+            case "B1": return largeDewDrop(bs, isP1, cardMap);
             case "B2": return molt(bs, isP1);
             case "T1": return hatch(bs, isP1);
             case "D4": // Foolish Alter death – no on-death effect (passive only)
@@ -41,7 +41,7 @@ public class AbilityResolver {
     }
 
     // Larva – give a random friendly card +5 HP
-    private static String dewDrop(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
+    private static String largeDewDrop(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
         String[] front = isP1 ? bs.p1Front : bs.p2Front;
         String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
         List<int[]> slots = new ArrayList<>(); // [0]=rowFlag(0=front,1=back), [1]=idx
