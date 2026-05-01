@@ -1,8 +1,8 @@
-import javax.swing.*;
-import javax.swing.border.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.*;
 
 public class BattleScreen {
 
@@ -360,14 +360,16 @@ public class BattleScreen {
         if (newTgtHp <= 0) {
             tgtRow[tgtIdx] = "";
             st.fieldAtkBonus.remove(tgtPosKey);
-
+            
+            // Handle death: soul gain, on-death effects, champion evolution or defeat
             if (!(tgtC instanceof Champion)) {
-                if (amP1) st.p1SoulCap++; else st.p2SoulCap++;
+                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
                 String onDeathMsg  = CardAbilityResolver.onDeath(st, tgtId, tgtIsP1);
                 String passiveMsg  = AbilityResolver.onCardDeath(st, tgtIsP1);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 msg[0] += tgtC.getName() + " defeated! " + onDeathMsg + " " + passiveMsg;
             } else {
+                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;                
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 Champion deadChamp = (Champion) tgtC;
                 String lineId = deadChamp.getLineId();
