@@ -7,7 +7,7 @@ public class BattleManager {
 
     // ── Queue / matchmaking ───────────────────────────────────────────────────
 
-    public static String joinQueue(String username, String deckName) {
+    public static String joinQueue(String username, String deckName, String champLine) {
         new File(BattleState.BATTLES_DIR).mkdirs();
         new File(BattleState.ACTIVE_DIR).mkdirs();
 
@@ -15,18 +15,21 @@ public class BattleManager {
         if (qf.exists()) {
             String existing = readFile(qf);
             if (existing != null && !existing.isEmpty()) {
-                String[] parts = existing.split(":", 2);
-                String waitingUser = parts[0].trim();
-                String waitingDeck = parts.length > 1 ? parts[1].trim() : "";
+                String[] parts = existing.split(":", 3);
+                String waitingUser  = parts[0].trim();
+                String waitingDeck  = parts.length > 1 ? parts[1].trim() : "";
+                String waitingChamp = parts.length > 2 ? parts[2].trim() : "B";
                 if (!waitingUser.equals(username)) {
                     qf.delete();
                     String battleId = username + "_vs_" + waitingUser + "_" + System.currentTimeMillis();
-                    createBattle(battleId, waitingUser, waitingDeck, username, deckName);
+                    createBattle(battleId,
+                                 waitingUser, waitingDeck, waitingChamp,
+                                 username,    deckName,    champLine);
                     return battleId;
                 }
             }
         }
-        writeFile(qf, username + ":" + deckName);
+        writeFile(qf, username + ":" + deckName + ":" + champLine);
         return null;
     }
 
@@ -58,22 +61,26 @@ public class BattleManager {
     // ── Battle creation ───────────────────────────────────────────────────────
 
     private static void createBattle(String battleId,
-                                     String p1, String p1DeckName,
-                                     String p2, String p2DeckName) {
-        BattleState bs = new BattleState();
-        bs.battleId    = battleId;
-        bs.player1     = p1;
-        bs.player2     = p2;
-        bs.currentTurn = (Math.random() < 0.5) ? p1 : p2;
-        bs.p1SoulCap   = 1;
-        bs.p1Souls     = 1;
-        bs.p2SoulCap   = 1;
-        bs.p2Souls     = 1;
-        bs.phase       = "active";
-        bs.winner      = "";
+                                      String p1, String p1DeckName, String p1ChampLine,
+                                      String p2, String p2DeckName, String p2ChampLine) {
+        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
 
-        bs.p1Back[BattleState.CHAMP_SLOT] = BattleState.makeSlot(BattleState.CHAMP_ID, BattleState.CHAMP_HP);
-        bs.p2Back[BattleState.CHAMP_SLOT] = BattleState.makeSlot(BattleState.CHAMP_ID, BattleState.CHAMP_HP);
+        BattleState bs  = new BattleState();
+        bs.battleId     = battleId;
+        bs.player1      = p1;
+        bs.player2      = p2;
+        bs.currentTurn  = (Math.random() < 0.5) ? p1 : p2;
+        bs.p1SoulCap    = 1;
+        bs.p1Souls      = 1;
+        bs.p2SoulCap    = 1;
+        bs.p2Souls      = 1;
+        bs.phase        = "active";
+        bs.winner       = "";
+        bs.p1ChampLine  = p1ChampLine;
+        bs.p2ChampLine  = p2ChampLine;
+
+        placeChampion(bs, true,  champLines, p1ChampLine);
+        placeChampion(bs, false, champLines, p2ChampLine);
 
         List<Card> p1Cards = new User(p1).loadDeck(p1DeckName);
         Collections.shuffle(p1Cards);
@@ -88,15 +95,28 @@ public class BattleManager {
         bs.save();
     }
 
+    private static void placeChampion(BattleState bs, boolean isP1,
+                                       Map<String, ChampionLine> lines, String lineId) {
+        ChampionLine line = lines.get(lineId);
+        if (line == null || line.size() == 0) return;
+        Champion stage1 = line.getStageByIndex(0);
+        if (stage1 == null) return;
+        String[] back = isP1 ? bs.p1Back : bs.p2Back;
+        back[BattleState.CHAMP_SLOT] = BattleState.makeSlot(stage1.getId(), stage1.getHp());
+    }
+
     // ── Card map ──────────────────────────────────────────────────────────────
 
     public static Map<String, Card> buildCardMap() {
         Map<String, Card> map = new HashMap<>();
-        map.put(BattleState.CHAMP_ID, BattleState.CHAMPION);
         try {
             List<Card> cards = CardViewer.loadCards("cards.txt");
             for (Card c : cards) map.put(c.getId(), c);
         } catch (Exception ignored) {}
+        Map<String, ChampionLine> lines = ChampionLine.loadAll();
+        for (ChampionLine line : lines.values())
+            for (Champion c : line.getStages()) map.put(c.getId(), c);
+        map.put(AbilityResolver.SCRAP_ID, AbilityResolver.SCRAP_CARD);
         return map;
     }
 

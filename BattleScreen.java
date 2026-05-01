@@ -20,18 +20,20 @@ public class BattleScreen {
 
     public static JPanel buildPanel(User user, String battleId, Runnable onComplete) {
 
-        Map<String, Card> cardMap = BattleManager.buildCardMap();
+        Map<String, Card>         cardMap   = BattleManager.buildCardMap();
+        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
         for (Card c : user.getOwnedCards()) cardMap.putIfAbsent(c.getId(), c);
 
-        BattleState[] stRef   = { BattleState.load(battleId) };
-        int[]         selHand = { -1 };
+        BattleState[] stRef    = { BattleState.load(battleId) };
+        int[]         selHand  = { -1 };
         String[]      selField = { null };
         String[]      msg      = { "" };
+        boolean[]     bypass   = { false }; // T-Bot bypass mode active
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG);
 
-        javax.swing.Timer[] timerRef  = { null };
+        javax.swing.Timer[] timerRef   = { null };
         Runnable[]          rebuildRef = { null };
 
         rebuildRef[0] = () -> {
@@ -50,7 +52,6 @@ public class BattleScreen {
                 return;
             }
 
-            boolean oppIsP1 = !amP1;
             String oppName  = amP1 ? st.player2 : st.player1;
             int oppSouls    = amP1 ? st.p2Souls   : st.p1Souls;
             int oppSoulCap  = amP1 ? st.p2SoulCap : st.p1SoulCap;
@@ -60,24 +61,24 @@ public class BattleScreen {
             int myDeck      = (amP1 ? st.p1Deck : st.p2Deck).size();
             List<String> myHand = new ArrayList<>(amP1 ? st.p1Hand : st.p2Hand);
 
-            wrapper.add(header(oppName, oppSouls, oppSoulCap, oppDeck, myTurn), BorderLayout.NORTH);
+            wrapper.add(header(oppName, oppSouls, oppSoulCap, oppDeck, myTurn, msg[0]), BorderLayout.NORTH);
 
-            // Field
             JPanel field = new JPanel();
             field.setLayout(new BoxLayout(field, BoxLayout.Y_AXIS));
             field.setBackground(BG);
             field.setBorder(new EmptyBorder(4, 8, 4, 8));
 
-            // Opponent section (their back then front from our view)
+            boolean oppIsP1 = !amP1;
+
+            // Opponent section (their back then front from our perspective)
             field.add(fieldRow(st, cardMap, oppIsP1, false, amP1, myTurn,
                                selHand, selField, msg, stRef, user, wrapper, battleId,
-                               onComplete, rebuildRef, OPP_BG));
+                               onComplete, rebuildRef, bypass, champLines, OPP_BG));
             field.add(Box.createVerticalStrut(3));
             field.add(fieldRow(st, cardMap, oppIsP1, true, amP1, myTurn,
                                selHand, selField, msg, stRef, user, wrapper, battleId,
-                               onComplete, rebuildRef, OPP_BG));
+                               onComplete, rebuildRef, bypass, champLines, OPP_BG));
 
-            // Separator
             JPanel sep = new JPanel();
             sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 4));
             sep.setBackground(new Color(60, 60, 90));
@@ -88,23 +89,22 @@ public class BattleScreen {
             // My section (my front then back)
             field.add(fieldRow(st, cardMap, amP1, true, amP1, myTurn,
                                selHand, selField, msg, stRef, user, wrapper, battleId,
-                               onComplete, rebuildRef, MY_BG));
+                               onComplete, rebuildRef, bypass, champLines, MY_BG));
             field.add(Box.createVerticalStrut(3));
             field.add(fieldRow(st, cardMap, amP1, false, amP1, myTurn,
                                selHand, selField, msg, stRef, user, wrapper, battleId,
-                               onComplete, rebuildRef, MY_BG));
+                               onComplete, rebuildRef, bypass, champLines, MY_BG));
 
             wrapper.add(field, BorderLayout.CENTER);
 
-            // South: hand + controls
             JPanel south = new JPanel(new BorderLayout(0, 4));
             south.setBackground(BG);
             south.setBorder(new EmptyBorder(4, 8, 8, 8));
             south.add(handPanel(myHand, cardMap, mySouls, mySoulCap, myDeck, myTurn,
-                                selHand, selField, msg, stRef, amP1, rebuildRef),
+                                selHand, selField, msg, stRef, amP1, rebuildRef, champLines),
                       BorderLayout.CENTER);
             south.add(controls(stRef, amP1, myTurn, selHand, selField, msg,
-                                rebuildRef, user, onComplete),
+                                rebuildRef, bypass, user, onComplete, champLines, cardMap),
                       BorderLayout.SOUTH);
             wrapper.add(south, BorderLayout.SOUTH);
 
@@ -126,7 +126,7 @@ public class BattleScreen {
     // ── Header ────────────────────────────────────────────────────────────────
 
     private static JPanel header(String oppName, int oppSouls, int oppSoulCap,
-                                  int oppDeck, boolean myTurn) {
+                                  int oppDeck, boolean myTurn, String msg) {
         JPanel p = new JPanel(new BorderLayout(10, 0));
         p.setBackground(HDR_BG);
         p.setBorder(new EmptyBorder(8, 14, 8, 14));
@@ -137,12 +137,20 @@ public class BattleScreen {
         left.add(lbl("Soul " + oppSouls + "/" + oppSoulCap, Font.PLAIN, 12, new Color(200, 160, 80)));
         left.add(lbl("Deck: " + oppDeck, Font.PLAIN, 12, new Color(140, 140, 165)));
 
+        JPanel center = new JPanel(new BorderLayout());
+        center.setOpaque(false);
         JLabel turn = lbl(myTurn ? "YOUR TURN" : "Opponent's Turn", Font.BOLD, 15,
                           myTurn ? new Color(100, 220, 130) : new Color(220, 100, 100));
         turn.setHorizontalAlignment(SwingConstants.CENTER);
+        center.add(turn, BorderLayout.CENTER);
+        if (!msg.isEmpty()) {
+            JLabel msgL = lbl(msg, Font.ITALIC, 11, new Color(220, 200, 100));
+            msgL.setHorizontalAlignment(SwingConstants.CENTER);
+            center.add(msgL, BorderLayout.SOUTH);
+        }
 
-        p.add(left, BorderLayout.WEST);
-        p.add(turn, BorderLayout.CENTER);
+        p.add(left,   BorderLayout.WEST);
+        p.add(center, BorderLayout.CENTER);
         return p;
     }
 
@@ -153,14 +161,15 @@ public class BattleScreen {
                                     boolean myTurn, int[] selHand, String[] selField,
                                     String[] msg, BattleState[] stRef, User user,
                                     JPanel wrapper, String battleId, Runnable onComplete,
-                                    Runnable[] rebuildRef, Color bg) {
+                                    Runnable[] rebuildRef, boolean[] bypass,
+                                    Map<String, ChampionLine> champLines, Color bg) {
         JPanel row = new JPanel(new GridLayout(1, 5, 4, 0));
         row.setBackground(bg);
         row.setBorder(new EmptyBorder(3, 0, 3, 0));
         for (int i = 0; i < 5; i++)
             row.add(slot(st, cardMap, fieldIsP1, isFront, i, amP1, myTurn,
                          selHand, selField, msg, stRef, user, wrapper, battleId,
-                         onComplete, rebuildRef));
+                         onComplete, rebuildRef, bypass, champLines));
         return row;
     }
 
@@ -171,34 +180,43 @@ public class BattleScreen {
                                 boolean amP1, boolean myTurn,
                                 int[] selHand, String[] selField, String[] msg,
                                 BattleState[] stRef, User user, JPanel wrapper,
-                                String battleId, Runnable onComplete, Runnable[] rebuildRef) {
+                                String battleId, Runnable onComplete, Runnable[] rebuildRef,
+                                boolean[] bypass, Map<String, ChampionLine> champLines) {
 
-        String[] row = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
-                               : (fieldIsP1 ? st.p1Back  : st.p2Back);
+        String[] row   = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
+                                 : (fieldIsP1 ? st.p1Back  : st.p2Back);
         String sv      = row[idx];
         boolean empty  = sv == null || sv.isEmpty();
         String  cardId = empty ? null : BattleState.slotId(sv);
         int     hp     = empty ? 0    : BattleState.slotHp(sv);
         Card    card   = (cardId != null) ? cardMap.get(cardId) : null;
-        boolean isChamp   = BattleState.CHAMP_ID.equals(cardId);
+        boolean isChamp   = card instanceof Champion;
         boolean isMyField = fieldIsP1 == amP1;
         String  posKey    = BattleState.posKey(fieldIsP1, isFront, idx);
         boolean hasAct    = !empty && st.hasAction(fieldIsP1, isFront, idx);
         boolean isSel     = posKey.equals(selField[0]);
 
         boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0;
-        boolean canSelect = isMyField && !empty && myTurn && hasAct;
+        boolean canSelect = isMyField && !empty && myTurn && hasAct && !isChamp;
+        // Champions can be selected for ability use via separate button; regular cards select for attack
         boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null
-                             && st.isTargetable(fieldIsP1, isFront, idx);
+                             && (bypass[0] ? st.isTargetableBypass(fieldIsP1, isFront, idx)
+                                           : st.isTargetable(fieldIsP1, isFront, idx));
 
-        Color accent  = isChamp ? CHAMP_CLR : (card != null ? CardViewer.typeColor(card.getType()) : new Color(80,80,110));
-        Color bg      = isSel ? SEL_ATK : (canTarget ? new Color(55, 25, 25) : (empty ? EMPTY_BG : CARD_BG));
-        Color border  = isSel ? SEL_ATK : (canTarget ? SEL_TGT : (canPlace ? new Color(100,220,130) : (canSelect ? new Color(100,160,255) : (empty ? new Color(40,40,62) : accent))));
+        Color accent  = isChamp ? CHAMP_CLR
+                      : (AbilityResolver.SCRAP_ID.equals(cardId) ? new Color(140,140,160)
+                      : (card != null ? CardViewer.typeColor(card.getType()) : new Color(80,80,110)));
+        Color bgColor = isSel ? SEL_ATK : (canTarget ? new Color(55, 25, 25) : (empty ? EMPTY_BG : CARD_BG));
+        Color border  = isSel ? SEL_ATK
+                      : (canTarget ? SEL_TGT
+                      : (canPlace  ? new Color(100,220,130)
+                      : (canSelect ? new Color(100,160,255)
+                      : (empty     ? new Color(40,40,62) : accent))));
 
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setBackground(bg);
-        p.setPreferredSize(new Dimension(108, 86));
+        p.setBackground(bgColor);
+        p.setPreferredSize(new Dimension(108, 90));
         p.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(border, (isSel || canTarget || canPlace) ? 2 : 1, true),
             new EmptyBorder(4, 5, 4, 5)));
@@ -217,11 +235,19 @@ public class BattleScreen {
             JLabel nameL = lbl(card.getName(), Font.BOLD, 10, isChamp ? CHAMP_CLR : Color.WHITE);
             nameL.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel hpL = lbl("HP " + hp + "/" + card.getHp(), Font.PLAIN, 9,
-                              hp <= card.getHp() / 3 ? new Color(220, 80, 80) : new Color(80, 200, 100));
+                              hp <= card.getHp() / 3 + 1 ? new Color(220, 80, 80) : new Color(80, 200, 100));
             hpL.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel atkL = lbl("ATK " + card.getAttack(), Font.PLAIN, 9, new Color(220, 120, 80));
             atkL.setAlignmentX(Component.LEFT_ALIGNMENT);
             p.add(nameL); p.add(hpL); p.add(atkL);
+
+            if (isChamp) {
+                Champion ch = (Champion) card;
+                JLabel stageL = lbl("Stage " + ch.getStage(), Font.ITALIC, 8, CHAMP_CLR);
+                stageL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(stageL);
+            }
+
             if (isMyField && !hasAct) {
                 JLabel used = lbl("Used", Font.ITALIC, 8, new Color(100, 100, 120));
                 used.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -236,10 +262,10 @@ public class BattleScreen {
                     if (canPlace) {
                         List<String> hand = amP1 ? st2.p1Hand : st2.p2Hand;
                         if (selHand[0] >= hand.size()) return;
-                        String id = hand.get(selHand[0]);
-                        Card c = cardMap.get(id);
-                        int cost  = c != null ? c.getCost() : 0;
-                        int souls = amP1 ? st2.p1Souls : st2.p2Souls;
+                        String id   = hand.get(selHand[0]);
+                        Card   c    = cardMap.get(id);
+                        int    cost = AbilityResolver.effectiveCost(c != null ? c : new Card(id,"?","?",0,1,0,""), st2, amP1, champLines);
+                        int    souls = amP1 ? st2.p1Souls : st2.p2Souls;
                         if (cost > souls) {
                             msg[0] = "Not enough Souls (need " + cost + ", have " + souls + ")";
                             rebuildRef[0].run(); return;
@@ -248,18 +274,21 @@ public class BattleScreen {
                                                      : (amP1 ? st2.p1Back  : st2.p2Back);
                         targetRow[idx] = BattleState.makeSlot(id, c != null ? c.getHp() : 1);
                         hand.remove(selHand[0]);
+                        // Consume freeplay token if used
+                        st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
                         if (amP1) st2.p1Souls -= cost; else st2.p2Souls -= cost;
                         selHand[0] = -1; msg[0] = "";
                         st2.save(); rebuildRef[0].run();
                     } else if (canSelect) {
                         selField[0] = isSel ? null : posKey;
                         selHand[0] = -1;
+                        bypass[0]  = false;
                         msg[0] = selField[0] != null ? "Select a target to attack" : "";
                         rebuildRef[0].run();
                     } else { // canTarget
-                        doAttack(stRef[0], cardMap, amP1, selField[0],
+                        doAttack(stRef[0], cardMap, champLines, amP1, selField[0],
                                  fieldIsP1, isFront, idx,
-                                 stRef, selHand, selField, msg, rebuildRef, user);
+                                 stRef, selHand, selField, msg, rebuildRef, bypass, user);
                     }
                 }
             });
@@ -270,13 +299,15 @@ public class BattleScreen {
     // ── Attack ────────────────────────────────────────────────────────────────
 
     private static void doAttack(BattleState st, Map<String, Card> cardMap,
+                                  Map<String, ChampionLine> champLines,
                                   boolean amP1, String atkKey,
                                   boolean tgtIsP1, boolean tgtFront, int tgtIdx,
                                   BattleState[] stRef, int[] selHand, String[] selField,
-                                  String[] msg, Runnable[] rebuildRef, User user) {
-        boolean atkIsP1 = atkKey.startsWith("p1");
+                                  String[] msg, Runnable[] rebuildRef, boolean[] bypass,
+                                  User user) {
+        boolean atkIsP1  = atkKey.startsWith("p1");
         boolean atkFront = atkKey.charAt(2) == 'f';
-        int atkIdx = Character.getNumericValue(atkKey.charAt(3));
+        int     atkIdx   = Character.getNumericValue(atkKey.charAt(3));
 
         String[] atkRow = atkFront ? (atkIsP1 ? st.p1Front : st.p2Front) : (atkIsP1 ? st.p1Back : st.p2Back);
         String[] tgtRow = tgtFront ? (tgtIsP1 ? st.p1Front : st.p2Front) : (tgtIsP1 ? st.p1Back : st.p2Back);
@@ -288,33 +319,113 @@ public class BattleScreen {
         Card atkC = cardMap.get(atkId), tgtC = cardMap.get(tgtId);
         if (atkC == null || tgtC == null) return;
 
-        int newTgtHp = BattleState.slotHp(tgtSv) - atkC.getAttack();
+        // If bypass was active, consume 1 Scrap now
+        if (bypass[0]) {
+            String bypassMsg = AbilityResolver.consumeBypassScrap(st, amP1);
+            msg[0] = bypassMsg + " ";
+        }
+        bypass[0] = false;
+
+        // Evolved Shade 2x damage check
+        String myChampId = AbilityResolver.currentChampId(st, amP1);
+        int dmg = AbilityResolver.effectiveAttack(atkC, myChampId,
+                                                   BattleState.posKey(tgtIsP1, tgtFront, tgtIdx), st);
+
+        int newTgtHp = BattleState.slotHp(tgtSv) - dmg;
         st.useAction(atkIsP1, atkFront, atkIdx);
         selField[0] = null;
 
         if (newTgtHp <= 0) {
             tgtRow[tgtIdx] = "";
             if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
-            if (amP1) st.p1SoulCap++; else st.p2SoulCap++;
-            msg[0] = tgtC.getName() + " defeated!";
-            if (BattleState.CHAMP_ID.equals(tgtId)) {
-                st.phase = "finished";
-                st.winner = user.getUsername();
-                st.save(); stRef[0] = st;
-                rebuildRef[0].run(); return;
+
+            // Non-champion card death
+            if (!(tgtC instanceof Champion)) {
+                if (amP1) st.p1SoulCap++; else st.p2SoulCap++;
+                String deathPassive = AbilityResolver.onCardDeath(st, tgtIsP1);
+                msg[0] += tgtC.getName() + " defeated! " + deathPassive;
+            } else {
+                // Champion defeated — advance stage or end game
+                Champion deadChamp = (Champion) tgtC;
+                String lineId = deadChamp.getLineId();
+                ChampionLine line = champLines.get(lineId);
+                String deathAbilityMsg = AbilityResolver.onChampDeath(st, atkId, !tgtIsP1, cardMap);
+
+                if (line != null && !deadChamp.isFinalStage(line)) {
+                    // Advance to next stage
+                    Champion next = line.getStageByIndex(deadChamp.getStage()); // stage is 1-based, index is 0-based
+                    if (next != null) {
+                        tgtRow[tgtIdx] = BattleState.makeSlot(next.getId(), next.getHp());
+                        // Remove action used mark for champion slot so new stage can act this turn
+                        st.actionsUsed.remove(BattleState.posKey(tgtIsP1, tgtFront, tgtIdx));
+                        msg[0] += deadChamp.getName() + " evolved to " + next.getName() + "! " + deathAbilityMsg;
+                    }
+                } else {
+                    // Final stage defeated — game over
+                    st.phase  = "finished";
+                    st.winner = user.getUsername();
+                    st.save(); stRef[0] = st;
+                    rebuildRef[0].run(); return;
+                }
             }
         } else {
             tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
-            msg[0] = "Hit " + tgtC.getName() + " for " + atkC.getAttack() + "!";
+            msg[0] += "Hit " + tgtC.getName() + " for " + dmg + "!";
         }
 
-        // Champion using action ends the turn
-        if (BattleState.CHAMP_ID.equals(atkId)) {
+        // Champion using its attack action ends the turn
+        if (atkC instanceof Champion) {
             doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef);
         } else {
             st.save(); stRef[0] = st;
             rebuildRef[0].run();
         }
+    }
+
+    // ── Champion ability ──────────────────────────────────────────────────────
+
+    private static void doChampionAbility(BattleState st, Map<String, Card> cardMap,
+                                           Map<String, ChampionLine> champLines,
+                                           boolean amP1, BattleState[] stRef,
+                                           int[] selHand, String[] selField, String[] msg,
+                                           Runnable[] rebuildRef, boolean[] bypass) {
+        String champId = AbilityResolver.currentChampId(st, amP1);
+        if (champId == null) { msg[0] = "No champion on field."; rebuildRef[0].run(); return; }
+
+        // Check action availability for champion
+        if (!st.hasAction(amP1, false, BattleState.CHAMP_SLOT)) {
+            msg[0] = "Champion has already acted this turn.";
+            rebuildRef[0].run(); return;
+        }
+
+        // T-Bot (T3) bypass — toggle bypass mode for next attack
+        if ("T3".equals(champId)) {
+            if (!AbilityResolver.canBypass(st, amP1)) {
+                msg[0] = "Bypass: need at least 1 Scrap token."; rebuildRef[0].run(); return;
+            }
+            bypass[0] = !bypass[0];
+            msg[0] = bypass[0] ? "Bypass active — select a backline target!" : "Bypass cancelled.";
+            rebuildRef[0].run();
+            return;
+        }
+
+        String result = AbilityResolver.activeAbility(st, champId, amP1, cardMap);
+        if (result == null) {
+            msg[0] = "This champion has a passive ability.";
+        } else {
+            msg[0] = result;
+            // Track ability used for Shade/Evolved Shade
+            st.abilityUsedThisTurn.add(BattleState.posKey(amP1, false, BattleState.CHAMP_SLOT));
+            // Shade harvest
+            String harvestMsg = AbilityResolver.onAbilityUsed(st, amP1);
+            if (!harvestMsg.isEmpty()) msg[0] += " " + harvestMsg;
+            // Mark champion as having acted — champion ability always ends turn
+            st.useAction(amP1, false, BattleState.CHAMP_SLOT);
+            st.save(); stRef[0] = st;
+            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef);
+            return;
+        }
+        rebuildRef[0].run();
     }
 
     // ── End turn ──────────────────────────────────────────────────────────────
@@ -331,18 +442,22 @@ public class BattleScreen {
         if (!nextDeck.isEmpty()) nextHand.add(nextDeck.remove(0));
         if (nextIsP1) st.p1Souls = st.p1SoulCap; else st.p2Souls = st.p2SoulCap;
         st.actionsUsed.clear();
+        st.abilityUsedThisTurn.clear();
+        st.freeplayCards.clear();
+        st.p1ExtraActions = 0;
+        st.p2ExtraActions = 0;
         st.currentTurn = nextPlayer;
-        msg[0] = "";
         st.save(); stRef[0] = st;
         rebuildRef[0].run();
     }
 
-    // ── Hand ──────────────────────────────────────────────────────────────────
+    // ── Hand panel ────────────────────────────────────────────────────────────
 
     private static JPanel handPanel(List<String> handIds, Map<String, Card> cardMap,
                                      int souls, int soulCap, int deckCount, boolean myTurn,
                                      int[] selHand, String[] selField, String[] msg,
-                                     BattleState[] stRef, boolean amP1, Runnable[] rebuildRef) {
+                                     BattleState[] stRef, boolean amP1, Runnable[] rebuildRef,
+                                     Map<String, ChampionLine> champLines) {
         JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         p.setBackground(new Color(20, 22, 35));
         p.setBorder(BorderFactory.createCompoundBorder(
@@ -357,15 +472,16 @@ public class BattleScreen {
             final int fi = i;
             Card c = cardMap.get(handIds.get(i));
             if (c == null) continue;
-            boolean canAfford = souls >= c.getCost();
-            boolean sel = selHand[0] == i;
+            int  cost      = AbilityResolver.effectiveCost(c, stRef[0], amP1, champLines);
+            boolean canAfford = souls >= cost;
+            boolean sel       = selHand[0] == i;
             Color accent = CardViewer.typeColor(c.getType());
-            Color bg     = sel ? SEL_ATK : (canAfford && myTurn ? CARD_BG : EMPTY_BG);
-            Color border = sel ? SEL_ATK : (canAfford && myTurn ? accent : new Color(55, 55, 75));
+            Color bgColor = sel ? SEL_ATK : (canAfford && myTurn ? CARD_BG : EMPTY_BG);
+            Color border  = sel ? SEL_ATK : (canAfford && myTurn ? accent : new Color(55, 55, 75));
 
             JPanel card = new JPanel();
             card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-            card.setBackground(bg);
+            card.setBackground(bgColor);
             card.setPreferredSize(new Dimension(93, 78));
             card.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(border, sel ? 2 : 1, true), new EmptyBorder(4, 5, 4, 5)));
@@ -374,8 +490,12 @@ public class BattleScreen {
             Color nameClr = canAfford && myTurn ? Color.WHITE : new Color(100, 100, 120);
             Color costClr = canAfford ? new Color(200, 160, 60) : new Color(220, 80, 80);
 
-            JLabel n = lbl(c.getName(),    Font.BOLD,  9, nameClr); n.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel o = lbl("Cost:" + c.getCost(), Font.PLAIN, 9, costClr); o.setAlignmentX(Component.LEFT_ALIGNMENT);
+            // Show free tag if freeplay token active
+            boolean isFree = stRef[0].freeplayCards.contains(c.getId() + "_" + (amP1 ? "p1" : "p2"));
+            String costTxt = isFree ? "FREE" : "Cost:" + cost;
+
+            JLabel n = lbl(c.getName(),                  Font.BOLD,  9, nameClr); n.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JLabel o = lbl(costTxt,                      Font.PLAIN, 9, costClr); o.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel s = lbl("A:" + c.getAttack() + " H:" + c.getHp(), Font.PLAIN, 9, new Color(140,140,165)); s.setAlignmentX(Component.LEFT_ALIGNMENT);
             card.add(n); card.add(o); card.add(s);
 
@@ -398,20 +518,42 @@ public class BattleScreen {
 
     private static JPanel controls(BattleState[] stRef, boolean amP1, boolean myTurn,
                                     int[] selHand, String[] selField, String[] msg,
-                                    Runnable[] rebuildRef, User user, Runnable onComplete) {
+                                    Runnable[] rebuildRef, boolean[] bypass,
+                                    User user, Runnable onComplete,
+                                    Map<String, ChampionLine> champLines,
+                                    Map<String, Card> cardMap) {
         JPanel p = new JPanel(new BorderLayout(8, 0));
         p.setBackground(BG);
         p.setBorder(new EmptyBorder(4, 0, 0, 0));
-
-        JLabel statusL = lbl(msg[0], Font.ITALIC, 12, new Color(200, 200, 100));
-        statusL.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btns.setOpaque(false);
 
         if (myTurn) {
+            // Champion ability button
+            String champId = AbilityResolver.currentChampId(stRef[0], amP1);
+            Card champCard = champId != null ? cardMap.get(champId) : null;
+            if (champCard instanceof Champion) {
+                Champion ch = (Champion) champCard;
+                boolean hasAbility = !ch.getAbility().isEmpty();
+                boolean champActed = !stRef[0].hasAction(amP1, false, BattleState.CHAMP_SLOT);
+                if (hasAbility) {
+                    String btnLabel = ch.getName() + ": " + ch.getAbility().split("[-–]")[0].trim();
+                    Color  btnColor = bypass[0] ? new Color(255, 160, 60) : new Color(220, 180, 60);
+                    JButton abilityBtn = smallBtn(btnLabel, btnColor);
+                    abilityBtn.setEnabled(!champActed);
+                    abilityBtn.addActionListener(e ->
+                        doChampionAbility(stRef[0], cardMap, champLines, amP1,
+                                          stRef, selHand, selField, msg, rebuildRef, bypass));
+                    btns.add(abilityBtn);
+                }
+            }
+
             JButton endBtn = smallBtn("End Turn", new Color(100, 180, 255));
-            endBtn.addActionListener(e -> doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef));
+            endBtn.addActionListener(e -> {
+                msg[0] = "";
+                doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef);
+            });
             btns.add(endBtn);
         }
 
@@ -425,8 +567,7 @@ public class BattleScreen {
         });
         btns.add(forfeit);
 
-        p.add(statusL, BorderLayout.CENTER);
-        p.add(btns,    BorderLayout.EAST);
+        p.add(btns, BorderLayout.EAST);
         return p;
     }
 

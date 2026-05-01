@@ -1,6 +1,7 @@
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class MatchmakingScreen {
@@ -8,9 +9,13 @@ public class MatchmakingScreen {
     private static final Color BG      = new Color(20, 20, 30);
     private static final Color CARD_BG = new Color(35, 35, 52);
 
-    public static JPanel buildPanel(User user, String deckName,
+    public static JPanel buildPanel(User user, String deckName, String champLine,
                                     Runnable onCancel, Consumer<String> onMatchFound) {
         String username = user.getUsername();
+
+        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
+        ChampionLine cl = champLines.get(champLine);
+        String champName = (cl != null && cl.size() > 0) ? cl.getStageByIndex(0).getName() + " line" : champLine;
 
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG);
@@ -19,7 +24,7 @@ public class MatchmakingScreen {
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 26));
         titleLabel.setForeground(Color.WHITE);
 
-        JLabel deckLabel = new JLabel("Deck: " + deckName, SwingConstants.CENTER);
+        JLabel deckLabel = new JLabel("Deck: " + deckName + "  ·  Champion: " + champName, SwingConstants.CENTER);
         deckLabel.setFont(new Font("SansSerif", Font.ITALIC, 16));
         deckLabel.setForeground(new Color(160, 160, 180));
 
@@ -69,7 +74,7 @@ public class MatchmakingScreen {
         };
 
         // Try to join queue immediately
-        String immediateId = BattleManager.joinQueue(username, deckName);
+        String immediateId = BattleManager.joinQueue(username, deckName, champLine);
 
         if (immediateId != null) {
             // Matched instantly — delay so panel can render first

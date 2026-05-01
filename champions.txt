@@ -1,0 +1,19 @@
+Champion{id='B1', name='Larva', type='bug', attack=0, hp=1, stage=1, line='B', ability='Dew Drop- Upon death, give a friendly card +5 hp'}
+Champion{id='B2', name='Cacoon', type='bug', attack=0, hp=5, stage=2, line='B', ability='Molt- Upon death, draw three cards'}
+Champion{id='B3', name='Mothling', type='bug', attack=6, hp=6, stage=3, line='B', ability=''}
+Champion{id='B4', name='Elder Mothling', type='bug', attack=12, hp=8, stage=4, line='B', ability='Enswarm- All your cards cost 1 less soul to place'}
+Champion{id='B5', name='Queen', type='bug', attack=18, hp=12, stage=5, line='B', ability='Breed- Freeplay the top card of your deck if deck is non-empty'}
+Champion{id='D1', name='Seer', type='demon', attack=0, hp=1, stage=1, line='D', ability='Peek- Look at the top card of the enemy deck'}
+Champion{id='D2', name='Ritual Magician', type='demon', attack=4, hp=2, stage=2, line='D', ability='Sac- Spend 3 souls for +1 soul cap'}
+Champion{id='D3', name='Puppet Master', type='demon', attack=1, hp=10, stage=3, line='D', ability='Steal- Spend soul cap souls to take an enemy card to your side'}
+Champion{id='D4', name='Foolish Alter', type='demon', attack=0, hp=20, stage=4, line='D', ability='Curse- Enemy card deaths give +1 soul cap; your card deaths give +1 additional soul cap'}
+Champion{id='D5', name='Fool', type='demon', attack=12, hp=19, stage=5, line='D', ability='Martyr- When defeated, another friendly card may die in its place'}
+Champion{id='M1', name='Shade', type='moon', attack=1, hp=3, stage=1, line='M', ability='Harvest- Gain 1 soul when any ability is used this turn'}
+Champion{id='M2', name='Evolved Shade', type='moon', attack=4, hp=3, stage=2, line='M', ability='Eclipse- Deal 2x damage to enemies that have used their ability this turn'}
+Champion{id='M3', name='Demonic Shade', type='moon', attack=6, hp=6, stage=3, line='M', ability='Mimic- Steal and use an enemy card ability once'}
+Champion{id='M4', name='Heavenly Shade', type='moon', attack=7, hp=12, stage=4, line='M', ability='Void- While on field, enemy card abilities are nullified'}
+Champion{id='M5', name='King Shade', type='moon', attack=15, hp=20, stage=5, line='M', ability='Sovereign- Cannot be affected by enemy abilities'}
+Champion{id='T1', name='Egg Bot', type='bot', attack=0, hp=3, stage=1, line='T', ability='Hatch- Upon death, summon 2 Scrap tokens to your frontline'}
+Champion{id='T2', name='T-Bot Mini', type='bot', attack=3, hp=6, stage=2, line='T', ability=''}
+Champion{id='T3', name='T-Bot', type='bot', attack=9, hp=9, stage=3, line='T', ability='Bypass- Sac 1 Scrap to attack an enemy backline card directly'}
+Champion{id='T4', name='T-Bot Mega', type='bot', attack=15, hp=15, stage=4, line='T', ability='Overclock- Sac 2 Scrap to gain 2 extra actions this turn'}

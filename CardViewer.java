@@ -175,6 +175,10 @@ public class CardViewer {
             case "spirit":    return new Color(180, 160, 220);
             case "construct": return new Color(160, 160, 160);
             case "fae":       return new Color(220, 160, 220);
+            case "bug":       return new Color(140, 200,  60);
+            case "moon":      return new Color(100,  80, 200);
+            case "bot":       return new Color(120, 160, 180);
+            case "champion":  return new Color(220, 180,  60);
             default:          return new Color(140, 140, 160);
         }
     }

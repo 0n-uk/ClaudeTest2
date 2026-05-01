@@ -72,20 +72,28 @@ public class MenuScreen {
                 user,
                 () -> layout.show(root, "menu"),
                 deckName -> {
-                    JPanel matchmaking = MatchmakingScreen.buildPanel(
-                        user, deckName,
-                        () -> layout.show(root, "menu"),
-                        battleId -> {
-                            JPanel battle = BattleScreen.buildPanel(
-                                user, battleId,
-                                () -> layout.show(root, "menu"));
-                            root.add(battle, "battle");
-                            layout.show(root, "battle");
+                    JPanel champSelect = ChampionSelectScreen.buildPanel(
+                        () -> layout.show(root, "deckselect"),
+                        champLine -> {
+                            JPanel matchmaking = MatchmakingScreen.buildPanel(
+                                user, deckName, champLine,
+                                () -> layout.show(root, "menu"),
+                                battleId -> {
+                                    JPanel battle = BattleScreen.buildPanel(
+                                        user, battleId,
+                                        () -> layout.show(root, "menu"));
+                                    root.add(battle, "battle");
+                                    layout.show(root, "battle");
+                                    frame.revalidate();
+                                }
+                            );
+                            root.add(matchmaking, "matchmaking");
+                            layout.show(root, "matchmaking");
                             frame.revalidate();
                         }
                     );
-                    root.add(matchmaking, "matchmaking");
-                    layout.show(root, "matchmaking");
+                    root.add(champSelect, "champselect");
+                    layout.show(root, "champselect");
                     frame.revalidate();
                 }
             );
