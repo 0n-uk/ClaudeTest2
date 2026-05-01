@@ -1,0 +1,14 @@
+Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
+Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+Card{id=stk001, name='Stickling', type='bug', attack=2, hp=1, cost=2, ability=''}
+Card{id=upb001, name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
+Card{id=wsp001, name='Wisp', type='spirit', attack=1, hp=1, cost=1, ability='(A) Drift- Spend 1 soul to draw 1 card'}
+Card{id=g4v1w3, name='Cursed Wraith', type='undead', attack=4, hp=3, cost=2, ability='Drain: heals 1 HP on hit'}
+Card{id=m2h8i4, name='Frostbite Sprite', type='elemental', attack=3, hp=3, cost=2, ability='Freeze target for 1 turn'}
+Card{id=v9z8a0, name='Gale Hawk', type='beast', attack=4, hp=3, cost=2, ability='Haste, Aerial: cannot be targeted by ground units'}
+Card{id=v9z8a0, name='Gale Hawk', type='beast', attack=4, hp=3, cost=2, ability='Haste, Aerial: cannot be targeted by ground units'}
+Card{id=ax9d2e0, name='Gloomhaven Wraith', type='undead', attack=5, hp=5, cost=4, ability='Haunt: reduces all enemy HP by 1 on play'}
+Card{id=y1f5g9, name='Lava Titan', type='elemental', attack=12, hp=14, cost=10, ability='Erupt: deals 3 damage to all enemies on death'}
+Card{id=ab8l1m5, name='Netherfiend', type='demon', attack=8, hp=6, cost=5, ability='Lifesteal'}
+Card{id=at1v4w8, name='Nightmare Stalker', type='demon', attack=7, hp=6, cost=5, ability='Fear: enemy cannot attack next turn'}
+Card{id=as7t0u6, name='Stormcaller Elf', type='ranger', attack=4, hp=5, cost=3, ability='Chain Lightning: bounces to 2 additional targets'}

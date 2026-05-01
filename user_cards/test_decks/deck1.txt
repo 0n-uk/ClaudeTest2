@@ -1,6 +1,5 @@
 Card{id=ai4z2a8, name='Ashen Phoenix', type='creature', attack=5, hp=5, cost=5, ability='Rebirth: returns with 2 HP on death once'}
 Card{id=aa3j7k0, name='Crimson Paladin', type='holy', attack=5, hp=10, cost=5, ability='Aura: adjacent allies gain +1 HP per turn'}
-Card{id=g4v1w3, name='Cursed Wraith', type='undead', attack=4, hp=3, cost=2, ability='Drain: heals 1 HP on hit'}
 Card{id=aw4b8c5, name='Doomhammer Berserker', type='warrior', attack=10, hp=7, cost=6, ability='Frenzy: gains +1 attack each time it deals damage'}
 Card{id=aw4b8c5, name='Doomhammer Berserker', type='warrior', attack=10, hp=7, cost=6, ability='Frenzy: gains +1 attack each time it deals damage'}
 Card{id=i8z2a7, name='Emberwing Drake', type='dragon', attack=9, hp=8, cost=7, ability='Breathes fire, hits all front row enemies'}
@@ -8,7 +7,6 @@ Card{id=i8z2a7, name='Emberwing Drake', type='dragon', attack=9, hp=8, cost=7, a
 Card{id=l7f0g2, name='Bonebreaker Ogre', type='creature', attack=10, hp=10, cost=7, ability='Cleave'}
 Card{id=ae1r5s7, name='Boulderfist Troll', type='creature', attack=7, hp=13, cost=7, ability='Regenerate 2 HP per turn'}
 Card{id=ap0n1o5, name='Deathcap Shaman', type='spirit', attack=4, hp=6, cost=4, ability='Summon 2 Spore Tokens on play'}
-Card{id=ax9d2e0, name='Gloomhaven Wraith', type='undead', attack=5, hp=5, cost=4, ability='Haunt: reduces all enemy HP by 1 on play'}
 Card{id=a1f3c2, name='Ironclad Golem', type='creature', attack=8, hp=15, cost=6, ability='Taunt'}
 Card{id=t8v6w5, name='Ironjaw Croc', type='beast', attack=6, hp=9, cost=5, ability='Bite: ignores 2 armour'}
 Card{id=y1f5g9, name='Lava Titan', type='elemental', attack=12, hp=14, cost=10, ability='Erupt: deals 3 damage to all enemies on death'}

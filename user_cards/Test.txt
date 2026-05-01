@@ -29,3 +29,8 @@ Card{id=ae1r5s7, name='Boulderfist Troll', type='creature', attack=7, hp=13, cos
 Card{id=am9h2i7, name='Tidus the Ancient', type='aquatic', attack=7, hp=11, cost=8, ability='Flood: all ground units take 2 damage'}
 Card{id=ax9d2e0, name='Gloomhaven Wraith', type='undead', attack=5, hp=5, cost=4, ability='Haunt: reduces all enemy HP by 1 on play'}
 Card{id=aw4b8c5, name='Doomhammer Berserker', type='warrior', attack=10, hp=7, cost=6, ability='Frenzy: gains +1 attack each time it deals damage'}
+Card{id=stk001, name='Stickling', type='bug', attack=2, hp=1, cost=2, ability=''}
+Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+Card{id=wsp001, name='Wisp', type='spirit', attack=1, hp=1, cost=1, ability='(A) Drift- Spend 1 soul to draw 1 card'}
+Card{id=upb001, name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
+Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}

@@ -1,4 +1,1 @@
-Card{id=m2h8i4, name='Frostbite Sprite', type='elemental', attack=3, hp=3, cost=2, ability='Freeze target for 1 turn'}
-Card{id=v9z8a0, name='Gale Hawk', type='beast', attack=4, hp=3, cost=2, ability='Haste, Aerial: cannot be targeted by ground units'}
-Card{id=v9z8a0, name='Gale Hawk', type='beast', attack=4, hp=3, cost=2, ability='Haste, Aerial: cannot be targeted by ground units'}
 Card{id=ak1d9e3, name='Gilded Golem', type='construct', attack=4, hp=16, cost=7, ability='Taunt, immune to spell damage'}

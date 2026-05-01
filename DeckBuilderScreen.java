@@ -1,10 +1,10 @@
-import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.event.*;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.event.*;
 
 public class DeckBuilderScreen {
 
