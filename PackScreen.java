@@ -3,8 +3,11 @@ import javax.swing.border.*;
 // Use explicit type to resolve Timer ambiguity with java.util.Timer
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PackScreen {
 
@@ -36,16 +39,31 @@ public class PackScreen {
         timers.clear();
         wrapper.removeAll();
 
-        List<Card> all    = CardViewer.loadCards("cards.txt");
-        List<Card> forest = new ArrayList<>(all.subList(0, Math.min(25, all.size())));
-        List<Card> plains = all.size() > 25
-                ? new ArrayList<>(all.subList(25, Math.min(50, all.size())))
+        List<Card> all = CardViewer.loadCards("cards.txt");
+
+        Set<String> starterIds = new HashSet<>(Arrays.asList(
+            "gb001", "hd001", "stk001", "__SCRAP__", "sb001",
+            "bb001", "shb001", "upb001", "wsp001", "rod001", "smi001"));
+
+        List<Card> starter = new ArrayList<>();
+        List<Card> remaining = new ArrayList<>();
+        for (Card c : all) {
+            if (starterIds.contains(c.getId())) starter.add(c);
+            else remaining.add(c);
+        }
+        List<Card> forest = new ArrayList<>(remaining.subList(0, Math.min(25, remaining.size())));
+        List<Card> plains = remaining.size() > 25
+                ? new ArrayList<>(remaining.subList(25, Math.min(50, remaining.size())))
                 : new ArrayList<>();
 
         JPanel header     = buildHeader("Open Packs", onBack);
-        JPanel packsPanel = new JPanel(new GridLayout(1, 2, 24, 0));
+        JPanel packsPanel = new JPanel(new GridLayout(1, 3, 18, 0));
         packsPanel.setBackground(BG);
-        packsPanel.setBorder(new EmptyBorder(30, 60, 60, 60));
+        packsPanel.setBorder(new EmptyBorder(30, 40, 60, 40));
+
+        packsPanel.add(packCard("STARTER", "Starter Pack",
+            "Low-cost cards for beginners — bugs, bots, and basic creatures.",
+            new Color(100, 200, 160), starter, user, wrapper, onBack, timers));
 
         packsPanel.add(packCard("FOREST", "Forest Pack",
             "Ancient woodland spirits, beasts, and nature's guardians.",

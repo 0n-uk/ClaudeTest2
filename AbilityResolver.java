@@ -218,9 +218,9 @@ public class AbilityResolver {
     /**
      * Returns effective attack for Evolved Shade (M2) – 2x vs ability-used enemies.
      */
-    public static int effectiveAttack(Card attacker, String atkChampId,
+    public static int effectiveAttack(Card attacker, String atkPosKey, String atkChampId,
                                        String tgtPosKey, BattleState bs) {
-        int atk = attacker.getAttack();
+        int atk = attacker.getAttack() + bs.fieldAtkBonus.getOrDefault(atkPosKey, 0);
         if ("M2".equals(atkChampId) && bs.abilityUsedThisTurn.contains(tgtPosKey)) {
             atk *= 2;
         }

@@ -179,6 +179,8 @@ public class CardViewer {
             case "moon":      return new Color(100,  80, 200);
             case "bot":       return new Color(120, 160, 180);
             case "champion":  return new Color(220, 180,  60);
+            case "item":      return new Color(190, 160, 100);
+            case "creature":  return new Color(160, 120,  80);
             default:          return new Color(140, 140, 160);
         }
     }

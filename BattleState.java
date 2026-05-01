@@ -22,11 +22,12 @@ public class BattleState {
     String[] p2Front = new String[5];
     String[] p2Back  = new String[5];
 
-    Set<String>  actionsUsed         = new HashSet<>();
-    Set<String>  abilityUsedThisTurn = new HashSet<>(); // field posKeys that used an ability this turn
-    Set<String>  freeplayCards       = new HashSet<>(); // "cardId_p1"/"cardId_p2" tokens for Queen
-    int          p1ExtraActions      = 0;
-    int          p2ExtraActions      = 0;
+    Set<String>     actionsUsed         = new HashSet<>();
+    Set<String>     abilityUsedThisTurn = new HashSet<>(); // field posKeys that used an ability this turn
+    Set<String>     freeplayCards       = new HashSet<>(); // "cardId_p1"/"cardId_p2" tokens for Queen
+    int             p1ExtraActions      = 0;
+    int             p2ExtraActions      = 0;
+    Map<String,Integer> fieldAtkBonus   = new HashMap<>(); // posKey -> bonus ATK from buffs
 
     List<String> p1Hand    = new ArrayList<>();
     List<String> p2Hand    = new ArrayList<>();
@@ -80,6 +81,14 @@ public class BattleState {
                                                     bs.abilityUsedThisTurn.addAll(Arrays.asList(val.split(","))); break;
                     case "freeplayCards":       if (!val.isEmpty())
                                                     bs.freeplayCards.addAll(Arrays.asList(val.split(","))); break;
+                    case "fieldAtkBonus":       if (!val.isEmpty()) {
+                                                    for (String entry : val.split(",")) {
+                                                        int c2 = entry.lastIndexOf(':');
+                                                        if (c2 > 0) bs.fieldAtkBonus.put(
+                                                            entry.substring(0, c2),
+                                                            parseInt(entry.substring(c2 + 1)));
+                                                    }
+                                                } break;
                     case "p1Hand":              bs.p1Hand    = parseList(val); break;
                     case "p2Hand":              bs.p2Hand    = parseList(val); break;
                     case "p1Deck":              bs.p1Deck    = parseList(val); break;
@@ -118,6 +127,12 @@ public class BattleState {
             w.write("actionsUsed="         + String.join(",", actionsUsed));          w.newLine();
             w.write("abilityUsedThisTurn=" + String.join(",", abilityUsedThisTurn));  w.newLine();
             w.write("freeplayCards="       + String.join(",", freeplayCards));        w.newLine();
+            StringBuilder atkBonusSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : fieldAtkBonus.entrySet()) {
+                if (atkBonusSb.length() > 0) atkBonusSb.append(',');
+                atkBonusSb.append(e.getKey()).append(':').append(e.getValue());
+            }
+            w.write("fieldAtkBonus=" + atkBonusSb);                                  w.newLine();
             w.write("p1Hand="    + String.join(",", p1Hand));    w.newLine();
             w.write("p2Hand="    + String.join(",", p2Hand));    w.newLine();
             w.write("p1Deck="    + String.join(",", p1Deck));    w.newLine();
