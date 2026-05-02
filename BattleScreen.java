@@ -176,15 +176,6 @@ public class BattleScreen {
         return row;
     }
 
-    private static String[] rowFor(BattleState st, boolean fieldIsP1, boolean isFront) {
-        return isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
-                       : (fieldIsP1 ? st.p1Back  : st.p2Back);
-    }
-
-    private static boolean isEmptySlot(String slotValue) {
-        return slotValue == null || slotValue.isEmpty();
-    }
-
     // ── Slot ──────────────────────────────────────────────────────────────────
 
     private static JPanel slot(BattleState st, Map<String, Card> cardMap,
@@ -197,9 +188,10 @@ public class BattleScreen {
                                 String battleId, Runnable onComplete, Runnable[] rebuildRef,
                                 boolean[] bypass, Map<String, ChampionLine> champLines) {
 
-        String[] row   = rowFor(st, fieldIsP1, isFront);
+        String[] row   = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
+                                 : (fieldIsP1 ? st.p1Back  : st.p2Back);
         String sv      = row[idx];
-        boolean empty  = isEmptySlot(sv);
+        boolean empty  = sv == null || sv.isEmpty();
         String  cardId = empty ? null : BattleState.slotId(sv);
         int     hp     = empty ? 0    : BattleState.slotHp(sv);
         Card    card   = (cardId != null) ? cardMap.get(cardId) : null;
@@ -294,7 +286,8 @@ public class BattleScreen {
                             msg[0] = "Not enough Souls (need " + cost + ", have " + souls + ")";
                             rebuildRef[0].run(); return;
                         }
-                        String[] targetRow = rowFor(st2, amP1, isFront);
+                        String[] targetRow = isFront ? (amP1 ? st2.p1Front : st2.p2Front)
+                                                     : (amP1 ? st2.p1Back  : st2.p2Back);
                         targetRow[idx] = BattleState.makeSlot(id, c != null ? c.getHp() : 1);
                         hand.remove(selHand[0]);
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
@@ -337,8 +330,8 @@ public class BattleScreen {
         int     atkIdx   = Character.getNumericValue(atkKey.charAt(3));
         String  atkPosKey = atkKey;
 
-        String[] atkRow = rowFor(st, atkIsP1, atkFront);
-        String[] tgtRow = rowFor(st, tgtIsP1, tgtFront);
+        String[] atkRow = atkFront ? (atkIsP1 ? st.p1Front : st.p2Front) : (atkIsP1 ? st.p1Back : st.p2Back);
+        String[] tgtRow = tgtFront ? (tgtIsP1 ? st.p1Front : st.p2Front) : (tgtIsP1 ? st.p1Back : st.p2Back);
 
         String atkSv = atkRow[atkIdx], tgtSv = tgtRow[tgtIdx];
         if (atkSv == null || atkSv.isEmpty() || tgtSv == null || tgtSv.isEmpty()) return;
@@ -357,7 +350,7 @@ public class BattleScreen {
         int dmg = AbilityResolver.effectiveAttack(atkC, atkPosKey, myChampId, tgtPosKey, st);
 
         // Shield Imp passive: -1 incoming damage
-        int reduction = CardAbilityResolver.passiveDamageReduction(tgtId);
+        int reduction = AbilityResolver.passiveDamageReduction(tgtId);
         dmg = Math.max(0, dmg - reduction);
 
         int newTgtHp = BattleState.slotHp(tgtSv) - dmg;
@@ -367,21 +360,21 @@ public class BattleScreen {
         if (newTgtHp <= 0) {
             tgtRow[tgtIdx] = "";
             st.fieldAtkBonus.remove(tgtPosKey);
-            
-            // Handle death: soul gain, on-death effects, champion evolution or defeat
+
             if (!(tgtC instanceof Champion)) {
-                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
-                String onDeathMsg  = CardAbilityResolver.onDeath(st, tgtId, tgtIsP1);
-                String passiveMsg  = AbilityResolver.onCardDeath(st, tgtIsP1);
-                if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
-                msg[0] += tgtC.getName() + " defeated! " + onDeathMsg + " " + passiveMsg;
-            } else {
+                if (!"item".equals(tgtC.getType())) {
                 if (amP1) st.p2SoulCap++; else st.p1SoulCap++;                
+                }
+                String onDeathMsg = AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
+                if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
+                msg[0] += tgtC.getName() + " defeated! " + onDeathMsg;
+            } else {
+                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;                                
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 Champion deadChamp = (Champion) tgtC;
                 String lineId = deadChamp.getLineId();
                 ChampionLine line = champLines.get(lineId);
-                String deathAbilityMsg = AbilityResolver.onChampDeath(st, tgtId, !tgtIsP1, cardMap);
+                String deathAbilityMsg = AbilityResolver.onChampDeath(st, tgtId, tgtIsP1, cardMap);
 
                 if (line != null && !deadChamp.isFinalStage(line)) {
                     Champion next = line.getStageByIndex(deadChamp.getStage());
@@ -423,12 +416,13 @@ public class BattleScreen {
         int     idx       = Character.getNumericValue(posKey.charAt(3));
         boolean fieldIsP1 = posKey.startsWith("p1");
 
-        String[] row = rowFor(st, fieldIsP1, isFront);
+        String[] row = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
+                               : (fieldIsP1 ? st.p1Back  : st.p2Back);
         String sv = row[idx];
-        if (isEmptySlot(sv)) return;
+        if (sv == null || sv.isEmpty()) return;
         String cardId = BattleState.slotId(sv);
 
-        String result = CardAbilityResolver.executeActive(st, cardId, amP1, cardMap);
+        String result = AbilityResolver.executeActive(st, cardId, amP1, cardMap);
         if (result != null) {
             st.useAction(fieldIsP1, isFront, idx);
             st.abilityUsedThisTurn.add(posKey);
@@ -454,12 +448,14 @@ public class BattleScreen {
         int     srcIdx    = Character.getNumericValue(sourceKey.charAt(3));
         boolean srcIsP1   = sourceKey.startsWith("p1");
 
-        String srcCardId = BattleState.slotId(rowFor(st, srcIsP1, srcFront)[srcIdx]);
+        String srcCardId = BattleState.slotId(
+            srcFront ? (srcIsP1 ? st.p1Front : st.p2Front)[srcIdx]
+                     : (srcIsP1 ? st.p1Back  : st.p2Back)[srcIdx]);
         if (srcCardId == null) { abilitySource[0] = null; rebuildRef[0].run(); return; }
 
-        String result = CardAbilityResolver.executeTargeted(st, srcCardId, amP1,
-                                                             tgtIsP1, tgtFront, tgtIdx,
-                                                             abilityChoice, cardMap);
+        String result = AbilityResolver.executeTargeted(st, srcCardId, amP1,
+                                                          tgtIsP1, tgtFront, tgtIdx,
+                                                          abilityChoice, cardMap);
         st.useAction(srcIsP1, srcFront, srcIdx);
         st.abilityUsedThisTurn.add(sourceKey);
         String harvestMsg = AbilityResolver.onAbilityUsed(st, amP1);
@@ -639,12 +635,17 @@ public class BattleScreen {
                 if (srcSv != null && !srcSv.isEmpty()) {
                     String srcCardId = BattleState.slotId(srcSv);
                     Card srcCard = cardMap.get(srcCardId);
-                    if (srcCard != null && "active".equals(CardAbilityResolver.abilityType(srcCardId))
+                    String aType = AbilityResolver.abilityType(srcCardId);
+                    if (srcCard != null && ("active".equals(aType) || "targeted".equals(aType))
                             && !(srcCard instanceof Champion)) {
-                        String lblTxt = srcCard.getName() + ": Use Ability";
-                        JButton ablBtn = smallBtn(lblTxt, SEL_ABL);
+                        int mySouls = amP1 ? stRef[0].p1Souls : stRef[0].p2Souls;
+                        boolean ablEnabled = AbilityResolver.canUseAbility(srcCardId, mySouls);
+                        String lblTxt = srcCard.getName() + ": Use Ability"
+                                        + (ablEnabled ? "" : " (need soul)");
+                        JButton ablBtn = smallBtn(lblTxt, ablEnabled ? SEL_ABL : new Color(80, 80, 100));
+                        ablBtn.setEnabled(ablEnabled);
                         ablBtn.addActionListener(e -> {
-                            if (CardAbilityResolver.needsTarget(srcCardId)) {
+                            if (AbilityResolver.needsTarget(srcCardId)) {
                                 // Upgrade Bot: ask ATK or HP choice before targeting
                                 if ("upb001".equals(srcCardId)) {
                                     String[] opts = {"+ 2 ATK", "+ 2 HP"};
@@ -656,7 +657,7 @@ public class BattleScreen {
                                     abilityChoice[0] = choice;
                                 }
                                 abilitySource[0]  = selField[0];
-                                abilityTgtType[0] = CardAbilityResolver.targetType(srcCardId);
+                                abilityTgtType[0] = AbilityResolver.TARGET_TYPE.get(srcCardId);
                                 selField[0]       = null;
                                 msg[0] = "Select a target for " + srcCard.getName() + "'s ability";
                             } else {
