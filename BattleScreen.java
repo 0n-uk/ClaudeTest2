@@ -176,6 +176,15 @@ public class BattleScreen {
         return row;
     }
 
+    private static String[] rowFor(BattleState st, boolean fieldIsP1, boolean isFront) {
+        return isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
+                       : (fieldIsP1 ? st.p1Back  : st.p2Back);
+    }
+
+    private static boolean isEmptySlot(String slotValue) {
+        return slotValue == null || slotValue.isEmpty();
+    }
+
     // ── Slot ──────────────────────────────────────────────────────────────────
 
     private static JPanel slot(BattleState st, Map<String, Card> cardMap,
@@ -188,10 +197,9 @@ public class BattleScreen {
                                 String battleId, Runnable onComplete, Runnable[] rebuildRef,
                                 boolean[] bypass, Map<String, ChampionLine> champLines) {
 
-        String[] row   = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
-                                 : (fieldIsP1 ? st.p1Back  : st.p2Back);
+        String[] row   = rowFor(st, fieldIsP1, isFront);
         String sv      = row[idx];
-        boolean empty  = sv == null || sv.isEmpty();
+        boolean empty  = isEmptySlot(sv);
         String  cardId = empty ? null : BattleState.slotId(sv);
         int     hp     = empty ? 0    : BattleState.slotHp(sv);
         Card    card   = (cardId != null) ? cardMap.get(cardId) : null;
@@ -286,8 +294,7 @@ public class BattleScreen {
                             msg[0] = "Not enough Souls (need " + cost + ", have " + souls + ")";
                             rebuildRef[0].run(); return;
                         }
-                        String[] targetRow = isFront ? (amP1 ? st2.p1Front : st2.p2Front)
-                                                     : (amP1 ? st2.p1Back  : st2.p2Back);
+                        String[] targetRow = rowFor(st2, amP1, isFront);
                         targetRow[idx] = BattleState.makeSlot(id, c != null ? c.getHp() : 1);
                         hand.remove(selHand[0]);
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
@@ -330,8 +337,8 @@ public class BattleScreen {
         int     atkIdx   = Character.getNumericValue(atkKey.charAt(3));
         String  atkPosKey = atkKey;
 
-        String[] atkRow = atkFront ? (atkIsP1 ? st.p1Front : st.p2Front) : (atkIsP1 ? st.p1Back : st.p2Back);
-        String[] tgtRow = tgtFront ? (tgtIsP1 ? st.p1Front : st.p2Front) : (tgtIsP1 ? st.p1Back : st.p2Back);
+        String[] atkRow = rowFor(st, atkIsP1, atkFront);
+        String[] tgtRow = rowFor(st, tgtIsP1, tgtFront);
 
         String atkSv = atkRow[atkIdx], tgtSv = tgtRow[tgtIdx];
         if (atkSv == null || atkSv.isEmpty() || tgtSv == null || tgtSv.isEmpty()) return;
@@ -416,10 +423,9 @@ public class BattleScreen {
         int     idx       = Character.getNumericValue(posKey.charAt(3));
         boolean fieldIsP1 = posKey.startsWith("p1");
 
-        String[] row = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
-                               : (fieldIsP1 ? st.p1Back  : st.p2Back);
+        String[] row = rowFor(st, fieldIsP1, isFront);
         String sv = row[idx];
-        if (sv == null || sv.isEmpty()) return;
+        if (isEmptySlot(sv)) return;
         String cardId = BattleState.slotId(sv);
 
         String result = CardAbilityResolver.executeActive(st, cardId, amP1, cardMap);
@@ -448,9 +454,7 @@ public class BattleScreen {
         int     srcIdx    = Character.getNumericValue(sourceKey.charAt(3));
         boolean srcIsP1   = sourceKey.startsWith("p1");
 
-        String srcCardId = BattleState.slotId(
-            srcFront ? (srcIsP1 ? st.p1Front : st.p2Front)[srcIdx]
-                     : (srcIsP1 ? st.p1Back  : st.p2Back)[srcIdx]);
+        String srcCardId = BattleState.slotId(rowFor(st, srcIsP1, srcFront)[srcIdx]);
         if (srcCardId == null) { abilitySource[0] = null; rebuildRef[0].run(); return; }
 
         String result = CardAbilityResolver.executeTargeted(st, srcCardId, amP1,

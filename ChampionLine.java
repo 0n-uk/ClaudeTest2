@@ -1,14 +1,17 @@
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ChampionLine {
 
-    private final String         lineId;
-    private final List<Champion> stages;
+    private final String                  lineId;
+    private final List<Champion>          stages;
+    private final Map<Integer, Champion>  stageMap;
 
     public ChampionLine(String lineId, List<Champion> stages) {
         this.lineId = lineId;
         this.stages = Collections.unmodifiableList(new ArrayList<>(stages));
+        this.stageMap = stages.stream().collect(Collectors.toMap(Champion::getStage, c -> c));
     }
 
     public String         getLineId()  { return lineId; }
@@ -16,8 +19,7 @@ public class ChampionLine {
     public int            size()       { return stages.size(); }
 
     public Champion getStage(int stage) {
-        for (Champion c : stages) if (c.getStage() == stage) return c;
-        return null;
+        return stageMap.get(stage);
     }
 
     public Champion getStageByIndex(int idx) {
