@@ -316,6 +316,11 @@ public class DeckBuilderScreen {
         Color nameClr = canAdd ? Color.WHITE          : new Color(105, 105, 128);
         Color typeClr = canAdd ? accent               : new Color(65, 65, 85);
 
+        JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), 80, 80));
+        imgL.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(imgL);
+        panel.add(Box.createVerticalStrut(4));
+
         panel.add(lbl(card.getName(), Font.BOLD, 13, nameClr));
         panel.add(Box.createVerticalStrut(2));
         panel.add(lbl(card.getType(), Font.ITALIC, 10, typeClr));
@@ -371,6 +376,11 @@ public class DeckBuilderScreen {
             new LineBorder(accent, 2, true),
             new EmptyBorder(5, 7, 5, 7)));
         panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        JLabel imgR = new JLabel(CardImageLoader.get(card.getId(), 60, 60));
+        imgR.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(imgR);
+        panel.add(Box.createVerticalStrut(3));
 
         panel.add(lbl(card.getName(), Font.BOLD, 12, Color.WHITE));
         panel.add(Box.createVerticalStrut(2));

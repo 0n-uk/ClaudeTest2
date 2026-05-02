@@ -115,6 +115,11 @@ public class CardViewer {
                 new LineBorder(typeColor(card.getType()), 2, true),
                 new EmptyBorder(8, 10, 8, 10)));
 
+        JLabel img = new JLabel(CardImageLoader.get(card.getId(), 120, 120));
+        img.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(img);
+        panel.add(Box.createVerticalStrut(6));
+
         panel.add(label(card.getName(), Font.BOLD, 14, Color.WHITE));
         panel.add(Box.createVerticalStrut(4));
         panel.add(label("Type: " + card.getType(), Font.ITALIC, 11, typeColor(card.getType())));
