@@ -28,6 +28,8 @@ public class BattleState {
     int             p1ExtraActions      = 0;
     int             p2ExtraActions      = 0;
     Map<String,Integer> fieldAtkBonus   = new HashMap<>(); // posKey -> bonus ATK from buffs
+    Set<String>     turtleBotCharged    = new HashSet<>(); // posKeys with active Turtle Bot +5 ATK buff
+    Set<String>     mantisSecondAttack  = new HashSet<>(); // posKeys where Mantis Bot has used first attack
 
     List<String> p1Hand    = new ArrayList<>();
     List<String> p2Hand    = new ArrayList<>();
@@ -89,6 +91,10 @@ public class BattleState {
                                                             parseInt(entry.substring(c2 + 1)));
                                                     }
                                                 } break;
+                    case "turtleBotCharged":   if (!val.isEmpty())
+                                                    bs.turtleBotCharged.addAll(Arrays.asList(val.split(","))); break;
+                    case "mantisSecondAttack": if (!val.isEmpty())
+                                                    bs.mantisSecondAttack.addAll(Arrays.asList(val.split(","))); break;
                     case "p1Hand":              bs.p1Hand    = parseList(val); break;
                     case "p2Hand":              bs.p2Hand    = parseList(val); break;
                     case "p1Deck":              bs.p1Deck    = parseList(val); break;
@@ -133,6 +139,8 @@ public class BattleState {
                 atkBonusSb.append(e.getKey()).append(':').append(e.getValue());
             }
             w.write("fieldAtkBonus=" + atkBonusSb);                                  w.newLine();
+            w.write("turtleBotCharged="   + String.join(",", turtleBotCharged));   w.newLine();
+            w.write("mantisSecondAttack=" + String.join(",", mantisSecondAttack)); w.newLine();
             w.write("p1Hand="    + String.join(",", p1Hand));    w.newLine();
             w.write("p2Hand="    + String.join(",", p2Hand));    w.newLine();
             w.write("p1Deck="    + String.join(",", p1Deck));    w.newLine();
