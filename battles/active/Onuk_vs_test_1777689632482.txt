@@ -1,8 +1,8 @@
 player1=test
 player2=Onuk
 currentTurn=Onuk
-phase=active
-winner=
+phase=finished
+winner=test
 p1ChampLine=B
 p2ChampLine=B
 p1SoulCap=1
