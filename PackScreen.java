@@ -45,10 +45,17 @@ public class PackScreen {
             "gb001", "hd001", "stk001", "__SCRAP__", "sb001",
             "bb001", "shb001", "upb001", "wsp001", "rod001", "smi001"));
 
+        Set<String> scrapIds = new HashSet<>(Arrays.asList(
+            "sb001", "bb001", "shb001",
+            "cnb001", "mtb001", "tlb001", "mnb001", "fnb001", "trb001",
+            "mwb001", "itb001", "svb001", "ttb001", "rcb001"));
+
         List<Card> starter = new ArrayList<>();
+        List<Card> scrap   = new ArrayList<>();
         List<Card> remaining = new ArrayList<>();
         for (Card c : all) {
             if (starterIds.contains(c.getId())) starter.add(c);
+            else if (scrapIds.contains(c.getId())) scrap.add(c);
             else remaining.add(c);
         }
         List<Card> forest = new ArrayList<>(remaining.subList(0, Math.min(25, remaining.size())));
@@ -57,13 +64,17 @@ public class PackScreen {
                 : new ArrayList<>();
 
         JPanel header     = buildHeader("Open Packs", onBack);
-        JPanel packsPanel = new JPanel(new GridLayout(1, 3, 18, 0));
+        JPanel packsPanel = new JPanel(new GridLayout(1, 4, 18, 0));
         packsPanel.setBackground(BG);
         packsPanel.setBorder(new EmptyBorder(30, 40, 60, 40));
 
         packsPanel.add(packCard("STARTER", "Starter Pack",
             "Low-cost cards for beginners — bugs, bots, and basic creatures.",
             new Color(100, 200, 160), starter, user, wrapper, onBack, timers));
+
+        packsPanel.add(packCard("SCRAP", "Scrap Pack",
+            "Mechanical bots powered by scrap — build, recycle, and overwhelm.",
+            new Color(160, 130, 80), scrap, user, wrapper, onBack, timers));
 
         packsPanel.add(packCard("FOREST", "Forest Pack",
             "Ancient woodland spirits, beasts, and nature's guardians.",
