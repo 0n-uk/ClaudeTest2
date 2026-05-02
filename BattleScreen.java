@@ -1,6 +1,8 @@
 import java.awt.*;
+import java.io.File;
 import java.util.*;
 import java.util.List;
+import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
@@ -16,6 +18,8 @@ public class BattleScreen {
     private static final Color SEL_TGT   = new Color(220, 60,  60);
     private static final Color SEL_ABL   = new Color(220, 180, 60);  // ability target highlight
     private static final Color CHAMP_CLR = new Color(220, 180, 60);
+
+    private static Clip battleMusic;
 
     // ── Entry point ───────────────────────────────────────────────────────────
 
@@ -42,6 +46,17 @@ public class BattleScreen {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG);
 
+        // Load and play battle music
+        try {
+            File audioFile = new File("5382405984223232.wav");
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile);
+            battleMusic = AudioSystem.getClip();
+            battleMusic.open(audioInputStream);
+            battleMusic.loop(Clip.LOOP_CONTINUOUSLY);
+        } catch (Exception e) {
+            System.err.println("Error loading battle music: " + e.getMessage());
+        }
+
         javax.swing.Timer[] timerRef   = { null };
         javax.swing.Timer[] hbTimerRef = { null };
         Runnable[]          rebuildRef = { null };
@@ -57,6 +72,11 @@ public class BattleScreen {
             if ("finished".equals(st.phase)) {
                 if (timerRef[0]  != null) timerRef[0].stop();
                 if (hbTimerRef[0] != null) { hbTimerRef[0].stop(); BattleManager.removeHeartbeat(user.getUsername()); }
+                // Stop battle music
+                if (battleMusic != null) {
+                    battleMusic.stop();
+                    battleMusic.close();
+                }
                 wrapper.add(resultPanel(user.getUsername().equals(st.winner), onComplete),
                             BorderLayout.CENTER);
                 wrapper.revalidate(); wrapper.repaint();
@@ -940,8 +960,7 @@ public class BattleScreen {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private static JLabel lbl(String text, int style, int size, Color color) {
+        private static JLabel lbl(String text, int style, int size, Color color) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", style, size));
         l.setForeground(color);
