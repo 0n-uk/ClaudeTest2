@@ -65,6 +65,9 @@ public class AbilityResolver {
         // ── Active (no-target): regular cards ─────────────────────────────
         ACTIVE.put("sb001",  (bs, isP1, cm) -> fabricate(bs, isP1));
         ACTIVE.put("wsp001", (bs, isP1, cm) -> drift(bs, isP1));
+        ACTIVE.put("mnb001", (bs, isP1, cm) -> mine(bs, isP1));
+        ACTIVE.put("tlb001", (bs, isP1, cm) -> steelShell(bs, isP1, cm));
+        ACTIVE.put("rcb001", (bs, isP1, cm) -> recycle(bs, isP1, cm));
 
         // ── Active (no-target): champion stages ───────────────────────────
         ACTIVE.put("D1", (bs, isP1, cm) -> peek(bs, isP1, cm));
@@ -75,6 +78,7 @@ public class AbilityResolver {
         // ── Active (targeted) ─────────────────────────────────────────────
         TARGETED_ACTIVE.put("hd001",  (bs, isP1, ti, tf, tidx, ch, cm) -> dewDrop(bs, isP1, ti, tf, tidx, cm));
         TARGETED_ACTIVE.put("upb001", (bs, isP1, ti, tf, tidx, ch, cm) -> upgrade(bs, ti, tf, tidx, ch, cm));
+        TARGETED_ACTIVE.put("trb001", (bs, isP1, ti, tf, tidx, ch, cm) -> haul(bs, isP1, tf, tidx, cm));
 
         // ── Passive: damage reduction ─────────────────────────────────────
         PASSIVE_REDUCTION.put("smi001", 1);
@@ -87,6 +91,7 @@ public class AbilityResolver {
         // ── Target type restrictions ──────────────────────────────────────
         TARGET_TYPE.put("hd001",  "bug");
         TARGET_TYPE.put("upb001", "bot");
+        TARGET_TYPE.put("trb001", "bot");
     }
 
     // ── Public dispatch methods ───────────────────────────────────────────────
@@ -216,9 +221,8 @@ public class AbilityResolver {
     public static int effectiveAttack(Card attacker, String atkPosKey, String atkChampId,
                                        String tgtPosKey, BattleState bs) {
         int atk = attacker.getAttack() + bs.fieldAtkBonus.getOrDefault(atkPosKey, 0);
-        if ("M2".equals(atkChampId) && bs.abilityUsedThisTurn.contains(tgtPosKey)) {
-            atk *= 2;
-        }
+        if (bs.turtleBotCharged.contains(atkPosKey)) atk += 5;
+        if ("M2".equals(atkChampId) && bs.abilityUsedThisTurn.contains(tgtPosKey)) atk *= 2;
         return atk;
     }
 
@@ -280,6 +284,8 @@ public class AbilityResolver {
         return BattleState.slotId(sv);
     }
 
+    public static boolean coinFlip() { return new Random().nextBoolean(); }
+
     private static int scrapCount(BattleState bs, boolean isP1) {
         String[] front = isP1 ? bs.p1Front : bs.p2Front;
         String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
@@ -287,6 +293,101 @@ public class AbilityResolver {
         for (String s : front) if (SCRAP_ID.equals(BattleState.slotId(s))) count++;
         for (String s : back)  if (SCRAP_ID.equals(BattleState.slotId(s))) count++;
         return count;
+    }
+
+    // ── Multi-step ability resolvers (called from BattleScreen after UI phase) ──
+
+    /**
+     * Furnace Bot: consume scraps at given posKeys, then give target bot +2 ATK & HP per scrap.
+     * scrapPosKeys must belong to isP1's field.
+     */
+    public static String smelt(BattleState bs, boolean isP1, List<String> scrapPosKeys,
+                                boolean tgtFront, int tgtIdx, Map<String, Card> cardMap) {
+        if (scrapPosKeys.isEmpty()) return "Smelt: no Scraps selected.";
+        // Consume each selected scrap
+        for (String pk : scrapPosKeys) {
+            boolean front = pk.charAt(2) == 'f';
+            int slot = Character.getNumericValue(pk.charAt(3));
+            String[] row = front ? (isP1 ? bs.p1Front : bs.p2Front)
+                                 : (isP1 ? bs.p1Back  : bs.p2Back);
+            if (SCRAP_ID.equals(BattleState.slotId(row[slot]))) row[slot] = "";
+        }
+        int count = scrapPosKeys.size();
+        // Buff target bot
+        String[] tgtRow = tgtFront ? (isP1 ? bs.p1Front : bs.p2Front)
+                                   : (isP1 ? bs.p1Back  : bs.p2Back);
+        String sv = tgtRow[tgtIdx];
+        if (sv == null || sv.isEmpty()) return "Smelt: no bot at target.";
+        String id  = BattleState.slotId(sv);
+        int    hp  = BattleState.slotHp(sv);
+        Card   c   = cardMap.get(id);
+        if (c == null || !"bot".equals(c.getType())) return "Smelt: target must be a bot.";
+        String posKey = BattleState.posKey(isP1, tgtFront, tgtIdx);
+        bs.fieldAtkBonus.merge(posKey, count * 2, Integer::sum);
+        tgtRow[tgtIdx] = BattleState.makeSlot(id, hp + count * 2);
+        return "Smelt: used " + count + " Scrap — " + c.getName() + " gained +" + (count*2) + " ATK & HP!";
+    }
+
+    /**
+     * Iron Tusks Bot: consume scraps at given posKeys, gain +4 HP per scrap consumed.
+     */
+    public static String fortify(BattleState bs, boolean isP1, List<String> scrapPosKeys,
+                                  Map<String, Card> cardMap) {
+        if (scrapPosKeys.isEmpty()) return "Fortify: no Scraps selected.";
+        // Find Iron Tusks Bot on field to get its current HP slot
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        // Consume scraps
+        for (String pk : scrapPosKeys) {
+            boolean fr = pk.charAt(2) == 'f';
+            int slot = Character.getNumericValue(pk.charAt(3));
+            String[] row = fr ? front : back;
+            if (SCRAP_ID.equals(BattleState.slotId(row[slot]))) row[slot] = "";
+        }
+        int count = scrapPosKeys.size();
+        // Find and buff Iron Tusks Bot
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                if ("itb001".equals(BattleState.slotId(row[i]))) {
+                    int hp = BattleState.slotHp(row[i]);
+                    row[i] = BattleState.makeSlot("itb001", hp + count * 4);
+                    return "Fortify: consumed " + count + " Scrap — Iron Tusks Bot gained +" + (count*4) + " HP!";
+                }
+            }
+        }
+        return "Fortify: Iron Tusks Bot not found.";
+    }
+
+    /**
+     * Constructor Bot: consume 2 scraps and summon the chosen bot card to the frontline.
+     * Returns message, or null if validation failed (caller shows dialog).
+     */
+    public static String construct(BattleState bs, boolean isP1, String chosenCardId,
+                                    Map<String, Card> cardMap) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        if (scrapCount(bs, isP1) < 2) return "Construct: need 2 Scrap on field.";
+        // Find open frontline slot
+        int openSlot = -1;
+        for (int i = 0; i < 5; i++) {
+            if (front[i] == null || front[i].isEmpty()) { openSlot = i; break; }
+        }
+        if (openSlot < 0) return "Construct: frontline is full.";
+        // Consume 2 scraps
+        int removed = 0;
+        for (int pass = 0; pass < 2 && removed < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5 && removed < 2; i++) {
+                if (SCRAP_ID.equals(BattleState.slotId(row[i]))) { row[i] = ""; removed++; }
+            }
+        }
+        Card c = cardMap.get(chosenCardId);
+        if (c == null) return "Construct: card not found.";
+        List<String> hand = isP1 ? bs.p1Hand : bs.p2Hand;
+        hand.remove(chosenCardId);
+        front[openSlot] = BattleState.makeSlot(chosenCardId, c.getHp());
+        return "Construct: summoned " + c.getName() + "!";
     }
 
     // ── Ability implementations ───────────────────────────────────────────────
@@ -308,16 +409,28 @@ public class AbilityResolver {
         return "Scurry: drew 1 card!";
     }
 
-    // Scrap Bot (sb001): summon 1 Scrap to own frontline
+    // Scrap Bot (sb001): summon 1 Scrap to own frontline (Survey Bot doubles this)
     private static String fabricate(BattleState bs, boolean isP1) {
         String[] front = isP1 ? bs.p1Front : bs.p2Front;
-        for (int i = 0; i < 5; i++) {
+        boolean survey = hasSurveyBot(bs, isP1);
+        int placed = 0;
+        int needed = survey ? 2 : 1;
+        for (int i = 0; i < 5 && placed < needed; i++) {
             if (front[i] == null || front[i].isEmpty()) {
                 front[i] = BattleState.makeSlot(SCRAP_ID, 1);
-                return "Fabricate: summoned 1 Scrap!";
+                placed++;
             }
         }
-        return "Fabricate: frontline is full!";
+        if (placed == 0) return "Fabricate: frontline is full!";
+        return survey ? "Fabricate: summoned 2 Scrap (Survey Bot)!" : "Fabricate: summoned 1 Scrap!";
+    }
+
+    private static boolean hasSurveyBot(BattleState bs, boolean isP1) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        for (String s : front) if ("svb001".equals(BattleState.slotId(s))) return true;
+        for (String s : back)  if ("svb001".equals(BattleState.slotId(s))) return true;
+        return false;
     }
 
     // Wisp (wsp001): spend 1 soul to draw 1 card
@@ -375,6 +488,120 @@ public class AbilityResolver {
             row[tgtIdx] = BattleState.makeSlot(id, hp + 2);
             return "Upgrade: " + c.getName() + " gained +2 HP!";
         }
+    }
+
+    // Miner Bot (mnb001): flip coin, on heads summon 2 Scrap
+    private static String mine(BattleState bs, boolean isP1) {
+        if (!coinFlip()) return "Mine: tails — no scrap this time.";
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        int placed = 0;
+        for (int i = 0; i < 5 && placed < 2; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot(SCRAP_ID, 1);
+                placed++;
+            }
+        }
+        return "Mine: heads — summoned " + placed + " Scrap!";
+    }
+
+    // Turtle Bot (tlb001): use 1 Scrap to gain +5 ATK until next attack
+    private static String steelShell(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        // Find Turtle Bot's own posKey and consume 1 scrap
+        String turtlePosKey = null;
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                if ("tlb001".equals(BattleState.slotId(row[i]))) {
+                    turtlePosKey = BattleState.posKey(isP1, pass == 0, i);
+                }
+            }
+        }
+        if (turtlePosKey == null) return "Steel Shell: Turtle Bot not found.";
+        // Consume 1 scrap
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                if (SCRAP_ID.equals(BattleState.slotId(row[i]))) {
+                    row[i] = "";
+                    bs.turtleBotCharged.add(turtlePosKey);
+                    return "Steel Shell: consumed 1 Scrap — +5 ATK until next attack!";
+                }
+            }
+        }
+        return "Steel Shell: need 1 Scrap on field.";
+    }
+
+    // Recycle Bot (rcb001): convert up to 2 Bots in discard to Scrap tokens
+    private static String recycle(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
+        List<String> discard = isP1 ? bs.p1Discard : bs.p2Discard;
+        List<String> botsToRemove = new ArrayList<>();
+        for (String id : discard) {
+            Card c = cardMap.get(id);
+            if (c != null && "bot".equals(c.getType())) {
+                botsToRemove.add(id);
+                if (botsToRemove.size() == 2) break;
+            }
+        }
+        if (botsToRemove.isEmpty()) return "Recycle: no Bots in discard pile.";
+        for (String id : botsToRemove) discard.remove(id);
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        int placed = 0;
+        for (int i = 0; i < 5 && placed < botsToRemove.size(); i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot(SCRAP_ID, 1);
+                placed++;
+            }
+        }
+        return "Recycle: converted " + botsToRemove.size() + " Bot(s) to " + placed + " Scrap!";
+    }
+
+    // Transport Bot (trb001): use 1 Scrap, return target bot and Transport Bot to hand
+    private static String haul(BattleState bs, boolean isP1,
+                                boolean tgtFront, int tgtIdx, Map<String, Card> cardMap) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        // Check and consume 1 scrap
+        boolean scrapConsumed = false;
+        for (int pass = 0; pass < 2 && !scrapConsumed; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5 && !scrapConsumed; i++) {
+                if (SCRAP_ID.equals(BattleState.slotId(row[i]))) {
+                    row[i] = ""; scrapConsumed = true;
+                }
+            }
+        }
+        if (!scrapConsumed) return "Haul: need 1 Scrap on field.";
+        // Return target bot to hand
+        String[] tgtRow = tgtFront ? front : back;
+        String tgtSv = tgtRow[tgtIdx];
+        if (tgtSv == null || tgtSv.isEmpty()) return "Haul: no card at target.";
+        String tgtId = BattleState.slotId(tgtSv);
+        Card tgtCard = cardMap.get(tgtId);
+        if (tgtCard == null || !"bot".equals(tgtCard.getType())) return "Haul: target must be a bot.";
+        String tgtPosKey = BattleState.posKey(isP1, tgtFront, tgtIdx);
+        bs.fieldAtkBonus.remove(tgtPosKey);
+        bs.turtleBotCharged.remove(tgtPosKey);
+        tgtRow[tgtIdx] = "";
+        List<String> hand = isP1 ? bs.p1Hand : bs.p2Hand;
+        hand.add(tgtId);
+        // Return Transport Bot to hand (find it on field)
+        String transportPosKey = null;
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                if ("trb001".equals(BattleState.slotId(row[i]))) {
+                    transportPosKey = BattleState.posKey(isP1, pass == 0, i);
+                    bs.fieldAtkBonus.remove(transportPosKey);
+                    row[i] = "";
+                    hand.add("trb001");
+                    break;
+                }
+            }
+            if (transportPosKey != null) break;
+        }
+        return "Haul: " + tgtCard.getName() + " and Transport Bot returned to hand!";
     }
 
     // Champion ability implementations

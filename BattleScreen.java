@@ -33,6 +33,11 @@ public class BattleScreen {
         int[]         abilityChoice = { 0 };    // Upgrade Bot: 0=ATK 1=HP
         String[]      msg          = { "" };
         boolean[]     bypass       = { false };
+        // Multi-step ability state (Furnace Bot, Iron Tusks Bot)
+        String[]      multiStepPhase = { null };   // "SCRAP_SELECT" or "BOT_TARGET"
+        String[]      multiStepCard  = { null };   // posKey of card initiating multi-step
+        @SuppressWarnings("unchecked")
+        List<String>[] scrapSelected = new List[]{ new ArrayList<String>() };
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG);
@@ -78,11 +83,13 @@ public class BattleScreen {
 
             field.add(fieldRow(st, cardMap, oppIsP1, false, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
-                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines, OPP_BG));
+                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
+                               multiStepPhase, multiStepCard, scrapSelected, OPP_BG));
             field.add(Box.createVerticalStrut(3));
             field.add(fieldRow(st, cardMap, oppIsP1, true, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
-                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines, OPP_BG));
+                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
+                               multiStepPhase, multiStepCard, scrapSelected, OPP_BG));
 
             JPanel sep = new JPanel();
             sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 4));
@@ -93,11 +100,13 @@ public class BattleScreen {
 
             field.add(fieldRow(st, cardMap, amP1, true, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
-                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines, MY_BG));
+                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
+                               multiStepPhase, multiStepCard, scrapSelected, MY_BG));
             field.add(Box.createVerticalStrut(3));
             field.add(fieldRow(st, cardMap, amP1, false, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
-                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines, MY_BG));
+                               stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
+                               multiStepPhase, multiStepCard, scrapSelected, MY_BG));
 
             wrapper.add(field, BorderLayout.CENTER);
 
@@ -108,7 +117,8 @@ public class BattleScreen {
                                 selHand, selField, abilitySource, msg, stRef, amP1, rebuildRef, champLines),
                       BorderLayout.CENTER);
             south.add(controls(stRef, amP1, myTurn, selHand, selField, abilitySource, abilityTgtType,
-                                abilityChoice, msg, rebuildRef, bypass, user, onComplete, champLines, cardMap),
+                                abilityChoice, msg, rebuildRef, bypass, user, onComplete, champLines, cardMap,
+                                multiStepPhase, multiStepCard, scrapSelected),
                       BorderLayout.SOUTH);
             wrapper.add(south, BorderLayout.SOUTH);
 
@@ -183,14 +193,17 @@ public class BattleScreen {
                                     int[] abilityChoice, String[] msg, BattleState[] stRef,
                                     User user, JPanel wrapper, String battleId, Runnable onComplete,
                                     Runnable[] rebuildRef, boolean[] bypass,
-                                    Map<String, ChampionLine> champLines, Color bg) {
+                                    Map<String, ChampionLine> champLines,
+                                    String[] multiStepPhase, String[] multiStepCard,
+                                    List<String>[] scrapSelected, Color bg) {
         JPanel row = new JPanel(new GridLayout(1, 5, 4, 0));
         row.setBackground(bg);
         row.setBorder(new EmptyBorder(3, 0, 3, 0));
         for (int i = 0; i < 5; i++)
             row.add(slot(st, cardMap, fieldIsP1, isFront, i, amP1, myTurn,
                          selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
-                         stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines));
+                         stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
+                         multiStepPhase, multiStepCard, scrapSelected));
         return row;
     }
 
@@ -204,7 +217,9 @@ public class BattleScreen {
                                 int[] abilityChoice, String[] msg,
                                 BattleState[] stRef, User user, JPanel wrapper,
                                 String battleId, Runnable onComplete, Runnable[] rebuildRef,
-                                boolean[] bypass, Map<String, ChampionLine> champLines) {
+                                boolean[] bypass, Map<String, ChampionLine> champLines,
+                                String[] multiStepPhase, String[] multiStepCard,
+                                List<String>[] scrapSelected) {
 
         String[] row   = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
                                  : (fieldIsP1 ? st.p1Back  : st.p2Back);
@@ -219,9 +234,11 @@ public class BattleScreen {
         boolean hasAct    = !empty && st.hasAction(fieldIsP1, isFront, idx);
         boolean isSel     = posKey.equals(selField[0]);
 
-        boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0 && abilitySource[0] == null;
-        boolean canSelect = isMyField && !empty && myTurn && hasAct && selHand[0] < 0 && abilitySource[0] == null;
-        boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null && abilitySource[0] == null
+        boolean inScrapSelect = "SCRAP_SELECT".equals(multiStepPhase[0]);
+        boolean inBotTarget   = "BOT_TARGET".equals(multiStepPhase[0]);
+        boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
+        boolean canSelect = isMyField && !empty && myTurn && hasAct && selHand[0] < 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
+        boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null && abilitySource[0] == null && !inScrapSelect && !inBotTarget
                              && (bypass[0] ? st.isTargetableBypass(fieldIsP1, isFront, idx)
                                            : st.isTargetable(fieldIsP1, isFront, idx));
 
@@ -230,6 +247,15 @@ public class BattleScreen {
                 && card != null
                 && (abilityTgtType[0] == null || abilityTgtType[0].equals(card.getType().toLowerCase()));
 
+        // Scrap-select mode: click scraps on MY field to toggle selection
+        boolean canSelectScrap = inScrapSelect && isMyField && !empty && myTurn
+                && AbilityResolver.SCRAP_ID.equals(cardId);
+        boolean isSelectedScrap = canSelectScrap && scrapSelected[0].contains(posKey);
+
+        // Bot-target mode for Furnace Bot: click a bot on MY field
+        boolean canBotTarget = inBotTarget && isMyField && !empty && myTurn
+                && card != null && "bot".equals(card.getType().toLowerCase());
+
         int atkBonus = st.fieldAtkBonus.getOrDefault(posKey, 0);
         int displayAtk = (card != null ? card.getAttack() : 0) + atkBonus;
 
@@ -237,24 +263,33 @@ public class BattleScreen {
                       : (AbilityResolver.SCRAP_ID.equals(cardId) ? new Color(140,140,160)
                       : (card != null ? CardViewer.typeColor(card.getType()) : new Color(80,80,110)));
         Color bgColor = isSel ? SEL_ATK
-                      : (canTarget       ? new Color(55, 25, 25)
+                      : (isSelectedScrap  ? new Color(80, 60, 20)
+                      : (canTarget        ? new Color(55, 25, 25)
                       : (canAbilityTarget ? new Color(55, 50, 20)
-                      : (empty ? EMPTY_BG : CARD_BG)));
+                      : (canBotTarget     ? new Color(55, 50, 20)
+                      : (canSelectScrap   ? new Color(50, 45, 20)
+                      : (empty ? EMPTY_BG : CARD_BG))))));
         Color border  = isSel ? SEL_ATK
+                      : (isSelectedScrap  ? new Color(255, 200, 60)
                       : (canTarget        ? SEL_TGT
                       : (canAbilityTarget ? SEL_ABL
+                      : (canBotTarget     ? SEL_ABL
+                      : (canSelectScrap   ? new Color(200, 160, 40)
                       : (canPlace  ? new Color(100,220,130)
                       : (canSelect ? new Color(100,160,255)
-                      : (empty     ? new Color(40,40,62) : accent)))));
+                      : (empty     ? new Color(40,40,62) : accent))))))));
 
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(bgColor);
         p.setPreferredSize(new Dimension(108, 90));
+        boolean anyClickable = canPlace || canSelect || canTarget || canAbilityTarget
+                               || canSelectScrap || isSelectedScrap || canBotTarget;
         p.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(border, (isSel || canTarget || canPlace || canAbilityTarget) ? 2 : 1, true),
+            new LineBorder(border, (isSel || canTarget || canPlace || canAbilityTarget
+                                    || isSelectedScrap || canSelectScrap || canBotTarget) ? 2 : 1, true),
             new EmptyBorder(4, 5, 4, 5)));
-        if (canPlace || canSelect || canTarget || canAbilityTarget)
+        if (anyClickable)
             p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         if (empty) {
@@ -289,7 +324,7 @@ public class BattleScreen {
             }
         }
 
-        if (canPlace || canSelect || canTarget || canAbilityTarget) {
+        if (anyClickable) {
             p.addMouseListener(new java.awt.event.MouseAdapter() {
                 public void mouseClicked(java.awt.event.MouseEvent e) {
                     BattleState st2 = stRef[0];
@@ -311,6 +346,24 @@ public class BattleScreen {
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
                         if (amP1) st2.p1Souls -= cost; else st2.p2Souls -= cost;
                         selHand[0] = -1; msg[0] = "";
+                        // Turret Bot auto-attack on placement
+                        if ("ttb001".equals(id) && isFront) {
+                            String[] enemyFront = amP1 ? st2.p2Front : st2.p1Front;
+                            int tgtEnemy = -1;
+                            for (int ei = 0; ei < 5; ei++) {
+                                if (enemyFront[ei] != null && !enemyFront[ei].isEmpty()) {
+                                    tgtEnemy = ei; break;
+                                }
+                            }
+                            if (tgtEnemy >= 0) {
+                                doAttack(st2, cardMap, champLines, amP1,
+                                         BattleState.posKey(amP1, true, idx),
+                                         !amP1, true, tgtEnemy,
+                                         stRef, selHand, selField, msg, rebuildRef, bypass, user);
+                                return;
+                            }
+                            st2.useAction(amP1, true, idx);
+                        }
                         st2.save(); rebuildRef[0].run();
                     } else if (canSelect) {
                         selField[0] = isSel ? null : posKey;
@@ -327,6 +380,25 @@ public class BattleScreen {
                                           fieldIsP1, isFront, idx, abilityChoice[0],
                                           stRef, abilitySource, abilityTgtType, abilityChoice,
                                           selHand, selField, msg, rebuildRef);
+                    } else if (canSelectScrap || isSelectedScrap) {
+                        if (scrapSelected[0].contains(posKey)) scrapSelected[0].remove(posKey);
+                        else scrapSelected[0].add(posKey);
+                        msg[0] = scrapSelected[0].size() + " Scrap selected. Press Done when ready.";
+                        rebuildRef[0].run();
+                    } else if (canBotTarget) {
+                        // Furnace Bot BOT_TARGET phase
+                        String result = AbilityResolver.smelt(stRef[0], amP1, scrapSelected[0],
+                                                               isFront, idx, cardMap);
+                        boolean srcFront = multiStepCard[0].charAt(2) == 'f';
+                        int     srcIdx   = Character.getNumericValue(multiStepCard[0].charAt(3));
+                        boolean srcIsP1  = multiStepCard[0].startsWith("p1");
+                        stRef[0].useAction(srcIsP1, srcFront, srcIdx);
+                        stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
+                        String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
+                        msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                        multiStepPhase[0] = null; multiStepCard[0] = null; scrapSelected[0].clear();
+                        selField[0] = null;
+                        stRef[0].save(); rebuildRef[0].run();
                     }
                 }
             });
@@ -365,14 +437,41 @@ public class BattleScreen {
 
         String myChampId = AbilityResolver.currentChampId(st, amP1);
         String tgtPosKey = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+
+        // Metal Wings Bot: coin-flip dodge on incoming attack
+        if ("mwb001".equals(tgtId) && AbilityResolver.coinFlip()) {
+            tgtRow[tgtIdx] = "";
+            st.fieldAtkBonus.remove(tgtPosKey);
+            st.turtleBotCharged.remove(tgtPosKey);
+            List<String> tgtHand = tgtIsP1 ? st.p1Hand : st.p2Hand;
+            tgtHand.add(tgtId);
+            // Mantis double-attack tracking cleanup if needed
+            st.mantisSecondAttack.remove(atkPosKey);
+            st.useAction(atkIsP1, atkFront, atkIdx);
+            selField[0] = null;
+            msg[0] += "Metal Wings Bot dodged and returned to hand!";
+            st.save(); stRef[0] = st;
+            rebuildRef[0].run(); return;
+        }
+
         int dmg = AbilityResolver.effectiveAttack(atkC, atkPosKey, myChampId, tgtPosKey, st);
+        // Clear Turtle Bot charge after the attack resolves
+        st.turtleBotCharged.remove(atkPosKey);
 
         // Shield Imp passive: -1 incoming damage
         int reduction = AbilityResolver.passiveDamageReduction(tgtId);
         dmg = Math.max(0, dmg - reduction);
 
         int newTgtHp = BattleState.slotHp(tgtSv) - dmg;
-        st.useAction(atkIsP1, atkFront, atkIdx);
+
+        // Mantis Bot (mtb001): first attack doesn't consume the action
+        if ("mtb001".equals(atkId) && !st.mantisSecondAttack.contains(atkPosKey)) {
+            st.mantisSecondAttack.add(atkPosKey);
+            // Don't call useAction — Mantis gets a second attack
+        } else {
+            st.mantisSecondAttack.remove(atkPosKey);
+            st.useAction(atkIsP1, atkFront, atkIdx);
+        }
         selField[0] = null;
 
         if (newTgtHp <= 0) {
@@ -541,6 +640,7 @@ public class BattleScreen {
         st.actionsUsed.clear();
         st.abilityUsedThisTurn.clear();
         st.freeplayCards.clear();
+        st.mantisSecondAttack.clear();
         st.p1ExtraActions = 0;
         st.p2ExtraActions = 0;
         st.currentTurn = nextPlayer;
@@ -620,7 +720,9 @@ public class BattleScreen {
                                     Runnable[] rebuildRef, boolean[] bypass,
                                     User user, Runnable onComplete,
                                     Map<String, ChampionLine> champLines,
-                                    Map<String, Card> cardMap) {
+                                    Map<String, Card> cardMap,
+                                    String[] multiStepPhase, String[] multiStepCard,
+                                    List<String>[] scrapSelected) {
         JPanel p = new JPanel(new BorderLayout(8, 0));
         p.setBackground(BG);
         p.setBorder(new EmptyBorder(4, 0, 0, 0));
@@ -629,12 +731,15 @@ public class BattleScreen {
         btns.setOpaque(false);
 
         if (myTurn) {
-            // Cancel ability targeting mode
-            if (abilitySource[0] != null) {
+            // Cancel multi-step or ability targeting mode
+            if (multiStepPhase[0] != null || abilitySource[0] != null) {
                 JButton cancelAbl = smallBtn("Cancel Ability", new Color(180, 120, 60));
                 cancelAbl.addActionListener(e -> {
                     abilitySource[0]  = null;
                     abilityTgtType[0] = null;
+                    multiStepPhase[0] = null;
+                    multiStepCard[0]  = null;
+                    scrapSelected[0].clear();
                     selField[0]       = null;
                     msg[0] = "";
                     rebuildRef[0].run();
@@ -642,8 +747,42 @@ public class BattleScreen {
                 btns.add(cancelAbl);
             }
 
+            // Done button during scrap-select phase
+            if ("SCRAP_SELECT".equals(multiStepPhase[0])) {
+                JButton doneBtn = smallBtn("Done (" + scrapSelected[0].size() + " Scrap)", SEL_ABL);
+                doneBtn.addActionListener(e -> {
+                    if (scrapSelected[0].isEmpty()) {
+                        msg[0] = "Select at least 1 Scrap."; rebuildRef[0].run(); return;
+                    }
+                    // Determine which card triggered multi-step
+                    boolean srcFront = multiStepCard[0].charAt(2) == 'f';
+                    int     srcIdx   = Character.getNumericValue(multiStepCard[0].charAt(3));
+                    boolean srcIsP1  = multiStepCard[0].startsWith("p1");
+                    String[] srcRow  = srcFront ? (srcIsP1 ? stRef[0].p1Front : stRef[0].p2Front)
+                                                : (srcIsP1 ? stRef[0].p1Back  : stRef[0].p2Back);
+                    String srcCardId = BattleState.slotId(srcRow[srcIdx]);
+                    if ("itb001".equals(srcCardId)) {
+                        // Iron Tusks: apply fortify directly
+                        String result = AbilityResolver.fortify(stRef[0], amP1, scrapSelected[0], cardMap);
+                        stRef[0].useAction(srcIsP1, srcFront, srcIdx);
+                        stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
+                        String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
+                        msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                        multiStepPhase[0] = null; multiStepCard[0] = null; scrapSelected[0].clear();
+                        selField[0] = null;
+                        stRef[0].save(); rebuildRef[0].run();
+                    } else if ("fnb001".equals(srcCardId)) {
+                        // Furnace Bot: move to bot-target phase
+                        multiStepPhase[0] = "BOT_TARGET";
+                        msg[0] = "Select a bot to receive +" + (scrapSelected[0].size()*2) + " ATK & HP";
+                        rebuildRef[0].run();
+                    }
+                });
+                btns.add(doneBtn);
+            }
+
             // Card ability button — shown when a regular card with an active ability is selected
-            if (selField[0] != null && abilitySource[0] == null) {
+            if (selField[0] != null && abilitySource[0] == null && multiStepPhase[0] == null) {
                 boolean srcFront = selField[0].charAt(2) == 'f';
                 int     srcIdx   = Character.getNumericValue(selField[0].charAt(3));
                 boolean srcIsP1  = selField[0].startsWith("p1");
@@ -654,7 +793,9 @@ public class BattleScreen {
                     String srcCardId = BattleState.slotId(srcSv);
                     Card srcCard = cardMap.get(srcCardId);
                     String aType = AbilityResolver.abilityType(srcCardId);
-                    if (srcCard != null && ("active".equals(aType) || "targeted".equals(aType))
+                    boolean isMultiStep = "fnb001".equals(srcCardId) || "itb001".equals(srcCardId);
+                    boolean isConstructor = "cnb001".equals(srcCardId);
+                    if (srcCard != null && ("active".equals(aType) || "targeted".equals(aType) || isMultiStep || isConstructor)
                             && !(srcCard instanceof Champion)) {
                         int mySouls = amP1 ? stRef[0].p1Souls : stRef[0].p2Souls;
                         boolean ablEnabled = AbilityResolver.canUseAbility(srcCardId, mySouls);
@@ -663,7 +804,44 @@ public class BattleScreen {
                         JButton ablBtn = smallBtn(lblTxt, ablEnabled ? SEL_ABL : new Color(80, 80, 100));
                         ablBtn.setEnabled(ablEnabled);
                         ablBtn.addActionListener(e -> {
-                            if (AbilityResolver.needsTarget(srcCardId)) {
+                            if (isConstructor) {
+                                // Constructor Bot: pick a bot from hand costing ≤3
+                                List<String> hand = amP1 ? stRef[0].p1Hand : stRef[0].p2Hand;
+                                List<Card> eligible = new ArrayList<>();
+                                for (String id : hand) {
+                                    Card c = cardMap.get(id);
+                                    if (c != null && "bot".equals(c.getType()) && c.getCost() <= 3)
+                                        eligible.add(c);
+                                }
+                                if (eligible.isEmpty()) {
+                                    msg[0] = "Construct: no bots costing ≤3 in hand.";
+                                    rebuildRef[0].run(); return;
+                                }
+                                String[] opts = eligible.stream()
+                                    .map(c -> c.getName() + " (" + c.getCost() + " soul)")
+                                    .toArray(String[]::new);
+                                int choice = JOptionPane.showOptionDialog(null,
+                                    "Choose a bot to summon (costs 2 Scrap):", "Constructor Bot",
+                                    JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                                    null, opts, opts[0]);
+                                if (choice < 0) return;
+                                String result = AbilityResolver.construct(stRef[0], amP1,
+                                    eligible.get(choice).getId(), cardMap);
+                                stRef[0].useAction(srcIsP1, srcFront, srcIdx);
+                                stRef[0].abilityUsedThisTurn.add(selField[0]);
+                                String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
+                                msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                                selField[0] = null;
+                                stRef[0].save(); rebuildRef[0].run();
+                            } else if (isMultiStep) {
+                                // Furnace Bot / Iron Tusks Bot: enter scrap-select mode
+                                multiStepCard[0]  = selField[0];
+                                multiStepPhase[0] = "SCRAP_SELECT";
+                                scrapSelected[0].clear();
+                                selField[0] = null;
+                                msg[0] = "Select Scraps to use, then press Done";
+                                rebuildRef[0].run();
+                            } else if (AbilityResolver.needsTarget(srcCardId)) {
                                 // Upgrade Bot: ask ATK or HP choice before targeting
                                 if ("upb001".equals(srcCardId)) {
                                     String[] opts = {"+ 2 ATK", "+ 2 HP"};
