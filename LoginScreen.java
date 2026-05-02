@@ -12,10 +12,23 @@ public class LoginScreen {
     private static final Color CARD_BG = new Color(35, 35, 52);
     private static final Color ACCENT  = new Color(100, 140, 255);
 
+    /** Set when user logs in; used by window-close handler to clean up state. */
+    static volatile User currentUser = null;
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Card Game");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            frame.addWindowListener(new java.awt.event.WindowAdapter() {
+                @Override
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    if (currentUser != null) {
+                        BattleManager.cancelQueue(currentUser.getUsername());
+                        BattleManager.removeHeartbeat(currentUser.getUsername());
+                    }
+                    System.exit(0);
+                }
+            });
             frame.setSize(900, 650);
             frame.setLocationRelativeTo(null);
 
@@ -149,6 +162,7 @@ public class LoginScreen {
     // ── Navigation ───────────────────────────────────────────────────────────
 
     private static void navigateToMenu(JPanel root, CardLayout layout, JFrame frame, User user) {
+        currentUser = user;
         JPanel menuPanel = MenuScreen.buildMenuPanel(root, layout, frame, user);
         root.add(menuPanel, "menu");
         layout.show(root, "menu");

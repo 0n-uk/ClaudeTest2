@@ -3,7 +3,9 @@ import java.util.*;
 
 public class BattleManager {
 
-    private static final String QUEUE_FILE = "battles/queue.txt";
+    private static final String QUEUE_FILE    = "battles/queue.txt";
+    private static final String HEARTBEAT_DIR = "battles/heartbeat";
+    private static final long   HEARTBEAT_TTL = 6000; // ms before a player is considered disconnected
 
     // ── Queue / matchmaking ───────────────────────────────────────────────────
 
@@ -20,6 +22,11 @@ public class BattleManager {
                 String waitingDeck  = parts.length > 1 ? parts[1].trim() : "";
                 String waitingChamp = parts.length > 2 ? parts[2].trim() : "B";
                 if (!waitingUser.equals(username)) {
+                    if (!isAlive(waitingUser)) {
+                        // Stale queue entry — replace with ours
+                        writeFile(qf, username + ":" + deckName + ":" + champLine);
+                        return null;
+                    }
                     qf.delete();
                     String battleId = username + "_vs_" + waitingUser + "_" + System.currentTimeMillis();
                     createBattle(battleId,
@@ -118,6 +125,39 @@ public class BattleManager {
             for (Champion c : line.getStages()) map.put(c.getId(), c);
         map.put(AbilityResolver.SCRAP_ID, AbilityResolver.SCRAP_CARD);
         return map;
+    }
+
+    // ── Heartbeat ─────────────────────────────────────────────────────────────
+
+    public static void writeHeartbeat(String username) {
+        new File(HEARTBEAT_DIR).mkdirs();
+        writeFile(new File(HEARTBEAT_DIR + "/" + username + ".txt"),
+                  String.valueOf(System.currentTimeMillis()));
+    }
+
+    public static void removeHeartbeat(String username) {
+        new File(HEARTBEAT_DIR + "/" + username + ".txt").delete();
+    }
+
+    public static boolean isAlive(String username) {
+        File f = new File(HEARTBEAT_DIR + "/" + username + ".txt");
+        if (!f.exists()) return false;
+        String ts = readFile(f);
+        if (ts == null) return false;
+        try {
+            return System.currentTimeMillis() - Long.parseLong(ts.trim()) < HEARTBEAT_TTL;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /** Marks the battle as finished and awards a win to the surviving player. */
+    public static void forfeitBattle(String battleId, String forfeiterUsername) {
+        BattleState bs = BattleState.load(battleId);
+        if (bs == null || "finished".equals(bs.phase)) return;
+        bs.phase  = "finished";
+        bs.winner = forfeiterUsername.equals(bs.player1) ? bs.player2 : bs.player1;
+        bs.save();
     }
 
     // ── File I/O helpers ──────────────────────────────────────────────────────

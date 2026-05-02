@@ -58,11 +58,17 @@ public class MatchmakingScreen {
         });
         dotTimer.start();
 
+        // Heartbeat timer — keeps our queue slot alive
+        BattleManager.writeHeartbeat(username);
+        javax.swing.Timer hbTimer = new javax.swing.Timer(2000, e -> BattleManager.writeHeartbeat(username));
+        hbTimer.start();
+
         // Match-found helper
         Runnable[] stopTimers = {null};
 
         Consumer<String> handleMatch = battleId -> {
             if (stopTimers[0] != null) stopTimers[0].run();
+            // Keep heartbeat file alive so BattleScreen can pick it up immediately
             titleLabel.setText("Opponent found!");
             titleLabel.setForeground(new Color(80, 220, 120));
             waitLabel.setVisible(false);
@@ -81,7 +87,7 @@ public class MatchmakingScreen {
             javax.swing.Timer delayTimer = new javax.swing.Timer(500, e -> handleMatch.accept(immediateId));
             delayTimer.setRepeats(false);
             delayTimer.start();
-            stopTimers[0] = () -> { dotTimer.stop(); };
+            stopTimers[0] = () -> { dotTimer.stop(); hbTimer.stop(); };
         } else {
             // Poll for a match
             javax.swing.Timer pollTimer = new javax.swing.Timer(1000, null);
@@ -93,12 +99,13 @@ public class MatchmakingScreen {
                 }
             });
             pollTimer.start();
-            stopTimers[0] = () -> { dotTimer.stop(); pollTimer.stop(); };
+            stopTimers[0] = () -> { dotTimer.stop(); hbTimer.stop(); pollTimer.stop(); };
         }
 
         cancelBtn.addActionListener(e -> {
             if (stopTimers[0] != null) stopTimers[0].run();
             BattleManager.cancelQueue(username);
+            BattleManager.removeHeartbeat(username);
             onCancel.run();
         });
 

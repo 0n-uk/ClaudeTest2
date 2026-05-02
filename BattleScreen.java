@@ -38,6 +38,7 @@ public class BattleScreen {
         wrapper.setBackground(BG);
 
         javax.swing.Timer[] timerRef   = { null };
+        javax.swing.Timer[] hbTimerRef = { null };
         Runnable[]          rebuildRef = { null };
 
         rebuildRef[0] = () -> {
@@ -49,7 +50,8 @@ public class BattleScreen {
             wrapper.removeAll();
 
             if ("finished".equals(st.phase)) {
-                if (timerRef[0] != null) timerRef[0].stop();
+                if (timerRef[0]  != null) timerRef[0].stop();
+                if (hbTimerRef[0] != null) { hbTimerRef[0].stop(); BattleManager.removeHeartbeat(user.getUsername()); }
                 wrapper.add(resultPanel(user.getUsername().equals(st.winner), onComplete),
                             BorderLayout.CENTER);
                 wrapper.revalidate(); wrapper.repaint();
@@ -114,9 +116,25 @@ public class BattleScreen {
             wrapper.repaint();
         };
 
+        // Heartbeat: tell the opponent we are still here
+        BattleManager.writeHeartbeat(user.getUsername());
+        hbTimerRef[0] = new javax.swing.Timer(2000, e -> BattleManager.writeHeartbeat(user.getUsername()));
+        hbTimerRef[0].start();
+
         timerRef[0] = new javax.swing.Timer(600, e -> {
             BattleState fresh = BattleState.load(battleId);
-            if (fresh != null) stRef[0] = fresh;
+            if (fresh != null) {
+                // Detect opponent disconnect while battle is active
+                if ("active".equals(fresh.phase)) {
+                    String oppName = user.getUsername().equals(fresh.player1) ? fresh.player2 : fresh.player1;
+                    if (!BattleManager.isAlive(oppName)) {
+                        BattleManager.forfeitBattle(battleId, oppName);
+                        fresh = BattleState.load(battleId);
+                        msg[0] = oppName + " disconnected — you win!";
+                    }
+                }
+                stRef[0] = fresh;
+            }
             rebuildRef[0].run();
         });
         timerRef[0].start();
