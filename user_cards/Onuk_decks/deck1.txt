@@ -1,6 +1,5 @@
 Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
 Card{id=__SCRAP__, name='Scrap', type='item', attack=0, hp=1, cost=0, ability='Used as fuel for bot abilities'}
-Card{id=sb001, name='Scrap Bot', type='bot', attack=1, hp=1, cost=1, ability='(A) Fabricate- Summon 1 Scrap token to your frontline'}
 Card{id=smi001, name='Shield Imp', type='demon', attack=1, hp=2, cost=2, ability='(P) Ward- Takes -1 damage from attacks'}
 Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
 Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
