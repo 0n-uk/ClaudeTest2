@@ -302,7 +302,7 @@ public class BattleScreen {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(bgColor);
-        p.setPreferredSize(new Dimension(108, 90));
+        p.setPreferredSize(new Dimension(108, 120));
         boolean anyClickable = canPlace || canSelect || canTarget || canAbilityTarget
                                || canSelectScrap || isSelectedScrap || canBotTarget;
         p.setBorder(BorderFactory.createCompoundBorder(
@@ -321,6 +321,11 @@ public class BattleScreen {
                 p.add(Box.createVerticalGlue());
             }
         } else if (card != null) {
+            JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), 44, 44));
+            imgL.setAlignmentX(Component.CENTER_ALIGNMENT);
+            p.add(imgL);
+            p.add(Box.createVerticalStrut(2));
+
             JLabel nameL = lbl(card.getName(), Font.BOLD, 10, isChamp ? CHAMP_CLR : Color.WHITE);
             nameL.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel hpL = lbl("HP " + hp + "/" + card.getHp(), Font.PLAIN, 9,

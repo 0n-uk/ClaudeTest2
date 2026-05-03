@@ -42,6 +42,7 @@ public class LoginScreen {
 
             frame.add(root);
             frame.setVisible(true);
+            MusicPlayer.play();
         });
     }
 
