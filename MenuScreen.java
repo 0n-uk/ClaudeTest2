@@ -77,11 +77,11 @@ public class MenuScreen {
                         champLine -> {
                             JPanel matchmaking = MatchmakingScreen.buildPanel(
                                 user, deckName, champLine,
-                                () -> layout.show(root, "menu"),
+                                () -> { MusicPlayer.play(); layout.show(root, "menu"); },
                                 battleId -> {
                                     JPanel battle = BattleScreen.buildPanel(
                                         user, battleId,
-                                        () -> layout.show(root, "menu"));
+                                        () -> { MusicPlayer.play(); layout.show(root, "menu"); });
                                     root.add(battle, "battle");
                                     layout.show(root, "battle");
                                     frame.revalidate();
@@ -89,6 +89,7 @@ public class MenuScreen {
                             );
                             root.add(matchmaking, "matchmaking");
                             layout.show(root, "matchmaking");
+                            MusicPlayer.stop();
                             frame.revalidate();
                         }
                     );
