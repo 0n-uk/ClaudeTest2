@@ -1,15 +1,14 @@
-import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 public class CardImageLoader {
 
-    private static final String IMG_DIR = "images/cards/";
-    private static final Map<String, ImageIcon> cache = new HashMap<>();
+private static final String IMG_DIR = System.getProperty("user.dir") + File.separator + "images" + File.separator + "cards" + File.separator;    private static final Map<String, ImageIcon> cache = new HashMap<>();
 
     public static ImageIcon get(String cardId, int width, int height) {
         String key = cardId + "_" + width + "x" + height;
