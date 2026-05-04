@@ -17,10 +17,12 @@ import java.util.*;
  */
 public class AbilityResolver {
 
-    // ── Scrap token ───────────────────────────────────────────────────────────
+    // ── Tokens ────────────────────────────────────────────────────────────────
 
-    public static final String SCRAP_ID   = "__SCRAP__";
-    public static final Card   SCRAP_CARD = new Card(SCRAP_ID, "Scrap", "bot", 0, 1, 0, "Token");
+    public static final String SCRAP_ID    = "__SCRAP__";
+    public static final Card   SCRAP_CARD  = new Card(SCRAP_ID, "Scrap", "bot", 0, 1, 0, "Token");
+    public static final String MUD_WALL_ID = "__MUD_WALL__";
+    public static final Card   MUD_WALL_CARD = new Card(MUD_WALL_ID, "Mud Wall", "item", 0, 5, 0, "Token");
 
     // ── Functional interfaces ─────────────────────────────────────────────────
 
@@ -51,6 +53,8 @@ public class AbilityResolver {
     public static final Map<String, Integer>    SOUL_COST       = new HashMap<>();
     /** cardId → required target type for targeted abilities */
     public static final Map<String, String>     TARGET_TYPE     = new HashMap<>();
+    /** cardId → "enemy" if ability targets the enemy field; defaults to friendly */
+    public static final Map<String, String>     TARGET_SIDE     = new HashMap<>();
 
     static {
         // ── On-death: regular cards ───────────────────────────────────────
@@ -80,6 +84,15 @@ public class AbilityResolver {
         TARGETED_ACTIVE.put("upb001", (bs, isP1, ti, tf, tidx, ch, cm) -> upgrade(bs, ti, tf, tidx, ch, cm));
         TARGETED_ACTIVE.put("trb001", (bs, isP1, ti, tf, tidx, ch, cm) -> haul(bs, isP1, tf, tidx, cm));
 
+        // ── Active (no-target): new cards ─────────────────────────────────
+        ACTIVE.put("shs001", (bs, isP1, cm) -> strawShamanFocus(bs, isP1));
+        ACTIVE.put("ers001", (bs, isP1, cm) -> mudWall(bs, isP1));
+
+        // ── Active (targeted): new cards ──────────────────────────────────
+        TARGETED_ACTIVE.put("ics001", (bs, isP1, ti, tf, tidx, ch, cm) -> iceSpirit(bs, ti, tf, tidx, cm));
+        TARGETED_ACTIVE.put("nts001", (bs, isP1, ti, tf, tidx, ch, cm) -> natureSpirit(bs, ti, tf, tidx, cm));
+        TARGETED_ACTIVE.put("cld001", (bs, isP1, ti, tf, tidx, ch, cm) -> cloudling(bs, isP1, ti, tf, tidx, cm));
+
         // ── Passive: damage reduction ─────────────────────────────────────
         PASSIVE_REDUCTION.put("smi001", 1);
 
@@ -87,11 +100,15 @@ public class AbilityResolver {
         SOUL_COST.put("hd001",  1);
         SOUL_COST.put("wsp001", 1);
         SOUL_COST.put("D2",     3);
+        SOUL_COST.put("shs001", 2);
 
         // ── Target type restrictions ──────────────────────────────────────
         TARGET_TYPE.put("hd001",  "bug");
         TARGET_TYPE.put("upb001", "bot");
         TARGET_TYPE.put("trb001", "bot");
+
+        // ── Target side (enemy vs friendly) ──────────────────────────────
+        TARGET_SIDE.put("ics001", "enemy"); // Ice Spirit freezes an enemy card
     }
 
     // ── Public dispatch methods ───────────────────────────────────────────────
@@ -223,6 +240,7 @@ public class AbilityResolver {
         int atk = attacker.getAttack() + bs.fieldAtkBonus.getOrDefault(atkPosKey, 0);
         if (bs.turtleBotCharged.contains(atkPosKey)) atk += 5;
         if ("M2".equals(atkChampId) && bs.abilityUsedThisTurn.contains(tgtPosKey)) atk *= 2;
+        if (bs.focusedCards.contains(atkPosKey)) atk *= 2; // Straw Shaman Focus
         return atk;
     }
 
@@ -681,6 +699,89 @@ public class AbilityResolver {
         hand.add(id);
         bs.freeplayCards.add(id + "_" + (isP1 ? "p1" : "p2"));
         return "Breed: top card added to hand and costs 0 souls this turn!";
+    }
+
+    // Straw Shaman (shs001): spend 2 souls — next attack deals double damage
+    private static String strawShamanFocus(BattleState bs, boolean isP1) {
+        int souls = isP1 ? bs.p1Souls : bs.p2Souls;
+        if (souls < 2) return "Focus: need 2 souls (have " + souls + ").";
+        if (isP1) bs.p1Souls -= 2; else bs.p2Souls -= 2;
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                if ("shs001".equals(BattleState.slotId(row[i]))) {
+                    bs.focusedCards.add(BattleState.posKey(isP1, pass == 0, i));
+                    return "Focus: next attack deals double damage!";
+                }
+            }
+        }
+        return "Focus: Straw Shaman not found.";
+    }
+
+    // Earth Spirit (ers001): summon a Mud Wall token in own frontline
+    private static String mudWall(BattleState bs, boolean isP1) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        for (int i = 0; i < 5; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot(MUD_WALL_ID, 5);
+                return "Mud Wall: summoned a Mud Wall in the frontline!";
+            }
+        }
+        return "Mud Wall: frontline is full!";
+    }
+
+    // Ice Spirit (ics001): freeze target enemy for 3 rounds (6 turns)
+    private static String iceSpirit(BattleState bs, boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                     Map<String, Card> cardMap) {
+        String[] row = tgtFront ? (tgtIsP1 ? bs.p1Front : bs.p2Front)
+                                : (tgtIsP1 ? bs.p1Back  : bs.p2Back);
+        String sv = row[tgtIdx];
+        if (sv == null || sv.isEmpty()) return "Freeze: no card at target.";
+        String posKey = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        bs.frozenCards.put(posKey, 6);
+        Card c = cardMap.get(BattleState.slotId(sv));
+        return "Freeze: " + (c != null ? c.getName() : "target") + " is frozen for 3 rounds!";
+    }
+
+    // Nature Spirit (nts001): heal target friendly card by 5 hp (capped at max)
+    private static String natureSpirit(BattleState bs, boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                        Map<String, Card> cardMap) {
+        String[] row = tgtFront ? (tgtIsP1 ? bs.p1Front : bs.p2Front)
+                                : (tgtIsP1 ? bs.p1Back  : bs.p2Back);
+        String sv = row[tgtIdx];
+        if (sv == null || sv.isEmpty()) return "Heal: no card at target.";
+        String id = BattleState.slotId(sv);
+        int    hp = BattleState.slotHp(sv);
+        Card   c  = cardMap.get(id);
+        if (c == null) return "Heal: card not found.";
+        int newHp = Math.min(hp + 5, c.getHp());
+        row[tgtIdx] = BattleState.makeSlot(id, newHp);
+        return "Heal: " + c.getName() + " restored to " + newHp + "/" + c.getHp() + "!";
+    }
+
+    // Cloudling (cld001): return target friendly non-item card to hand
+    private static String cloudling(BattleState bs, boolean isP1,
+                                     boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                     Map<String, Card> cardMap) {
+        String[] row = tgtFront ? (tgtIsP1 ? bs.p1Front : bs.p2Front)
+                                : (tgtIsP1 ? bs.p1Back  : bs.p2Back);
+        String sv = row[tgtIdx];
+        if (sv == null || sv.isEmpty()) return "Return: no card at target.";
+        String id = BattleState.slotId(sv);
+        Card   c  = cardMap.get(id);
+        if (c == null || "item".equals(c.getType())) return "Return: cannot return item tokens.";
+        String posKey = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        bs.fieldAtkBonus.remove(posKey);
+        bs.turtleBotCharged.remove(posKey);
+        bs.focusedCards.remove(posKey);
+        bs.burnedCards.remove(posKey);
+        bs.frozenCards.remove(posKey);
+        row[tgtIdx] = "";
+        List<String> hand = isP1 ? bs.p1Hand : bs.p2Hand;
+        hand.add(id);
+        return "Return: " + c.getName() + " returned to hand!";
     }
 
     // T-Bot Mega (T4): spend 2 Scrap for 2 extra actions

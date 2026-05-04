@@ -30,6 +30,9 @@ public class BattleState {
     Map<String,Integer> fieldAtkBonus   = new HashMap<>(); // posKey -> bonus ATK from buffs
     Set<String>     turtleBotCharged    = new HashSet<>(); // posKeys with active Turtle Bot +5 ATK buff
     Set<String>     mantisSecondAttack  = new HashSet<>(); // posKeys where Mantis Bot has used first attack
+    Map<String,Integer> burnedCards     = new HashMap<>(); // posKey -> 1 if card is burning (1 dmg/turn)
+    Map<String,Integer> frozenCards     = new HashMap<>(); // posKey -> turns remaining frozen
+    Set<String>     focusedCards        = new HashSet<>();  // posKeys where Focus (double ATK) is active
 
     List<String> p1Hand    = new ArrayList<>();
     List<String> p2Hand    = new ArrayList<>();
@@ -95,6 +98,22 @@ public class BattleState {
                                                     bs.turtleBotCharged.addAll(Arrays.asList(val.split(","))); break;
                     case "mantisSecondAttack": if (!val.isEmpty())
                                                     bs.mantisSecondAttack.addAll(Arrays.asList(val.split(","))); break;
+                    case "burnedCards":        if (!val.isEmpty()) {
+                                                    for (String entry : val.split(",")) {
+                                                        int c2 = entry.lastIndexOf(':');
+                                                        if (c2 > 0) bs.burnedCards.put(
+                                                            entry.substring(0, c2), parseInt(entry.substring(c2 + 1)));
+                                                    }
+                                                } break;
+                    case "frozenCards":        if (!val.isEmpty()) {
+                                                    for (String entry : val.split(",")) {
+                                                        int c2 = entry.lastIndexOf(':');
+                                                        if (c2 > 0) bs.frozenCards.put(
+                                                            entry.substring(0, c2), parseInt(entry.substring(c2 + 1)));
+                                                    }
+                                                } break;
+                    case "focusedCards":       if (!val.isEmpty())
+                                                    bs.focusedCards.addAll(Arrays.asList(val.split(","))); break;
                     case "p1Hand":              bs.p1Hand    = parseList(val); break;
                     case "p2Hand":              bs.p2Hand    = parseList(val); break;
                     case "p1Deck":              bs.p1Deck    = parseList(val); break;
@@ -141,6 +160,19 @@ public class BattleState {
             w.write("fieldAtkBonus=" + atkBonusSb);                                  w.newLine();
             w.write("turtleBotCharged="   + String.join(",", turtleBotCharged));   w.newLine();
             w.write("mantisSecondAttack=" + String.join(",", mantisSecondAttack)); w.newLine();
+            StringBuilder burnSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : burnedCards.entrySet()) {
+                if (burnSb.length() > 0) burnSb.append(',');
+                burnSb.append(e.getKey()).append(':').append(e.getValue());
+            }
+            w.write("burnedCards=" + burnSb); w.newLine();
+            StringBuilder frozenSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : frozenCards.entrySet()) {
+                if (frozenSb.length() > 0) frozenSb.append(',');
+                frozenSb.append(e.getKey()).append(':').append(e.getValue());
+            }
+            w.write("frozenCards=" + frozenSb); w.newLine();
+            w.write("focusedCards=" + String.join(",", focusedCards)); w.newLine();
             w.write("p1Hand="    + String.join(",", p1Hand));    w.newLine();
             w.write("p2Hand="    + String.join(",", p2Hand));    w.newLine();
             w.write("p1Deck="    + String.join(",", p1Deck));    w.newLine();
@@ -210,6 +242,10 @@ public class BattleState {
         if (row[slot] == null || row[slot].isEmpty()) return false;
         if (!isFront && frontlineCount(targetIsP1) > 0) return false;
         return true;
+    }
+
+    boolean isFrozen(String posKey) {
+        return frozenCards.getOrDefault(posKey, 0) > 0;
     }
 
     boolean isTargetableBypass(boolean targetIsP1, boolean isFront, int slot) {

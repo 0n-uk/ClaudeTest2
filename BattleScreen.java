@@ -256,15 +256,30 @@ public class BattleScreen {
 
         boolean inScrapSelect = "SCRAP_SELECT".equals(multiStepPhase[0]);
         boolean inBotTarget   = "BOT_TARGET".equals(multiStepPhase[0]);
-        boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
-        boolean canSelect = isMyField && !empty && myTurn && hasAct && selHand[0] < 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
-        boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null && abilitySource[0] == null && !inScrapSelect && !inBotTarget
-                             && (bypass[0] ? st.isTargetableBypass(fieldIsP1, isFront, idx)
-                                           : st.isTargetable(fieldIsP1, isFront, idx));
+        boolean isFrozenCard  = !empty && st.isFrozen(posKey);
+        boolean isBurnedCard  = !empty && st.burnedCards.containsKey(posKey);
 
-        // Ability targeting mode: highlight valid targets on MY field
-        boolean canAbilityTarget = isMyField && !empty && myTurn && abilitySource[0] != null
+        // Dream Wanderer: attacker can bypass frontline to hit backline
+        boolean atkIsDreamWanderer = selField[0] != null
+                && "drw001".equals(getCardIdAtPosKey(st, selField[0]));
+        // Bat Eye: cannot be targeted by enemy frontline cards
+        boolean atkIsFrontline = selField[0] != null && selField[0].charAt(2) == 'f';
+        boolean batEyeBlocked  = "bte001".equals(cardId) && atkIsFrontline;
+
+        boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
+        boolean canSelect = isMyField && !empty && myTurn && hasAct && !isFrozenCard && selHand[0] < 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
+        boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null && abilitySource[0] == null
+                             && !inScrapSelect && !inBotTarget && !batEyeBlocked
+                             && ((bypass[0] || atkIsDreamWanderer)
+                                 ? st.isTargetableBypass(fieldIsP1, isFront, idx)
+                                 : st.isTargetable(fieldIsP1, isFront, idx));
+
+        // Ability targeting mode — supports both friendly and enemy targets depending on ability
+        String abilitySourceCardId = abilitySource[0] != null ? getCardIdAtPosKey(st, abilitySource[0]) : null;
+        boolean abilityTargetsEnemy = "enemy".equals(AbilityResolver.TARGET_SIDE.get(abilitySourceCardId));
+        boolean canAbilityTarget = !empty && myTurn && abilitySource[0] != null
                 && card != null
+                && (abilityTargetsEnemy ? !isMyField : isMyField)
                 && (abilityTgtType[0] == null || abilityTgtType[0].equals(card.getType().toLowerCase()));
 
         // Scrap-select mode: click scraps on MY field to toggle selection
@@ -342,6 +357,21 @@ public class BattleScreen {
                 stageL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 p.add(stageL);
             }
+            if (isFrozenCard) {
+                JLabel frozenL = lbl("Frozen(" + st.frozenCards.get(posKey) + ")", Font.ITALIC, 8, new Color(100, 200, 255));
+                frozenL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(frozenL);
+            }
+            if (isBurnedCard) {
+                JLabel burnL = lbl("Burned", Font.ITALIC, 8, new Color(255, 130, 50));
+                burnL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(burnL);
+            }
+            if (st.focusedCards.contains(posKey)) {
+                JLabel focL = lbl("Focus!", Font.ITALIC, 8, new Color(255, 220, 80));
+                focL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(focL);
+            }
             if (isMyField && !hasAct) {
                 JLabel used = lbl("Used", Font.ITALIC, 8, new Color(100, 100, 120));
                 used.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -366,11 +396,21 @@ public class BattleScreen {
                         }
                         String[] targetRow = isFront ? (amP1 ? st2.p1Front : st2.p2Front)
                                                      : (amP1 ? st2.p1Back  : st2.p2Back);
+                        // Clear any lingering effects from a previous occupant of this slot
+                        String newPosKey = BattleState.posKey(amP1, isFront, idx);
+                        st2.burnedCards.remove(newPosKey);
+                        st2.frozenCards.remove(newPosKey);
+                        st2.focusedCards.remove(newPosKey);
                         targetRow[idx] = BattleState.makeSlot(id, c != null ? c.getHp() : 1);
                         hand.remove(selHand[0]);
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
                         if (amP1) st2.p1Souls -= cost; else st2.p2Souls -= cost;
                         selHand[0] = -1; msg[0] = "";
+                        // Water Spirit: all cards on field gain +2 HP when placed
+                        if ("wts001".equals(id)) {
+                            waterSpiritBuff(st2);
+                            msg[0] = "Water Spirit: all field cards gained +2 HP!";
+                        }
                         // Turret Bot auto-attack on placement
                         if ("ttb001".equals(id) && isFront) {
                             String[] enemyFront = amP1 ? st2.p2Front : st2.p1Front;
@@ -463,14 +503,15 @@ public class BattleScreen {
         String myChampId = AbilityResolver.currentChampId(st, amP1);
         String tgtPosKey = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
 
-        // Metal Wings Bot: coin-flip dodge on incoming attack
+        // Metal Wings Bot: coin-flip dodge on incoming attack — returns to hand
         if ("mwb001".equals(tgtId) && AbilityResolver.coinFlip()) {
             tgtRow[tgtIdx] = "";
             st.fieldAtkBonus.remove(tgtPosKey);
             st.turtleBotCharged.remove(tgtPosKey);
+            st.burnedCards.remove(tgtPosKey);
+            st.frozenCards.remove(tgtPosKey);
             List<String> tgtHand = tgtIsP1 ? st.p1Hand : st.p2Hand;
             tgtHand.add(tgtId);
-            // Mantis double-attack tracking cleanup if needed
             st.mantisSecondAttack.remove(atkPosKey);
             st.useAction(atkIsP1, atkFront, atkIdx);
             selField[0] = null;
@@ -479,9 +520,20 @@ public class BattleScreen {
             rebuildRef[0].run(); return;
         }
 
+        // Wind Spirit: coin-flip dodge on incoming attack — stays on field
+        if ("wns001".equals(tgtId) && AbilityResolver.coinFlip()) {
+            st.mantisSecondAttack.remove(atkPosKey);
+            st.useAction(atkIsP1, atkFront, atkIdx);
+            selField[0] = null;
+            msg[0] += "Wind Spirit dodged the attack!";
+            st.save(); stRef[0] = st;
+            rebuildRef[0].run(); return;
+        }
+
         int dmg = AbilityResolver.effectiveAttack(atkC, atkPosKey, myChampId, tgtPosKey, st);
-        // Clear Turtle Bot charge after the attack resolves
+        // Clear Turtle Bot charge and Focus buff after the attack resolves
         st.turtleBotCharged.remove(atkPosKey);
+        st.focusedCards.remove(atkPosKey);
 
         // Shield Imp passive: -1 incoming damage
         int reduction = AbilityResolver.passiveDamageReduction(tgtId);
@@ -489,10 +541,52 @@ public class BattleScreen {
 
         int newTgtHp = BattleState.slotHp(tgtSv) - dmg;
 
-        // Mantis Bot (mtb001): first attack doesn't consume the action
-        if ("mtb001".equals(atkId) && !st.mantisSecondAttack.contains(atkPosKey)) {
+        // Spike Dragon: retaliate 5 dmg to attacker before main damage is processed
+        if ("spd001".equals(tgtId)) {
+            int atkCurHp = BattleState.slotHp(atkSv);
+            int atkNewHp = atkCurHp - 5;
+            if (atkNewHp <= 0 && !(atkC instanceof Champion)) {
+                atkRow[atkIdx] = "";
+                st.fieldAtkBonus.remove(atkPosKey);
+                st.burnedCards.remove(atkPosKey);
+                st.frozenCards.remove(atkPosKey);
+                st.focusedCards.remove(atkPosKey);
+                if (!"item".equals(atkC.getType())) {
+                    if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String spikeDeathMsg = AbilityResolver.onDeath(st, atkId, atkIsP1, cardMap);
+                if (atkIsP1) st.p1Discard.add(atkId); else st.p2Discard.add(atkId);
+                selField[0] = null;
+                st.useAction(atkIsP1, atkFront, atkIdx);
+                msg[0] += "Spike Dragon retaliates! " + atkC.getName() + " destroyed!"
+                           + (spikeDeathMsg.isEmpty() ? "" : " " + spikeDeathMsg);
+                // still apply the attack damage to Spike Dragon before exiting
+                if (newTgtHp <= 0) {
+                    tgtRow[tgtIdx] = "";
+                    st.fieldAtkBonus.remove(tgtPosKey);
+                    if (!(tgtC instanceof Champion)) {
+                        if (!"item".equals(tgtC.getType())) {
+                            if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                        }
+                        AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
+                        if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
+                    }
+                } else {
+                    tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
+                }
+                st.save(); stRef[0] = st;
+                rebuildRef[0].run(); return;
+            } else {
+                atkRow[atkIdx] = BattleState.makeSlot(atkId, Math.max(1, atkNewHp));
+                msg[0] += "Spike Dragon retaliates for 5! ";
+            }
+        }
+
+        // Dual-strike: Mantis Bot, Large Mantis, Eye Shrew — first attack doesn't consume action
+        boolean isDualStrike = "mtb001".equals(atkId) || "lmt001".equals(atkId) || "esr001".equals(atkId);
+        if (isDualStrike && !st.mantisSecondAttack.contains(atkPosKey)) {
             st.mantisSecondAttack.add(atkPosKey);
-            // Don't call useAction — Mantis gets a second attack
+            // Don't call useAction — card gets a second attack
         } else {
             st.mantisSecondAttack.remove(atkPosKey);
             st.useAction(atkIsP1, atkFront, atkIdx);
@@ -502,16 +596,19 @@ public class BattleScreen {
         if (newTgtHp <= 0) {
             tgtRow[tgtIdx] = "";
             st.fieldAtkBonus.remove(tgtPosKey);
+            st.burnedCards.remove(tgtPosKey);
+            st.frozenCards.remove(tgtPosKey);
+            st.focusedCards.remove(tgtPosKey);
 
             if (!(tgtC instanceof Champion)) {
                 if (!"item".equals(tgtC.getType())) {
-                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;                
+                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
                 }
                 String onDeathMsg = AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 msg[0] += tgtC.getName() + " defeated! " + onDeathMsg;
             } else {
-                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;                                
+                if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 Champion deadChamp = (Champion) tgtC;
                 String lineId = deadChamp.getLineId();
@@ -536,10 +633,20 @@ public class BattleScreen {
             tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
             String suffix = reduction > 0 ? " (blocked " + reduction + ")" : "";
             msg[0] += "Hit " + tgtC.getName() + " for " + dmg + suffix + "!";
+            // Fire Spirit: apply Burn on hit
+            if ("frs001".equals(atkId)) {
+                st.burnedCards.put(tgtPosKey, 1);
+                msg[0] += " " + tgtC.getName() + " is now Burned!";
+            }
+            // Ice Dragon: apply Freeze on hit (1 round = 2 turns)
+            if ("icd001".equals(atkId)) {
+                st.frozenCards.put(tgtPosKey, Math.max(st.frozenCards.getOrDefault(tgtPosKey, 0), 2));
+                msg[0] += " " + tgtC.getName() + " is Frozen for 1 round!";
+            }
         }
 
         if (atkC instanceof Champion) {
-            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef);
+            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
         } else {
             st.save(); stRef[0] = st;
             rebuildRef[0].run();
@@ -643,7 +750,7 @@ public class BattleScreen {
             if (!harvestMsg.isEmpty()) msg[0] += " " + harvestMsg;
             st.useAction(amP1, false, BattleState.CHAMP_SLOT);
             st.save(); stRef[0] = st;
-            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef);
+            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
             return;
         }
         rebuildRef[0].run();
@@ -653,9 +760,52 @@ public class BattleScreen {
 
     private static void doEndTurn(boolean amP1, BattleState[] stRef,
                                    int[] selHand, String[] selField,
-                                   String[] msg, Runnable[] rebuildRef) {
+                                   String[] msg, Runnable[] rebuildRef,
+                                   Map<String, Card> cardMap) {
         BattleState st = stRef[0];
         selHand[0] = -1; selField[0] = null;
+
+        // ── Apply burn damage (1 dmg per burned card) ──────────────────────
+        for (String posKey : new ArrayList<>(st.burnedCards.keySet())) {
+            boolean posIsP1 = posKey.startsWith("p1");
+            boolean posFront = posKey.charAt(2) == 'f';
+            int posIdx = Character.getNumericValue(posKey.charAt(3));
+            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                    : (posIsP1 ? st.p1Back  : st.p2Back);
+            if (row[posIdx] == null || row[posIdx].isEmpty()) {
+                st.burnedCards.remove(posKey); continue;
+            }
+            String cId = BattleState.slotId(row[posIdx]);
+            int    chp = BattleState.slotHp(row[posIdx]);
+            Card   bc  = cardMap.get(cId);
+            int    newHp = chp - 1;
+            if (newHp <= 0 && !(bc instanceof Champion)) {
+                row[posIdx] = "";
+                st.burnedCards.remove(posKey);
+                st.fieldAtkBonus.remove(posKey);
+                st.frozenCards.remove(posKey);
+                st.focusedCards.remove(posKey);
+                st.turtleBotCharged.remove(posKey);
+                if (bc != null && !"item".equals(bc.getType())) {
+                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
+                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
+                String burnNotice = (bc != null ? bc.getName() : cId) + " burned to death!";
+                if (!deathMsg.isEmpty()) burnNotice += " " + deathMsg;
+                msg[0] = burnNotice;
+            } else {
+                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+
+        // ── Decrement frozen turns ─────────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.frozenCards.keySet())) {
+            int turns = st.frozenCards.get(posKey) - 1;
+            if (turns <= 0) st.frozenCards.remove(posKey);
+            else st.frozenCards.put(posKey, turns);
+        }
+
         boolean nextIsP1   = !amP1;
         String  nextPlayer = amP1 ? st.player2 : st.player1;
         List<String> nextDeck = nextIsP1 ? st.p1Deck : st.p2Deck;
@@ -914,7 +1064,7 @@ public class BattleScreen {
             endBtn.addActionListener(e -> {
                 msg[0] = "";
                 abilitySource[0] = null;
-                doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef);
+                doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
             });
             btns.add(endBtn);
         }
@@ -965,7 +1115,30 @@ public class BattleScreen {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-        private static JLabel lbl(String text, int style, int size, Color color) {
+
+    private static String getCardIdAtPosKey(BattleState st, String posKey) {
+        if (posKey == null) return null;
+        boolean isP1   = posKey.startsWith("p1");
+        boolean isFront = posKey.charAt(2) == 'f';
+        int idx = Character.getNumericValue(posKey.charAt(3));
+        String[] row = isFront ? (isP1 ? st.p1Front : st.p2Front)
+                               : (isP1 ? st.p1Back  : st.p2Back);
+        return (row != null && idx >= 0 && idx < row.length) ? BattleState.slotId(row[idx]) : null;
+    }
+
+    private static void waterSpiritBuff(BattleState st) {
+        String[][] rows = { st.p1Front, st.p1Back, st.p2Front, st.p2Back };
+        for (String[] row : rows) {
+            for (int i = 0; i < 5; i++) {
+                if (row[i] != null && !row[i].isEmpty()) {
+                    row[i] = BattleState.makeSlot(BattleState.slotId(row[i]),
+                                                   BattleState.slotHp(row[i]) + 2);
+                }
+            }
+        }
+    }
+
+    private static JLabel lbl(String text, int style, int size, Color color) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", style, size));
         l.setForeground(color);
