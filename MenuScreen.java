@@ -5,7 +5,7 @@ import java.util.List;
 
 public class MenuScreen {
 
-    private static final Color BG        = new Color(20, 20, 30);
+    private static final Color BG        = Color.WHITE;
     private static final Color BTN_BG    = new Color(50, 50, 75);
     private static final Color BTN_HOVER = new Color(70, 70, 105);
 
@@ -17,13 +17,19 @@ public class MenuScreen {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG);
 
-        JLabel title = new JLabel("Card Game", SwingConstants.CENTER);
-        title.setFont(new Font("SansSerif", Font.BOLD, 42));
-        title.setForeground(Color.WHITE);
+        JLabel title;
+        ImageIcon titleIcon = loadScaledIcon("images/Buttons & Menus/GameTitle.png", 400);
+        if (titleIcon != null) {
+            title = new JLabel(titleIcon);
+        } else {
+            title = new JLabel("Card Game", SwingConstants.CENTER);
+            title.setFont(new Font("SansSerif", Font.BOLD, 42));
+            title.setForeground(new Color(30, 30, 60));
+        }
 
         JLabel welcome = new JLabel("Welcome, " + user.getUsername() + "!", SwingConstants.CENTER);
         welcome.setFont(new Font("SansSerif", Font.ITALIC, 16));
-        welcome.setForeground(new Color(160, 160, 180));
+        welcome.setForeground(new Color(80, 80, 100));
 
         JButton viewAllBtn  = menuButton("View Cards",   new Color(80, 180, 220));
         JButton viewOwnBtn  = menuButton("View Owned",   new Color(220, 160, 80));
@@ -31,6 +37,13 @@ public class MenuScreen {
         JButton deckBtn     = menuButton("Build Deck",   new Color(80, 210, 200));
         JButton battleBtn   = menuButton("Battle",       new Color(220, 80,  80));
         JButton createBtn   = menuButton("Create Card",  new Color(100, 220, 130));
+
+        applyButtonImage(viewAllBtn, "images/Buttons & Menus/ViewCardsButton.png",  300);
+        applyButtonImage(viewOwnBtn, "images/Buttons & Menus/ViewOwnedButton.png",  300);
+        applyButtonImage(packsBtn,   "images/Buttons & Menus/OpenPacksButton.png",  300);
+        applyButtonImage(deckBtn,    "images/Buttons & Menus/BuildDeckButton.png",  300);
+        applyButtonImage(battleBtn,  "images/Buttons & Menus/BattleButton.png",     300);
+        applyButtonImage(createBtn,  "images/Buttons & Menus/CreateCardsButton.png",300);
 
         viewAllBtn.addActionListener(e -> {
             List<Card> cards = CardViewer.loadCards("cards.txt");
@@ -137,7 +150,7 @@ public class MenuScreen {
     static JButton menuButton(String text, Color accent) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("SansSerif", Font.BOLD, 18));
-        btn.setForeground(Color.WHITE);
+        btn.setForeground(Color.DARK_GRAY);
         btn.setBackground(BTN_BG);
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createCompoundBorder(
@@ -149,5 +162,26 @@ public class MenuScreen {
             public void mouseExited(java.awt.event.MouseEvent e)  { btn.setBackground(BTN_BG); }
         });
         return btn;
+    }
+
+    private static void applyButtonImage(JButton btn, String path, int width) {
+        ImageIcon icon = loadScaledIcon(path, width);
+        if (icon != null) {
+            btn.setIcon(icon);
+            btn.setText("");
+            btn.setContentAreaFilled(false);
+            btn.setBorderPainted(false);
+        }
+    }
+
+    private static ImageIcon loadScaledIcon(String path, int width) {
+        try {
+            ImageIcon raw = new ImageIcon(path);
+            if (raw.getIconWidth() <= 0) return null;
+            int h = (int)((double) raw.getIconHeight() / raw.getIconWidth() * width);
+            return new ImageIcon(raw.getImage().getScaledInstance(width, h, Image.SCALE_SMOOTH));
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
