@@ -5,10 +5,11 @@ import java.security.MessageDigest;
 import javax.swing.*;
 import javax.swing.border.*;
 
+//this is a test comment to trigger a commit
 public class LoginScreen {
 
-    private static final Color BG      = Color.WHITE;
-    private static final Color CARD_BG = Color.WHITE;
+    private static final Color BG      = new Color(20, 20, 30);
+    private static final Color CARD_BG = new Color(35, 35, 52);
     private static final Color ACCENT  = new Color(100, 140, 255);
 
     /** Set when user logs in; used by window-close handler to clean up state. */
@@ -53,11 +54,6 @@ public class LoginScreen {
 
         JPanel card = card();
 
-        JLabel menuImg = new JLabel();
-        menuImg.setAlignmentX(Component.CENTER_ALIGNMENT);
-        ImageIcon menuIcon = loadScaledIcon("images/Buttons & Menus/LoginMenu.png", 360);
-        if (menuIcon != null) menuImg.setIcon(menuIcon);
-
         JLabel title = heading("Welcome Back");
         JLabel sub   = sub("Sign in to your account");
 
@@ -66,13 +62,6 @@ public class LoginScreen {
         JLabel error = errorLabel();
 
         JButton loginBtn = bigButton("Log In", ACCENT);
-        ImageIcon loginIcon = loadScaledIcon("images/Buttons & Menus/LoginButton.png", 280);
-        if (loginIcon != null) {
-            loginBtn.setIcon(loginIcon);
-            loginBtn.setText("");
-            loginBtn.setContentAreaFilled(false);
-            loginBtn.setBorderPainted(false);
-        }
         loginBtn.addActionListener(e -> {
             String user = userField.getText().trim();
             String pass = new String(passField.getPassword());
@@ -97,7 +86,7 @@ public class LoginScreen {
         });
 
         addRows(card,
-            menuImg, title, sub, spacer(10),
+            title, sub, spacer(10),
             labelFor("Username"), userField,
             labelFor("Password"), passField,
             spacer(4), error, loginBtn, spacer(4), toRegister);
@@ -115,11 +104,6 @@ public class LoginScreen {
 
         JPanel card = card();
 
-        JLabel menuImg = new JLabel();
-        menuImg.setAlignmentX(Component.CENTER_ALIGNMENT);
-        ImageIcon menuIcon = loadScaledIcon("images/Buttons & Menus/CreateAccount.png", 360);
-        if (menuIcon != null) menuImg.setIcon(menuIcon);
-
         JLabel title = heading("Create Account");
         JLabel sub   = sub("Join the game");
 
@@ -130,13 +114,6 @@ public class LoginScreen {
         JLabel success = successLabel();
 
         JButton registerBtn = bigButton("Register", new Color(100, 220, 130));
-        ImageIcon registerIcon = loadScaledIcon("images/Buttons & Menus/RegisterButton.png", 280);
-        if (registerIcon != null) {
-            registerBtn.setIcon(registerIcon);
-            registerBtn.setText("");
-            registerBtn.setContentAreaFilled(false);
-            registerBtn.setBorderPainted(false);
-        }
         registerBtn.addActionListener(e -> {
             error.setText(" "); success.setText(" ");
             String user  = userField.getText().trim();
@@ -172,7 +149,7 @@ public class LoginScreen {
         });
 
         addRows(card,
-            menuImg, title, sub, spacer(10),
+            title, sub, spacer(10),
             labelFor("Username"),         userField,
             labelFor("Password"),         passField,
             labelFor("Confirm Password"), pass2Field,
@@ -255,7 +232,7 @@ public class LoginScreen {
     private static JLabel heading(String text) {
         JLabel l = new JLabel(text, SwingConstants.CENTER);
         l.setFont(new Font("SansSerif", Font.BOLD, 26));
-        l.setForeground(new Color(30, 30, 60));
+        l.setForeground(Color.WHITE);
         l.setAlignmentX(Component.CENTER_ALIGNMENT);
         return l;
     }
@@ -263,7 +240,7 @@ public class LoginScreen {
     private static JLabel sub(String text) {
         JLabel l = new JLabel(text, SwingConstants.CENTER);
         l.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        l.setForeground(new Color(90, 90, 110));
+        l.setForeground(new Color(140, 140, 165));
         l.setAlignmentX(Component.CENTER_ALIGNMENT);
         return l;
     }
@@ -271,7 +248,7 @@ public class LoginScreen {
     private static JLabel labelFor(String text) {
         JLabel l = new JLabel(text);
         l.setFont(new Font("SansSerif", Font.BOLD, 13));
-        l.setForeground(new Color(60, 60, 80));
+        l.setForeground(new Color(180, 180, 200));
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }
@@ -289,12 +266,12 @@ public class LoginScreen {
     }
 
     private static void style(JTextField f) {
-        f.setBackground(new Color(245, 245, 250));
-        f.setForeground(Color.DARK_GRAY);
-        f.setCaretColor(Color.DARK_GRAY);
+        f.setBackground(new Color(45, 45, 65));
+        f.setForeground(Color.WHITE);
+        f.setCaretColor(Color.WHITE);
         f.setFont(new Font("SansSerif", Font.PLAIN, 14));
         f.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(180, 180, 210), 1),
+                new LineBorder(new Color(80, 80, 110), 1),
                 new EmptyBorder(6, 10, 6, 10)));
         f.setPreferredSize(new Dimension(300, 38));
         f.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
@@ -304,8 +281,8 @@ public class LoginScreen {
     private static JButton bigButton(String text, Color accent) {
         JButton b = new JButton(text);
         b.setFont(new Font("SansSerif", Font.BOLD, 15));
-        b.setForeground(Color.DARK_GRAY);
-        b.setBackground(Color.WHITE);
+        b.setForeground(Color.WHITE);
+        b.setBackground(new Color(50, 50, 75));
         b.setFocusPainted(false);
         b.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(accent, 2, true),
@@ -315,7 +292,7 @@ public class LoginScreen {
         b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         b.addMouseListener(new java.awt.event.MouseAdapter() {
             Color orig = b.getBackground();
-            public void mouseEntered(java.awt.event.MouseEvent e) { b.setBackground(new Color(235, 235, 245)); }
+            public void mouseEntered(java.awt.event.MouseEvent e) { b.setBackground(new Color(70, 70, 105)); }
             public void mouseExited(java.awt.event.MouseEvent e)  { b.setBackground(orig); }
         });
         return b;
@@ -324,8 +301,8 @@ public class LoginScreen {
     private static JButton linkButton(String text) {
         JButton b = new JButton("<html><u>" + text + "</u></html>");
         b.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        b.setForeground(new Color(80, 120, 220));
-        b.setBackground(Color.WHITE);
+        b.setForeground(new Color(120, 160, 255));
+        b.setBackground(CARD_BG);
         b.setBorderPainted(false);
         b.setFocusPainted(false);
         b.setContentAreaFilled(false);
@@ -345,7 +322,7 @@ public class LoginScreen {
     private static JLabel successLabel() {
         JLabel l = new JLabel(" ", SwingConstants.CENTER);
         l.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        l.setForeground(new Color(60, 160, 80));
+        l.setForeground(new Color(100, 220, 130));
         l.setAlignmentX(Component.CENTER_ALIGNMENT);
         return l;
     }
@@ -360,17 +337,6 @@ public class LoginScreen {
             if (c instanceof JTextField || c instanceof JPasswordField) {
                 card.add(Box.createVerticalStrut(10));
             }
-        }
-    }
-
-    private static ImageIcon loadScaledIcon(String path, int width) {
-        try {
-            ImageIcon raw = new ImageIcon(path);
-            if (raw.getIconWidth() <= 0) return null;
-            int h = (int)((double) raw.getIconHeight() / raw.getIconWidth() * width);
-            return new ImageIcon(raw.getImage().getScaledInstance(width, h, Image.SCALE_SMOOTH));
-        } catch (Exception e) {
-            return null;
         }
     }
 }
