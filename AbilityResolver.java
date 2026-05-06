@@ -88,6 +88,9 @@ public class AbilityResolver {
         ACTIVE.put("shs001", (bs, isP1, cm) -> strawShamanFocus(bs, isP1));
         ACTIVE.put("ers001", (bs, isP1, cm) -> mudWall(bs, isP1));
         ACTIVE.put("psh001", (bs, isP1, cm) -> sprout(bs, isP1));
+        ACTIVE.put("ima001", (bs, isP1, cm) -> iceMageApprenticeCast(bs, isP1));
+        ACTIVE.put("trp001", (bs, isP1, cm) -> trumpeteer(bs, isP1, cm));
+        ACTIVE.put("cmf001", (bs, isP1, cm) -> inspiration(bs, isP1, cm));
 
         // ── Active (targeted): new cards ──────────────────────────────────
         TARGETED_ACTIVE.put("ics001", (bs, isP1, ti, tf, tidx, ch, cm) -> iceSpirit(bs, ti, tf, tidx, cm));
@@ -872,5 +875,69 @@ public class AbilityResolver {
         }
         if (isP1) bs.p1ExtraActions += 2; else bs.p2ExtraActions += 2;
         return "Overclock: 2 Scrap consumed, gained 2 extra actions!";
+    }
+
+    private static String iceMageApprenticeCast(BattleState bs, boolean isP1) {
+        boolean enemyIsP1 = !isP1;
+        List<String> targets = new ArrayList<>();
+        String[] eFront = enemyIsP1 ? bs.p1Front : bs.p2Front;
+        String[] eBack  = enemyIsP1 ? bs.p1Back  : bs.p2Back;
+        for (int i = 0; i < 5; i++) {
+            if (eFront[i] != null && !eFront[i].isEmpty())
+                targets.add(BattleState.posKey(enemyIsP1, true,  i));
+            if (eBack[i]  != null && !eBack[i].isEmpty())
+                targets.add(BattleState.posKey(enemyIsP1, false, i));
+        }
+        if (targets.isEmpty()) return "Ice Mage Apprentice: no enemies to freeze!";
+        int frozen = 0;
+        for (int flip = 0; flip < 3; flip++) {
+            if (coinFlip()) {
+                String pk = targets.get(new Random().nextInt(targets.size()));
+                bs.frozenCards.put(pk, Math.max(bs.frozenCards.getOrDefault(pk, 0), 4));
+                frozen++;
+            }
+        }
+        if (frozen == 0) return "Ice Mage Apprentice: all tails — no enemies frozen!";
+        return "Ice Mage Apprentice: froze " + frozen + " enemy card" + (frozen > 1 ? "s" : "") + " for 2 rounds!";
+    }
+
+    private static String trumpeteer(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        int buffedFront = 0, buffedBack = 0;
+        for (int i = 0; i < 5; i++) {
+            if ("pwn001".equals(BattleState.slotId(front[i]))) {
+                front[i] = BattleState.makeSlot("pwn001", BattleState.slotHp(front[i]) + 1);
+                buffedFront++;
+            }
+            if ("pwn001".equals(BattleState.slotId(back[i]))) {
+                bs.fieldAtkBonus.merge(BattleState.posKey(isP1, false, i), 1, Integer::sum);
+                buffedBack++;
+            }
+        }
+        if (buffedFront == 0 && buffedBack == 0) return "Trumpeteer: no Pawns on field!";
+        StringBuilder sb = new StringBuilder("Trumpeteer: ");
+        if (buffedFront > 0) sb.append(buffedFront).append(" frontline Pawn(s) +1 HP");
+        if (buffedFront > 0 && buffedBack > 0) sb.append(", ");
+        if (buffedBack  > 0) sb.append(buffedBack).append(" backline Pawn(s) +1 ATK");
+        return sb.toString();
+    }
+
+    private static String inspiration(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        int count = 0;
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                String cId = BattleState.slotId(row[i]);
+                Card c = cId != null ? cardMap.get(cId) : null;
+                if (c != null && "knight".equals(c.getType())) {
+                    bs.fieldAtkBonus.merge(BattleState.posKey(isP1, pass == 0, i), 3, Integer::sum);
+                    count++;
+                }
+            }
+        }
+        return "Inspiration: " + count + " Knight" + (count != 1 ? "s" : "") + " gained +3 ATK!";
     }
 }

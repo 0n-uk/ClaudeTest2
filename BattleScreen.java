@@ -825,6 +825,62 @@ public class BattleScreen {
                         msg[0] += " Shielded card advances!";
                     }
                 }
+                // Bollywurg: Tongue Grapple — splash dead enemy's max HP to a random other enemy
+                if ("blw001".equals(atkId)) {
+                    int splashDmg = tgtC.getHp();
+                    List<String[]> splashPool = new ArrayList<>();
+                    String[] sFront = tgtIsP1 ? st.p1Front : st.p2Front;
+                    String[] sBack  = tgtIsP1 ? st.p1Back  : st.p2Back;
+                    for (int i = 0; i < 5; i++) {
+                        if (sFront[i] != null && !sFront[i].isEmpty())
+                            splashPool.add(new String[]{"f", String.valueOf(i)});
+                        if (sBack[i]  != null && !sBack[i].isEmpty())
+                            splashPool.add(new String[]{"b", String.valueOf(i)});
+                    }
+                    if (!splashPool.isEmpty()) {
+                        String[] pick    = splashPool.get((int)(Math.random() * splashPool.size()));
+                        boolean sFront2  = "f".equals(pick[0]);
+                        int     sIdx     = Integer.parseInt(pick[1]);
+                        String[] sRow    = sFront2 ? sFront : sBack;
+                        String   sId     = BattleState.slotId(sRow[sIdx]);
+                        Card     sCard   = sId != null ? cardMap.get(sId) : null;
+                        if (sCard != null) {
+                            String sPosKey = BattleState.posKey(tgtIsP1, sFront2, sIdx);
+                            int reduction2 = AbilityResolver.passiveDamageReduction(sId);
+                            int actualSplash = Math.max(0, splashDmg - reduction2);
+                            int splashNewHp = BattleState.slotHp(sRow[sIdx]) - actualSplash;
+                            if (splashNewHp <= 0 && !(sCard instanceof Champion)) {
+                                sRow[sIdx] = "";
+                                st.fieldAtkBonus.remove(sPosKey); st.burnedCards.remove(sPosKey);
+                                st.frozenCards.remove(sPosKey);   st.focusedCards.remove(sPosKey);
+                                st.transformCounters.remove(sPosKey); st.fieldLockedCards.remove(sPosKey);
+                                if (!"item".equals(sCard.getType())) {
+                                    if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                                }
+                                AbilityResolver.onDeath(st, sId, tgtIsP1, cardMap);
+                                if (tgtIsP1) st.p1Discard.add(sId); else st.p2Discard.add(sId);
+                                msg[0] += " Tongue Grapple: " + actualSplash + " splash → " + sCard.getName() + " defeated!";
+                                if ("gen001".equals(sId) && sFront2) {
+                                    String[] sBackRow = tgtIsP1 ? st.p1Back : st.p2Back;
+                                    if (sBackRow[sIdx] != null && !sBackRow[sIdx].isEmpty()) {
+                                        String shPk2 = BattleState.posKey(tgtIsP1, false, sIdx);
+                                        sRow[sIdx] = sBackRow[sIdx]; sBackRow[sIdx] = "";
+                                        Integer a2 = st.fieldAtkBonus.remove(shPk2); if (a2 != null) st.fieldAtkBonus.put(sPosKey, a2);
+                                        Integer b2 = st.burnedCards.remove(shPk2);   if (b2 != null) st.burnedCards.put(sPosKey, b2);
+                                        Integer f2 = st.frozenCards.remove(shPk2);   if (f2 != null) st.frozenCards.put(sPosKey, f2);
+                                        if (st.focusedCards.remove(shPk2)) st.focusedCards.add(sPosKey);
+                                        Integer t2 = st.transformCounters.remove(shPk2); if (t2 != null) st.transformCounters.put(sPosKey, t2);
+                                        if (st.fieldLockedCards.remove(shPk2)) st.fieldLockedCards.add(sPosKey);
+                                        msg[0] += " Shielded card advances!";
+                                    }
+                                }
+                            } else {
+                                sRow[sIdx] = BattleState.makeSlot(sId, Math.max(1, splashNewHp));
+                                msg[0] += " Tongue Grapple: " + actualSplash + " splash → " + sCard.getName() + "!";
+                            }
+                        }
+                    }
+                }
             } else {
                 if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
@@ -867,6 +923,26 @@ public class BattleScreen {
             if ("icd001".equals(atkId)) {
                 st.frozenCards.put(tgtPosKey, Math.max(st.frozenCards.getOrDefault(tgtPosKey, 0), 2));
                 msg[0] += " " + tgtC.getName() + " is Frozen for 1 round!";
+            }
+        }
+
+        // Pawn: after attacking, move to same-column adjacent row if empty
+        if ("pwn001".equals(atkId) && !st.fieldLockedCards.contains(atkPosKey)) {
+            boolean targetFront  = !atkFront;
+            String[] otherRow    = targetFront ? (atkIsP1 ? st.p1Front : st.p2Front)
+                                               : (atkIsP1 ? st.p1Back  : st.p2Back);
+            if (otherRow[atkIdx] == null || otherRow[atkIdx].isEmpty()) {
+                String newPosKey = BattleState.posKey(atkIsP1, targetFront, atkIdx);
+                otherRow[atkIdx] = atkRow[atkIdx];
+                atkRow[atkIdx]   = "";
+                Integer av = st.fieldAtkBonus.remove(atkPosKey);       if (av != null) st.fieldAtkBonus.put(newPosKey, av);
+                Integer bv = st.burnedCards.remove(atkPosKey);          if (bv != null) st.burnedCards.put(newPosKey, bv);
+                Integer fv = st.frozenCards.remove(atkPosKey);          if (fv != null) st.frozenCards.put(newPosKey, fv);
+                if (st.focusedCards.remove(atkPosKey))       st.focusedCards.add(newPosKey);
+                if (st.mantisSecondAttack.remove(atkPosKey)) st.mantisSecondAttack.add(newPosKey);
+                if (st.actionsUsed.remove(atkPosKey))        st.actionsUsed.add(newPosKey);
+                if (st.abilityUsedThisTurn.remove(atkPosKey)) st.abilityUsedThisTurn.add(newPosKey);
+                msg[0] += " Pawn dashes to the " + (targetFront ? "frontline" : "backline") + "!";
             }
         }
 
