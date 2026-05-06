@@ -20,7 +20,7 @@ public class AbilityResolver {
     // ── Tokens ────────────────────────────────────────────────────────────────
 
     public static final String SCRAP_ID    = "__SCRAP__";
-    public static final Card   SCRAP_CARD  = new Card(SCRAP_ID, "Scrap", "bot", 0, 1, 0, "Token");
+    public static final Card   SCRAP_CARD  = new Card(SCRAP_ID, "Scrap", "item", 0, 1, 0, "Token");
     public static final String MUD_WALL_ID = "__MUD_WALL__";
     public static final Card   MUD_WALL_CARD = new Card(MUD_WALL_ID, "Mud Wall", "item", 0, 5, 0, "Token");
 
