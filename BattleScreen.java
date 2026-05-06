@@ -37,9 +37,10 @@ public class BattleScreen {
         int[]         abilityChoice = { 0 };    // Upgrade Bot: 0=ATK 1=HP
         String[]      msg          = { "" };
         boolean[]     bypass       = { false };
-        // Multi-step ability state (Furnace Bot, Iron Tusks Bot)
-        String[]      multiStepPhase = { null };   // "SCRAP_SELECT" or "BOT_TARGET"
+        // Multi-step ability state (Furnace Bot, Iron Tusks Bot, Echo Spirit, Mimic)
+        String[]      multiStepPhase = { null };   // "SCRAP_SELECT", "BOT_TARGET", "ECHO_COPY_SELECT", "MIMIC_SELECT", "COPY_TARGET_SELECT"
         String[]      multiStepCard  = { null };   // posKey of card initiating multi-step
+        String[]      echoCopiedCard = { null };   // cardId being copied by Echo or Mimic
         @SuppressWarnings("unchecked")
         List<String>[] scrapSelected = new List[]{ new ArrayList<String>() };
 
@@ -104,12 +105,12 @@ public class BattleScreen {
             field.add(fieldRow(st, cardMap, oppIsP1, false, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
                                stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
-                               multiStepPhase, multiStepCard, scrapSelected, OPP_BG));
+                               multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard, OPP_BG));
             field.add(Box.createVerticalStrut(3));
             field.add(fieldRow(st, cardMap, oppIsP1, true, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
                                stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
-                               multiStepPhase, multiStepCard, scrapSelected, OPP_BG));
+                               multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard, OPP_BG));
 
             JPanel sep = new JPanel();
             sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 4));
@@ -121,12 +122,12 @@ public class BattleScreen {
             field.add(fieldRow(st, cardMap, amP1, true, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
                                stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
-                               multiStepPhase, multiStepCard, scrapSelected, MY_BG));
+                               multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard, MY_BG));
             field.add(Box.createVerticalStrut(3));
             field.add(fieldRow(st, cardMap, amP1, false, amP1, myTurn,
                                selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
                                stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
-                               multiStepPhase, multiStepCard, scrapSelected, MY_BG));
+                               multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard, MY_BG));
 
             wrapper.add(field, BorderLayout.CENTER);
 
@@ -138,7 +139,7 @@ public class BattleScreen {
                       BorderLayout.CENTER);
             south.add(controls(stRef, amP1, myTurn, selHand, selField, abilitySource, abilityTgtType,
                                 abilityChoice, msg, rebuildRef, bypass, user, onComplete, champLines, cardMap,
-                                multiStepPhase, multiStepCard, scrapSelected),
+                                multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard),
                       BorderLayout.SOUTH);
             wrapper.add(south, BorderLayout.SOUTH);
 
@@ -215,7 +216,7 @@ public class BattleScreen {
                                     Runnable[] rebuildRef, boolean[] bypass,
                                     Map<String, ChampionLine> champLines,
                                     String[] multiStepPhase, String[] multiStepCard,
-                                    List<String>[] scrapSelected, Color bg) {
+                                    List<String>[] scrapSelected, String[] echoCopiedCard, Color bg) {
         JPanel row = new JPanel(new GridLayout(1, 5, 4, 0));
         row.setBackground(bg);
         row.setBorder(new EmptyBorder(3, 0, 3, 0));
@@ -223,7 +224,7 @@ public class BattleScreen {
             row.add(slot(st, cardMap, fieldIsP1, isFront, i, amP1, myTurn,
                          selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
                          stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
-                         multiStepPhase, multiStepCard, scrapSelected));
+                         multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard));
         return row;
     }
 
@@ -239,7 +240,7 @@ public class BattleScreen {
                                 String battleId, Runnable onComplete, Runnable[] rebuildRef,
                                 boolean[] bypass, Map<String, ChampionLine> champLines,
                                 String[] multiStepPhase, String[] multiStepCard,
-                                List<String>[] scrapSelected) {
+                                List<String>[] scrapSelected, String[] echoCopiedCard) {
 
         String[] row   = isFront ? (fieldIsP1 ? st.p1Front : st.p2Front)
                                  : (fieldIsP1 ? st.p1Back  : st.p2Back);
@@ -254,8 +255,11 @@ public class BattleScreen {
         boolean hasAct    = !empty && st.hasAction(fieldIsP1, isFront, idx);
         boolean isSel     = posKey.equals(selField[0]);
 
-        boolean inScrapSelect = "SCRAP_SELECT".equals(multiStepPhase[0]);
-        boolean inBotTarget   = "BOT_TARGET".equals(multiStepPhase[0]);
+        boolean inScrapSelect      = "SCRAP_SELECT".equals(multiStepPhase[0]);
+        boolean inBotTarget        = "BOT_TARGET".equals(multiStepPhase[0]);
+        boolean inEchoCopySelect   = "ECHO_COPY_SELECT".equals(multiStepPhase[0]);
+        boolean inMimicSelect      = "MIMIC_SELECT".equals(multiStepPhase[0]);
+        boolean inCopyTargetSelect = "COPY_TARGET_SELECT".equals(multiStepPhase[0]);
         boolean isFrozenCard  = !empty && st.isFrozen(posKey);
         boolean isBurnedCard  = !empty && st.burnedCards.containsKey(posKey);
 
@@ -266,10 +270,11 @@ public class BattleScreen {
         boolean atkIsFrontline = selField[0] != null && selField[0].charAt(2) == 'f';
         boolean batEyeBlocked  = "bte001".equals(cardId) && atkIsFrontline;
 
-        boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
-        boolean canSelect = isMyField && !empty && myTurn && hasAct && !isFrozenCard && selHand[0] < 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget;
+        boolean anyNewPhase = inEchoCopySelect || inMimicSelect || inCopyTargetSelect;
+        boolean canPlace  = isMyField && empty  && myTurn && selHand[0] >= 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget && !anyNewPhase;
+        boolean canSelect = isMyField && !empty && myTurn && hasAct && !isFrozenCard && selHand[0] < 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget && !anyNewPhase;
         boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null && abilitySource[0] == null
-                             && !inScrapSelect && !inBotTarget && !batEyeBlocked
+                             && !inScrapSelect && !inBotTarget && !anyNewPhase && !batEyeBlocked
                              && ((bypass[0] || atkIsDreamWanderer)
                                  ? st.isTargetableBypass(fieldIsP1, isFront, idx)
                                  : st.isTargetable(fieldIsP1, isFront, idx));
@@ -277,10 +282,30 @@ public class BattleScreen {
         // Ability targeting mode — supports both friendly and enemy targets depending on ability
         String abilitySourceCardId = abilitySource[0] != null ? getCardIdAtPosKey(st, abilitySource[0]) : null;
         boolean abilityTargetsEnemy = "enemy".equals(AbilityResolver.TARGET_SIDE.get(abilitySourceCardId));
+        boolean tgtSideImmune = !isMyField && AbilityResolver.isImmuneToAbilities(fieldIsP1, st);
         boolean canAbilityTarget = !empty && myTurn && abilitySource[0] != null
                 && card != null
+                && !tgtSideImmune
+                && !anyNewPhase
                 && (abilityTargetsEnemy ? !isMyField : isMyField)
                 && (abilityTgtType[0] == null || abilityTgtType[0].equals(card.getType().toLowerCase()));
+
+        // Echo copy select: click a friendly card with a copyable ability
+        boolean canEchoCopy = inEchoCopySelect && isMyField && !empty && myTurn
+                && isCopyableAbility(cardId);
+
+        // Mimic select: click an enemy card with a copyable ability
+        boolean canMimicTarget = inMimicSelect && !isMyField && !empty && myTurn
+                && isCopyableAbility(cardId);
+
+        // Copy target select: click appropriate target for the copied ability
+        boolean copiedAbilityTargetsEnemy = inCopyTargetSelect
+                && "enemy".equals(AbilityResolver.TARGET_SIDE.get(echoCopiedCard[0]));
+        String copiedTargetType = inCopyTargetSelect ? AbilityResolver.TARGET_TYPE.get(echoCopiedCard[0]) : null;
+        boolean canCopyTarget = inCopyTargetSelect && !empty && myTurn && card != null
+                && (copiedAbilityTargetsEnemy ? !isMyField : isMyField)
+                && !(copiedAbilityTargetsEnemy && AbilityResolver.isImmuneToAbilities(fieldIsP1, st))
+                && (copiedTargetType == null || copiedTargetType.equals(card.getType().toLowerCase()));
 
         // Scrap-select mode: click scraps on MY field to toggle selection
         boolean canSelectScrap = inScrapSelect && isMyField && !empty && myTurn
@@ -303,26 +328,34 @@ public class BattleScreen {
                       : (canAbilityTarget ? new Color(55, 50, 20)
                       : (canBotTarget     ? new Color(55, 50, 20)
                       : (canSelectScrap   ? new Color(50, 45, 20)
-                      : (empty ? EMPTY_BG : CARD_BG))))));
+                      : (canEchoCopy      ? new Color(20, 55, 55)
+                      : (canMimicTarget   ? new Color(55, 20, 55)
+                      : (canCopyTarget    ? new Color(55, 40, 10)
+                      : (empty ? EMPTY_BG : CARD_BG)))))))));
         Color border  = isSel ? SEL_ATK
                       : (isSelectedScrap  ? new Color(255, 200, 60)
                       : (canTarget        ? SEL_TGT
                       : (canAbilityTarget ? SEL_ABL
                       : (canBotTarget     ? SEL_ABL
                       : (canSelectScrap   ? new Color(200, 160, 40)
+                      : (canEchoCopy      ? new Color(60, 200, 200)
+                      : (canMimicTarget   ? new Color(180, 80, 220)
+                      : (canCopyTarget    ? new Color(220, 160, 60)
                       : (canPlace  ? new Color(100,220,130)
                       : (canSelect ? new Color(100,160,255)
-                      : (empty     ? new Color(40,40,62) : accent))))))));
+                      : (empty     ? new Color(40,40,62) : accent)))))))))));
 
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(bgColor);
         p.setPreferredSize(new Dimension(108, 120));
         boolean anyClickable = canPlace || canSelect || canTarget || canAbilityTarget
-                               || canSelectScrap || isSelectedScrap || canBotTarget;
+                               || canSelectScrap || isSelectedScrap || canBotTarget
+                               || canEchoCopy || canMimicTarget || canCopyTarget;
         p.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(border, (isSel || canTarget || canPlace || canAbilityTarget
-                                    || isSelectedScrap || canSelectScrap || canBotTarget) ? 2 : 1, true),
+                                    || isSelectedScrap || canSelectScrap || canBotTarget
+                                    || canEchoCopy || canMimicTarget || canCopyTarget) ? 2 : 1, true),
             new EmptyBorder(4, 5, 4, 5)));
         if (anyClickable)
             p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -401,7 +434,13 @@ public class BattleScreen {
                         st2.burnedCards.remove(newPosKey);
                         st2.frozenCards.remove(newPosKey);
                         st2.focusedCards.remove(newPosKey);
-                        targetRow[idx] = BattleState.makeSlot(id, c != null ? c.getHp() : 1);
+                        // Conglamorat: HP and ATK equal current souls at placement time
+                        int placeHp = c != null ? c.getHp() : 1;
+                        if ("cng001".equals(id)) {
+                            placeHp = souls;
+                            st2.fieldAtkBonus.put(newPosKey, souls);
+                        }
+                        targetRow[idx] = BattleState.makeSlot(id, placeHp);
                         hand.remove(selHand[0]);
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
                         if (amP1) st2.p1Souls -= cost; else st2.p2Souls -= cost;
@@ -464,6 +503,89 @@ public class BattleScreen {
                         multiStepPhase[0] = null; multiStepCard[0] = null; scrapSelected[0].clear();
                         selField[0] = null;
                         stRef[0].save(); rebuildRef[0].run();
+                    } else if (canEchoCopy) {
+                        // Echo Spirit: selected a friendly card to copy its ability
+                        String aType = AbilityResolver.abilityType(cardId);
+                        echoCopiedCard[0] = cardId;
+                        if ("active".equals(aType)) {
+                            // Consume 1 soul cap and execute immediately
+                            if (amP1) stRef[0].p1SoulCap = Math.max(0, stRef[0].p1SoulCap - 1);
+                            else      stRef[0].p2SoulCap = Math.max(0, stRef[0].p2SoulCap - 1);
+                            String result = AbilityResolver.executeActive(stRef[0], cardId, amP1, cardMap);
+                            boolean srcFront = multiStepCard[0].charAt(2) == 'f';
+                            int     srcIdx   = Character.getNumericValue(multiStepCard[0].charAt(3));
+                            boolean srcIsP1  = multiStepCard[0].startsWith("p1");
+                            stRef[0].useAction(srcIsP1, srcFront, srcIdx);
+                            stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
+                            String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
+                            msg[0] = "Echo: copied " + (card != null ? card.getName() : cardId)
+                                     + " — " + result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                            echoCopiedCard[0] = null;
+                            multiStepPhase[0] = null; multiStepCard[0] = null;
+                            selField[0] = null;
+                            stRef[0].save(); rebuildRef[0].run();
+                        } else {
+                            // Targeted: enter copy target select phase
+                            multiStepPhase[0] = "COPY_TARGET_SELECT";
+                            msg[0] = "Echo: select a target for "
+                                     + (card != null ? card.getName() : cardId) + "'s ability";
+                            rebuildRef[0].run();
+                        }
+                    } else if (canMimicTarget) {
+                        // M3 Mimic: selected an enemy card to steal its ability
+                        String aType = AbilityResolver.abilityType(cardId);
+                        echoCopiedCard[0] = cardId;
+                        if ("active".equals(aType)) {
+                            // Execute stolen ability immediately (from user's perspective)
+                            String result = AbilityResolver.executeActive(stRef[0], cardId, amP1, cardMap);
+                            boolean srcFront = multiStepCard[0].charAt(2) == 'f';
+                            int     srcIdx   = Character.getNumericValue(multiStepCard[0].charAt(3));
+                            boolean srcIsP1  = multiStepCard[0].startsWith("p1");
+                            stRef[0].useAction(srcIsP1, srcFront, srcIdx);
+                            stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
+                            String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
+                            msg[0] = "Mimic: stole " + (card != null ? card.getName() : cardId)
+                                     + " — " + result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                            echoCopiedCard[0] = null;
+                            multiStepPhase[0] = null; multiStepCard[0] = null;
+                            selField[0] = null;
+                            stRef[0].save();
+                            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+                        } else {
+                            // Targeted: enter copy target select phase
+                            multiStepPhase[0] = "COPY_TARGET_SELECT";
+                            msg[0] = "Mimic: select a target for "
+                                     + (card != null ? card.getName() : cardId) + "'s ability";
+                            rebuildRef[0].run();
+                        }
+                    } else if (canCopyTarget) {
+                        // Resolve the copied/mimicked ability on the selected target
+                        String srcCardAtPosKey = getCardIdAtPosKey(stRef[0], multiStepCard[0]);
+                        boolean srcFront = multiStepCard[0].charAt(2) == 'f';
+                        int     srcIdx   = Character.getNumericValue(multiStepCard[0].charAt(3));
+                        boolean srcIsP1  = multiStepCard[0].startsWith("p1");
+                        boolean isEchoSrc = "ecs001".equals(srcCardAtPosKey);
+                        // Consume soul cap for Echo Spirit
+                        if (isEchoSrc) {
+                            if (amP1) stRef[0].p1SoulCap = Math.max(0, stRef[0].p1SoulCap - 1);
+                            else      stRef[0].p2SoulCap = Math.max(0, stRef[0].p2SoulCap - 1);
+                        }
+                        String result = AbilityResolver.executeEchoCopy(stRef[0], echoCopiedCard[0],
+                                amP1, fieldIsP1, isFront, idx, 0, cardMap);
+                        stRef[0].useAction(srcIsP1, srcFront, srcIdx);
+                        stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
+                        String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
+                        String prefix = isEchoSrc ? "Echo: " : "Mimic: ";
+                        msg[0] = prefix + result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                        echoCopiedCard[0] = null;
+                        multiStepPhase[0] = null; multiStepCard[0] = null;
+                        selField[0] = null;
+                        stRef[0].save();
+                        if (isEchoSrc) {
+                            rebuildRef[0].run();
+                        } else {
+                            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+                        }
                     }
                 }
             });
@@ -671,6 +793,11 @@ public class BattleScreen {
         if (sv == null || sv.isEmpty()) return;
         String cardId = BattleState.slotId(sv);
 
+        if (AbilityResolver.isAbilityNullified(amP1, st)) {
+            msg[0] = "Void: card abilities nullified by enemy Heavenly Shade!";
+            rebuildRef[0].run();
+            return;
+        }
         String result = AbilityResolver.executeActive(st, cardId, amP1, cardMap);
         if (result != null) {
             st.useAction(fieldIsP1, isFront, idx);
@@ -702,6 +829,17 @@ public class BattleScreen {
                      : (srcIsP1 ? st.p1Back  : st.p2Back)[srcIdx]);
         if (srcCardId == null) { abilitySource[0] = null; rebuildRef[0].run(); return; }
 
+        if (AbilityResolver.isAbilityNullified(amP1, st)) {
+            msg[0] = "Void: card abilities nullified by enemy Heavenly Shade!";
+            abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+            rebuildRef[0].run(); return;
+        }
+        if (tgtIsP1 != amP1 && AbilityResolver.isImmuneToAbilities(tgtIsP1, st)) {
+            msg[0] = "Sovereign: the enemy champion makes their cards immune to abilities!";
+            abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+            rebuildRef[0].run(); return;
+        }
+
         String result = AbilityResolver.executeTargeted(st, srcCardId, amP1,
                                                           tgtIsP1, tgtFront, tgtIdx,
                                                           abilityChoice, cardMap);
@@ -722,12 +860,29 @@ public class BattleScreen {
                                            Map<String, ChampionLine> champLines,
                                            boolean amP1, BattleState[] stRef,
                                            int[] selHand, String[] selField, String[] msg,
-                                           Runnable[] rebuildRef, boolean[] bypass) {
+                                           Runnable[] rebuildRef, boolean[] bypass,
+                                           String[] multiStepPhase, String[] multiStepCard,
+                                           String[] echoCopiedCard) {
         String champId = AbilityResolver.currentChampId(st, amP1);
         if (champId == null) { msg[0] = "No champion on field."; rebuildRef[0].run(); return; }
 
         if (!st.hasAction(amP1, false, BattleState.CHAMP_SLOT)) {
             msg[0] = "Champion has already acted this turn."; rebuildRef[0].run(); return;
+        }
+
+        if (AbilityResolver.isAbilityNullified(amP1, st)) {
+            msg[0] = "Void: champion ability nullified by enemy Heavenly Shade!";
+            rebuildRef[0].run(); return;
+        }
+
+        if ("M3".equals(champId)) {
+            multiStepPhase[0] = "MIMIC_SELECT";
+            multiStepCard[0]  = BattleState.posKey(amP1, false, BattleState.CHAMP_SLOT);
+            echoCopiedCard[0] = null;
+            msg[0] = "Mimic: select an enemy card to steal its ability!";
+            st.save(); stRef[0] = st;
+            rebuildRef[0].run();
+            return;
         }
 
         if ("T3".equals(champId)) {
@@ -866,9 +1021,12 @@ public class BattleScreen {
             boolean isFree = stRef[0].freeplayCards.contains(c.getId() + "_" + (amP1 ? "p1" : "p2"));
             String costTxt = isFree ? "FREE" : "Cost:" + cost;
 
-            JLabel n = lbl(c.getName(),                          Font.BOLD,  9, nameClr); n.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel o = lbl(costTxt,                              Font.PLAIN, 9, costClr); o.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel s = lbl("A:" + c.getAttack() + " H:" + c.getHp(), Font.PLAIN, 9, new Color(140,140,165)); s.setAlignmentX(Component.LEFT_ALIGNMENT);
+            String statStr = "cng001".equals(c.getId())
+                    ? "A:" + souls + " H:" + souls + " (=souls)"
+                    : "A:" + c.getAttack() + " H:" + c.getHp();
+            JLabel n = lbl(c.getName(), Font.BOLD,  9, nameClr); n.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JLabel o = lbl(costTxt,     Font.PLAIN, 9, costClr); o.setAlignmentX(Component.LEFT_ALIGNMENT);
+            JLabel s = lbl(statStr,     Font.PLAIN, 9, new Color(140,140,165)); s.setAlignmentX(Component.LEFT_ALIGNMENT);
             card.add(n); card.add(o); card.add(s);
 
             if (clickable) {
@@ -897,7 +1055,7 @@ public class BattleScreen {
                                     Map<String, ChampionLine> champLines,
                                     Map<String, Card> cardMap,
                                     String[] multiStepPhase, String[] multiStepCard,
-                                    List<String>[] scrapSelected) {
+                                    List<String>[] scrapSelected, String[] echoCopiedCard) {
         JPanel p = new JPanel(new BorderLayout(8, 0));
         p.setBackground(BG);
         p.setBorder(new EmptyBorder(4, 0, 0, 0));
@@ -915,6 +1073,7 @@ public class BattleScreen {
                     multiStepPhase[0] = null;
                     multiStepCard[0]  = null;
                     scrapSelected[0].clear();
+                    echoCopiedCard[0] = null;
                     selField[0]       = null;
                     msg[0] = "";
                     rebuildRef[0].run();
@@ -970,15 +1129,30 @@ public class BattleScreen {
                     String aType = AbilityResolver.abilityType(srcCardId);
                     boolean isMultiStep = "fnb001".equals(srcCardId) || "itb001".equals(srcCardId);
                     boolean isConstructor = "cnb001".equals(srcCardId);
-                    if (srcCard != null && ("active".equals(aType) || "targeted".equals(aType) || isMultiStep || isConstructor)
+                    boolean isEcho = "ecs001".equals(srcCardId);
+                    if (srcCard != null && ("active".equals(aType) || "targeted".equals(aType) || isMultiStep || isConstructor || isEcho)
                             && !(srcCard instanceof Champion)) {
-                        int mySouls = amP1 ? stRef[0].p1Souls : stRef[0].p2Souls;
-                        boolean ablEnabled = AbilityResolver.canUseAbility(srcCardId, mySouls);
+                        int mySouls   = amP1 ? stRef[0].p1Souls   : stRef[0].p2Souls;
+                        int mySoulCap = amP1 ? stRef[0].p1SoulCap : stRef[0].p2SoulCap;
+                        boolean voidBlocked = AbilityResolver.isAbilityNullified(amP1, stRef[0]);
+                        boolean ablEnabled = !voidBlocked && (isEcho
+                                ? mySoulCap >= 1
+                                : AbilityResolver.canUseAbility(srcCardId, mySouls));
                         String lblTxt = srcCard.getName() + ": Use Ability"
-                                        + (ablEnabled ? "" : " (need soul)");
+                                        + (voidBlocked ? " [Void]" : (ablEnabled ? "" : " (need soul)"));
                         JButton ablBtn = smallBtn(lblTxt, ablEnabled ? SEL_ABL : new Color(80, 80, 100));
                         ablBtn.setEnabled(ablEnabled);
                         ablBtn.addActionListener(e -> {
+                            if (isEcho) {
+                                // Echo Spirit: enter copy select phase
+                                multiStepCard[0]  = selField[0];
+                                multiStepPhase[0] = "ECHO_COPY_SELECT";
+                                echoCopiedCard[0] = null;
+                                selField[0] = null;
+                                msg[0] = "Echo: select a friendly card to copy its ability";
+                                rebuildRef[0].run();
+                                return;
+                            }
                             if (isConstructor) {
                                 // Constructor Bot: pick a bot from hand costing ≤3
                                 List<String> hand = amP1 ? stRef[0].p1Hand : stRef[0].p2Hand;
@@ -1048,14 +1222,17 @@ public class BattleScreen {
             if (champCard instanceof Champion) {
                 Champion ch = (Champion) champCard;
                 if (!ch.getAbility().isEmpty()) {
-                    boolean champActed = !stRef[0].hasAction(amP1, false, BattleState.CHAMP_SLOT);
-                    String btnLabel = ch.getName() + ": " + ch.getAbility().split("[-–]")[0].trim();
+                    boolean champActed   = !stRef[0].hasAction(amP1, false, BattleState.CHAMP_SLOT);
+                    boolean voidBlkChamp = AbilityResolver.isAbilityNullified(amP1, stRef[0]);
+                    String btnLabel = ch.getName() + ": " + ch.getAbility().split("[-–]")[0].trim()
+                                      + (voidBlkChamp ? " [Void]" : "");
                     Color  btnColor = bypass[0] ? new Color(255, 160, 60) : new Color(220, 180, 60);
                     JButton abilityBtn = smallBtn(btnLabel, btnColor);
-                    abilityBtn.setEnabled(!champActed);
+                    abilityBtn.setEnabled(!champActed && !voidBlkChamp);
                     abilityBtn.addActionListener(ev ->
                         doChampionAbility(stRef[0], cardMap, champLines, amP1,
-                                          stRef, selHand, selField, msg, rebuildRef, bypass));
+                                          stRef, selHand, selField, msg, rebuildRef, bypass,
+                                          multiStepPhase, multiStepCard, echoCopiedCard));
                     btns.add(abilityBtn);
                 }
             }
@@ -1115,6 +1292,14 @@ public class BattleScreen {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static boolean isCopyableAbility(String cardId) {
+        String aType = AbilityResolver.abilityType(cardId);
+        if (!"active".equals(aType) && !"targeted".equals(aType)) return false;
+        // Exclude multi-step and self-referential abilities
+        return !"fnb001".equals(cardId) && !"itb001".equals(cardId)
+            && !"cnb001".equals(cardId) && !"ecs001".equals(cardId);
+    }
 
     private static String getCardIdAtPosKey(BattleState st, String posKey) {
         if (posKey == null) return null;

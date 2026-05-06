@@ -195,7 +195,7 @@ public class AbilityResolver {
             // High-complexity stubs
             case "D3": return "[Steal not yet implemented]";
             case "D5": return "[Martyr not yet implemented]";
-            case "M3": return "[Mimic not yet implemented]";
+            case "M3": return null; // BattleScreen handles via MIMIC_SELECT phase
             default:
                 String msg = executeActive(bs, champId, isP1, cardMap);
                 return msg != null ? msg : "No active ability.";
@@ -214,6 +214,7 @@ public class AbilityResolver {
     /** Returns the effective soul cost for placing a card, considering passives. */
     public static int effectiveCost(Card card, BattleState bs, boolean isP1,
                                      Map<String, ChampionLine> lines) {
+        if ("cng001".equals(card.getId())) return isP1 ? bs.p1Souls : bs.p2Souls;
         int cost = card.getCost();
         // Elder Mothling (B4) – all your cards cost 1 less
         if ("B4".equals(currentChampId(bs, isP1))) cost = Math.max(0, cost - 1);
@@ -311,6 +312,21 @@ public class AbilityResolver {
         for (String s : front) if (SCRAP_ID.equals(BattleState.slotId(s))) count++;
         for (String s : back)  if (SCRAP_ID.equals(BattleState.slotId(s))) count++;
         return count;
+    }
+
+    /**
+     * Execute a copied ability via Echo Spirit or M3 Mimic.
+     * For targeted abilities, routes to executeTargeted; for active, to executeActive.
+     */
+    public static String executeEchoCopy(BattleState bs, String copiedCardId, boolean userIsP1,
+                                          boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                          int choice, Map<String, Card> cardMap) {
+        if (TARGETED_ACTIVE.containsKey(copiedCardId)) {
+            return executeTargeted(bs, copiedCardId, userIsP1, tgtIsP1, tgtFront, tgtIdx, choice, cardMap);
+        } else if (ACTIVE.containsKey(copiedCardId)) {
+            return executeActive(bs, copiedCardId, userIsP1, cardMap);
+        }
+        return "Echo: no ability to copy.";
     }
 
     // ── Multi-step ability resolvers (called from BattleScreen after UI phase) ──

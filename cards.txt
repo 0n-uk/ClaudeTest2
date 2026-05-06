@@ -35,3 +35,5 @@ Card{id='cld001', name='Cloudling', type='spirit', attack=0, hp=4, cost=2, abili
 Card{id='icd001', name='Ice Dragon', type='dragon', attack=10, hp=15, cost=10, ability='Attacks inflict freeze for 1 round'}
 Card{id='spd001', name='Spike Dragon', type='dragon', attack=7, hp=9, cost=8, ability='When attacked, deal 5 dmg to attacker'}
 Card{id='__MUD_WALL__', name='Mud Wall', type='item', attack=0, hp=5, cost=0, ability='Token'}
+Card{id='ecs001', name='Echo Spirit', type='spirit', attack=7, hp=5, cost=6, ability='(A) Echo- Use 1 soul cap to copy and use the ability of a card on field'}
+Card{id='cng001', name='Conglamorat', type='spirit', attack=0, hp=0, cost=0, ability='Stats and cost equal remaining souls when placed'}
