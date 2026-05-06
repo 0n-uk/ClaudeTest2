@@ -45,3 +45,8 @@ Card{id='gen001', name='Great Ent', type='pod', attack=9, hp=12, cost=10, abilit
 Card{id='dru001', name='Druid', type='pod', attack=7, hp=11, cost=10, ability='(P) Grove- All your Pod cards gain +1 ATK and HP each turn'}
 Card{id='gbu001', name='Great Bushy', type='pod', attack=3, hp=18, cost=10, ability='(P) When attacked, gain +6 HP'}
 Card{id='tbu001', name='Thorny Bushy', type='pod', attack=6, hp=14, cost=10, ability='(P) Thorns- When attacked, deals 6 damage to attacker'}
+Card{id='pwn001', name='Pawn', type='knight', attack=1, hp=1, cost=1, ability='(P) After attacking, if same-column adjacent row is empty, move to that row'}
+Card{id='ima001', name='Ice Mage Apprentice', type='knight', attack=3, hp=4, cost=4, ability='(A) Flip 3 coins. For each Heads, freeze a random enemy for 2 rounds'}
+Card{id='trp001', name='Trumpeteer', type='knight', attack=2, hp=3, cost=2, ability='(A) Frontline Pawns gain +1 HP. Backline Pawns gain +1 ATK'}
+Card{id='cmf001', name='Commander Fareth', type='knight', attack=9, hp=12, cost=10, ability='(A) Inspiration- All your Knight cards on field gain +3 ATK'}
+Card{id='blw001', name='Bollywurg', type='beast', attack=7, hp=17, cost=10, ability='(P) Tongue Grapple- When this kills an enemy, deal damage equal to that enemy max HP to a random other enemy'}

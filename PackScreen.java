@@ -47,7 +47,8 @@ public class PackScreen {
             "shs001", "drw001", "lmt001", "glm001", "bte001", "esr001",
             "frs001", "ics001", "wts001", "nts001", "ers001", "wns001",
             "cld001", "icd001", "spd001",
-            "ecs001", "cng001"));
+            "ecs001", "cng001",
+            "pwn001", "trp001"));
 
         Set<String> scrapIds = new HashSet<>(Arrays.asList(
             "sb001", "bb001", "shb001",
@@ -56,7 +57,8 @@ public class PackScreen {
 
         Set<String> endoraIds = new HashSet<>(Arrays.asList(
             "psh001", "pod001", "sen001", "sbu001",
-            "gen001", "dru001", "gbu001", "tbu001"));
+            "gen001", "dru001", "gbu001", "tbu001",
+            "ima001", "trp001", "cmf001", "blw001"));
 
         List<Card> starter = new ArrayList<>();
         List<Card> scrap   = new ArrayList<>();
