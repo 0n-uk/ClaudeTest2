@@ -49,7 +49,7 @@ public class BattleScreen {
 
         // Load and play battle music
         try {
-            File audioFile = new File("5382405984223232.wav");
+            File audioFile = new File("Escelator.wav");
             AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile);
             battleMusic = AudioSystem.getClip();
             battleMusic.open(audioInputStream);
