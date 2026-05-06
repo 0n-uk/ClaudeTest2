@@ -108,36 +108,69 @@ public class CardViewer {
     }
 
     static JPanel buildCardPanel(Card card) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        return buildCardPanel(card, 200, 260);
+    }
+
+    static JPanel buildCardPanel(Card card, int w, int h) {
+        int symSize  = Math.max(14, w / 13);
+        int topFont  = Math.max(9,  w / 17);
+        int imgSize  = Math.max(40, (int)(h * 0.44));
+        int statFont = Math.max(10, w / 18);
+
+        JPanel panel = new JPanel(new BorderLayout(0, 4));
         panel.setBackground(new Color(50, 50, 70));
+        panel.setPreferredSize(new Dimension(w, h));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(typeColor(card.getType()), 2, true),
-                new EmptyBorder(8, 10, 8, 10)));
+                new EmptyBorder(6, 8, 6, 8)));
 
-        JLabel img = new JLabel(CardImageLoader.get(card.getId(), 120, 120));
-        img.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(img);
-        panel.add(Box.createVerticalStrut(6));
+        // Top row: type symbol + name + cost
+        JPanel top = new JPanel(new BorderLayout(4, 0));
+        top.setOpaque(false);
+        JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), symSize, symSize));
+        JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
+        nameL.setFont(new Font("SansSerif", Font.BOLD, topFont));
+        nameL.setForeground(Color.WHITE);
+        JLabel costL = new JLabel(String.valueOf(card.getCost()), SwingConstants.CENTER);
+        costL.setFont(new Font("SansSerif", Font.BOLD, topFont));
+        costL.setForeground(new Color(100, 160, 220));
+        top.add(symL,  BorderLayout.WEST);
+        top.add(nameL, BorderLayout.CENTER);
+        top.add(costL, BorderLayout.EAST);
+        panel.add(top, BorderLayout.NORTH);
 
-        panel.add(label(card.getName(), Font.BOLD, 14, Color.WHITE));
-        panel.add(Box.createVerticalStrut(4));
-        panel.add(label("Type: " + card.getType(), Font.ITALIC, 11, typeColor(card.getType())));
-        panel.add(label("ID: " + card.getId(), Font.PLAIN, 10, new Color(150, 150, 160)));
-        panel.add(Box.createVerticalStrut(6));
+        // Center: card image
+        JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), imgSize, imgSize));
+        imgL.setHorizontalAlignment(SwingConstants.CENTER);
+        panel.add(imgL, BorderLayout.CENTER);
 
-        JPanel stats = new JPanel(new GridLayout(1, 3));
-        stats.setOpaque(false);
-        stats.add(statBox("ATK",  card.getAttack(), new Color(220, 80, 80)));
-        stats.add(statBox("HP",   card.getHp(),     new Color(80, 200, 100)));
-        stats.add(statBox("COST", card.getCost(),   new Color(100, 160, 220)));
-        panel.add(stats);
-
-        panel.add(Box.createVerticalStrut(6));
-        JLabel abilityLabel = new JLabel("<html><i>" + card.getAbility() + "</i></html>");
-        abilityLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        abilityLabel.setForeground(new Color(220, 200, 120));
-        panel.add(abilityLabel);
+        // Bottom row: ATK + info button + HP
+        JPanel bot = new JPanel(new BorderLayout(4, 0));
+        bot.setOpaque(false);
+        JLabel atkL = new JLabel("⚔ " + card.getAttack());
+        atkL.setFont(new Font("SansSerif", Font.BOLD, statFont));
+        atkL.setForeground(new Color(220, 80, 80));
+        JLabel hpL = new JLabel(card.getHp() + " ♥", SwingConstants.RIGHT);
+        hpL.setFont(new Font("SansSerif", Font.BOLD, statFont));
+        hpL.setForeground(new Color(80, 200, 100));
+        JButton infoBtn = new JButton("ℹ");
+        infoBtn.setFont(new Font("SansSerif", Font.BOLD, statFont));
+        infoBtn.setForeground(new Color(220, 200, 120));
+        infoBtn.setBackground(new Color(50, 50, 70));
+        infoBtn.setBorder(BorderFactory.createEmptyBorder(1, 6, 1, 6));
+        infoBtn.setContentAreaFilled(false);
+        infoBtn.setFocusPainted(false);
+        infoBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        final String abilText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
+        final String cardNameStr = card.getName();
+        infoBtn.addActionListener(e -> JOptionPane.showMessageDialog(
+                infoBtn,
+                "<html><b>" + cardNameStr + "</b><br><br>" + abilText + "</html>",
+                "Ability", JOptionPane.INFORMATION_MESSAGE));
+        bot.add(atkL,    BorderLayout.WEST);
+        bot.add(infoBtn, BorderLayout.CENTER);
+        bot.add(hpL,     BorderLayout.EAST);
+        panel.add(bot, BorderLayout.SOUTH);
 
         return panel;
     }
@@ -147,20 +180,6 @@ public class CardViewer {
         l.setFont(new Font("SansSerif", style, size));
         l.setForeground(color);
         return l;
-    }
-
-    private static JPanel statBox(String label, int value, Color color) {
-        JPanel box = new JPanel(new BorderLayout());
-        box.setOpaque(false);
-        JLabel top = new JLabel(label, SwingConstants.CENTER);
-        top.setFont(new Font("SansSerif", Font.BOLD, 9));
-        top.setForeground(new Color(180, 180, 190));
-        JLabel val = new JLabel(String.valueOf(value), SwingConstants.CENTER);
-        val.setFont(new Font("SansSerif", Font.BOLD, 16));
-        val.setForeground(color);
-        box.add(top, BorderLayout.NORTH);
-        box.add(val, BorderLayout.CENTER);
-        return box;
     }
 
     static Color typeColor(String type) {
