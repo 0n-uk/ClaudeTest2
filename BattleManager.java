@@ -5,7 +5,7 @@ public class BattleManager {
 
     private static final String QUEUE_FILE    = "battles/queue.txt";
     private static final String HEARTBEAT_DIR = "battles/heartbeat";
-    private static final long   HEARTBEAT_TTL = 6000; // ms before a player is considered disconnected
+    private static final long   HEARTBEAT_TTL = 30_000; // ms before a player is considered disconnected
 
     // ── Queue / matchmaking ───────────────────────────────────────────────────
 
@@ -141,13 +141,13 @@ public class BattleManager {
 
     public static boolean isAlive(String username) {
         File f = new File(HEARTBEAT_DIR + "/" + username + ".txt");
-        if (!f.exists()) return false;
+        if (!f.exists()) return true; // never connected yet — don't forfeit on absence alone
         String ts = readFile(f);
-        if (ts == null) return false;
+        if (ts == null) return true;
         try {
             return System.currentTimeMillis() - Long.parseLong(ts.trim()) < HEARTBEAT_TTL;
         } catch (NumberFormatException e) {
-            return false;
+            return true;
         }
     }
 
