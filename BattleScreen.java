@@ -62,9 +62,31 @@ public class BattleScreen {
         javax.swing.Timer[] hbTimerRef = { null };
         Runnable[]          rebuildRef = { null };
 
+        JTextArea logArea = new JTextArea();
+        logArea.setEditable(false);
+        logArea.setBackground(new Color(18, 18, 28));
+        logArea.setForeground(new Color(200, 200, 220));
+        logArea.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        logArea.setWrapStyleWord(true);
+        logArea.setLineWrap(true);
+        logArea.setMargin(new Insets(6, 8, 6, 8));
+        JScrollPane logScroll = new JScrollPane(logArea);
+        logScroll.setPreferredSize(new Dimension(175, 0));
+        logScroll.setBorder(BorderFactory.createTitledBorder(
+                new LineBorder(new Color(60, 60, 90), 1), "Battle Log",
+                javax.swing.border.TitledBorder.CENTER, javax.swing.border.TitledBorder.TOP,
+                new Font("SansSerif", Font.BOLD, 12), new Color(160, 160, 200)));
+        logScroll.getVerticalScrollBar().setUnitIncrement(16);
+        String[] lastLoggedMsg = { "" };
+
         rebuildRef[0] = () -> {
             BattleState st = stRef[0];
             if (st == null) return;
+            if (!msg[0].isEmpty() && !msg[0].equals(lastLoggedMsg[0])) {
+                logArea.append(msg[0] + "\n");
+                lastLoggedMsg[0] = msg[0];
+                logArea.setCaretPosition(logArea.getDocument().getLength());
+            }
             boolean amP1   = user.getUsername().equals(st.player1);
             boolean myTurn = user.getUsername().equals(st.currentTurn);
 
@@ -129,6 +151,7 @@ public class BattleScreen {
                                stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
                                multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard, MY_BG));
 
+            wrapper.add(logScroll, BorderLayout.WEST);
             wrapper.add(field, BorderLayout.CENTER);
 
             JPanel south = new JPanel(new BorderLayout(0, 4));
@@ -373,27 +396,61 @@ public class BattleScreen {
                 p.add(Box.createVerticalGlue());
             }
         } else if (card != null) {
+            // Top row: type symbol + name + current/max HP
+            JPanel topRow = new JPanel(new BorderLayout(2, 0));
+            topRow.setOpaque(false);
+            topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 15));
+            JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 12, 12));
+            JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
+            nameL.setFont(new Font("SansSerif", Font.BOLD, 9));
+            nameL.setForeground(isChamp ? CHAMP_CLR : Color.WHITE);
+            Color hpClr = hp <= card.getHp() / 3 + 1 ? new Color(220, 80, 80) : new Color(80, 200, 100);
+            JLabel hpTopL = new JLabel(hp + "/" + card.getHp(), SwingConstants.RIGHT);
+            hpTopL.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hpTopL.setForeground(hpClr);
+            topRow.add(symL,   BorderLayout.WEST);
+            topRow.add(nameL,  BorderLayout.CENTER);
+            topRow.add(hpTopL, BorderLayout.EAST);
+            p.add(topRow);
+
+            // Center: card image
             JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), 44, 44));
             imgL.setAlignmentX(Component.CENTER_ALIGNMENT);
             p.add(imgL);
-            p.add(Box.createVerticalStrut(2));
+            p.add(Box.createVerticalStrut(1));
 
-            JLabel nameL = lbl(card.getName(), Font.BOLD, 10, isChamp ? CHAMP_CLR : Color.WHITE);
-            nameL.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel hpL = lbl("HP " + hp + "/" + card.getHp(), Font.PLAIN, 9,
-                              hp <= card.getHp() / 3 + 1 ? new Color(220, 80, 80) : new Color(80, 200, 100));
-            hpL.setAlignmentX(Component.LEFT_ALIGNMENT);
-            String atkText = atkBonus > 0 ? "ATK " + displayAtk + " (+" + atkBonus + ")" : "ATK " + displayAtk;
-            JLabel atkL = lbl(atkText, Font.PLAIN, 9, atkBonus > 0 ? new Color(140, 220, 140) : new Color(220, 120, 80));
-            atkL.setAlignmentX(Component.LEFT_ALIGNMENT);
-            p.add(nameL); p.add(hpL); p.add(atkL);
-
-            if (isChamp) {
-                Champion ch = (Champion) card;
-                JLabel stageL = lbl("Stage " + ch.getStage(), Font.ITALIC, 8, CHAMP_CLR);
-                stageL.setAlignmentX(Component.LEFT_ALIGNMENT);
-                p.add(stageL);
-            }
+            // Bottom row: ATK + info button + stage label
+            JPanel botRow = new JPanel(new BorderLayout(2, 0));
+            botRow.setOpaque(false);
+            botRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+            botRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 15));
+            String atkText = atkBonus > 0 ? "⚔" + displayAtk + "(+" + atkBonus + ")" : "⚔" + displayAtk;
+            JLabel atkBotL = new JLabel(atkText);
+            atkBotL.setFont(new Font("SansSerif", Font.BOLD, 9));
+            atkBotL.setForeground(atkBonus > 0 ? new Color(140, 220, 140) : new Color(220, 120, 80));
+            JButton infoBtn = new JButton("ℹ");
+            infoBtn.setFont(new Font("SansSerif", Font.BOLD, 8));
+            infoBtn.setForeground(new Color(220, 200, 120));
+            infoBtn.setBackground(bgColor);
+            infoBtn.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
+            infoBtn.setContentAreaFilled(false);
+            infoBtn.setFocusPainted(false);
+            infoBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            final String slotAbilText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
+            final String slotCardName = card.getName();
+            infoBtn.addActionListener(ae -> JOptionPane.showMessageDialog(
+                    infoBtn,
+                    "<html><b>" + slotCardName + "</b><br><br>" + slotAbilText + "</html>",
+                    "Ability", JOptionPane.INFORMATION_MESSAGE));
+            String stageStr = isChamp ? "S" + ((Champion) card).getStage() : "";
+            JLabel stageR = new JLabel(stageStr, SwingConstants.RIGHT);
+            stageR.setFont(new Font("SansSerif", Font.ITALIC, 8));
+            stageR.setForeground(CHAMP_CLR);
+            botRow.add(atkBotL, BorderLayout.WEST);
+            botRow.add(infoBtn, BorderLayout.CENTER);
+            botRow.add(stageR,  BorderLayout.EAST);
+            p.add(botRow);
             if (isFrozenCard) {
                 JLabel frozenL = lbl("Frozen(" + st.frozenCards.get(posKey) + ")", Font.ITALIC, 8, new Color(100, 200, 255));
                 frozenL.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -475,23 +532,20 @@ public class BattleScreen {
                         if (txDelay > 0) st2.transformCounters.put(newPosKey, txDelay);
                         // Great Ent: mark as field-locked on placement
                         if ("gen001".equals(id)) st2.fieldLockedCards.add(newPosKey);
-                        // Turret Bot auto-attack on placement
-                        if ("ttb001".equals(id) && isFront) {
-                            String[] enemyFront = amP1 ? st2.p2Front : st2.p1Front;
-                            int tgtEnemy = -1;
-                            for (int ei = 0; ei < 5; ei++) {
-                                if (enemyFront[ei] != null && !enemyFront[ei].isEmpty()) {
-                                    tgtEnemy = ei; break;
+                        // Turret Bot: when opponent places on frontline, auto-attack the placed card
+                        if (isFront) {
+                            boolean oppIsP1 = !amP1;
+                            String[] oppFront = oppIsP1 ? st2.p1Front : st2.p2Front;
+                            for (int ti = 0; ti < 5; ti++) {
+                                if ("ttb001".equals(BattleState.slotId(oppFront[ti]))
+                                        && st2.hasAction(oppIsP1, true, ti)) {
+                                    doAttack(st2, cardMap, champLines, oppIsP1,
+                                             BattleState.posKey(oppIsP1, true, ti),
+                                             amP1, true, idx,
+                                             stRef, selHand, selField, msg, rebuildRef, bypass, user);
+                                    return;
                                 }
                             }
-                            if (tgtEnemy >= 0) {
-                                doAttack(st2, cardMap, champLines, amP1,
-                                         BattleState.posKey(amP1, true, idx),
-                                         !amP1, true, tgtEnemy,
-                                         stRef, selHand, selField, msg, rebuildRef, bypass, user);
-                                return;
-                            }
-                            st2.useAction(amP1, true, idx);
                         }
                         st2.save(); rebuildRef[0].run();
                     } else if (canSelect) {
@@ -1084,7 +1138,7 @@ public class BattleScreen {
             if (!harvestMsg.isEmpty()) msg[0] += " " + harvestMsg;
             st.useAction(amP1, false, BattleState.CHAMP_SLOT);
             st.save(); stRef[0] = st;
-            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+            rebuildRef[0].run();
             return;
         }
         rebuildRef[0].run();
@@ -1274,17 +1328,66 @@ public class BattleScreen {
             if (clickable) card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
             Color nameClr = canAfford && myTurn ? Color.WHITE : new Color(100, 100, 120);
-            Color costClr = canAfford ? new Color(200, 160, 60) : new Color(220, 80, 80);
+            Color costClr = canAfford ? new Color(100, 160, 220) : new Color(220, 80, 80);
             boolean isFree = stRef[0].freeplayCards.contains(c.getId() + "_" + (amP1 ? "p1" : "p2"));
-            String costTxt = isFree ? "FREE" : "Cost:" + cost;
+            String costTxt = isFree ? "FREE" : String.valueOf(cost);
 
-            String statStr = "cng001".equals(c.getId())
-                    ? "A:" + cost + " H:" + cost + " (=souls)"
-                    : "A:" + c.getAttack() + " H:" + c.getHp();
-            JLabel n = lbl(c.getName(), Font.BOLD,  9, nameClr); n.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel o = lbl(costTxt,     Font.PLAIN, 9, costClr); o.setAlignmentX(Component.LEFT_ALIGNMENT);
-            JLabel s = lbl(statStr,     Font.PLAIN, 9, new Color(140,140,165)); s.setAlignmentX(Component.LEFT_ALIGNMENT);
-            card.add(n); card.add(o); card.add(s);
+            int handBaseAtk = "cng001".equals(c.getId()) ? cost : c.getAttack();
+            int handBaseHp  = "cng001".equals(c.getId()) ? cost : c.getHp();
+
+            // Top row: type symbol + name + cost
+            JPanel hTop = new JPanel(new BorderLayout(2, 0));
+            hTop.setOpaque(false);
+            hTop.setAlignmentX(Component.LEFT_ALIGNMENT);
+            hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 14));
+            JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 12, 12));
+            JLabel hName = new JLabel(c.getName(), SwingConstants.CENTER);
+            hName.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hName.setForeground(nameClr);
+            JLabel hCost = new JLabel(costTxt, SwingConstants.RIGHT);
+            hCost.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hCost.setForeground(costClr);
+            hTop.add(hSym,  BorderLayout.WEST);
+            hTop.add(hName, BorderLayout.CENTER);
+            hTop.add(hCost, BorderLayout.EAST);
+            card.add(hTop);
+            card.add(Box.createVerticalStrut(2));
+
+            // Center: tiny card image
+            JLabel hImg = new JLabel(CardImageLoader.get(c.getId(), 24, 24));
+            hImg.setAlignmentX(Component.CENTER_ALIGNMENT);
+            card.add(hImg);
+            card.add(Box.createVerticalStrut(2));
+
+            // Bottom row: ATK + info button + HP
+            JPanel hBot = new JPanel(new BorderLayout(2, 0));
+            hBot.setOpaque(false);
+            hBot.setAlignmentX(Component.LEFT_ALIGNMENT);
+            hBot.setMaximumSize(new Dimension(Integer.MAX_VALUE, 14));
+            JLabel hAtk = new JLabel("⚔" + handBaseAtk);
+            hAtk.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hAtk.setForeground(new Color(220, 80, 80));
+            JLabel hHp = new JLabel(handBaseHp + "♥", SwingConstants.RIGHT);
+            hHp.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hHp.setForeground(new Color(80, 200, 100));
+            JButton hInfo = new JButton("ℹ");
+            hInfo.setFont(new Font("SansSerif", Font.BOLD, 8));
+            hInfo.setForeground(new Color(220, 200, 120));
+            hInfo.setBackground(bgColor);
+            hInfo.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
+            hInfo.setContentAreaFilled(false);
+            hInfo.setFocusPainted(false);
+            hInfo.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            final String hAbilText = c.getAbility().isEmpty() ? "No ability." : c.getAbility();
+            final String hCardName = c.getName();
+            hInfo.addActionListener(ae -> JOptionPane.showMessageDialog(
+                    hInfo,
+                    "<html><b>" + hCardName + "</b><br><br>" + hAbilText + "</html>",
+                    "Ability", JOptionPane.INFORMATION_MESSAGE));
+            hBot.add(hAtk,  BorderLayout.WEST);
+            hBot.add(hInfo, BorderLayout.CENTER);
+            hBot.add(hHp,   BorderLayout.EAST);
+            card.add(hBot);
 
             if (clickable) {
                 card.addMouseListener(new java.awt.event.MouseAdapter() {
