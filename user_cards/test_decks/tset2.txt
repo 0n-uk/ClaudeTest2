@@ -1,7 +1,0 @@
-Card{id=r6q9s3, name='Molten Colossus', type='elemental', attack=11, hp=12, cost=9, ability='Enrage: gains +2 attack when damaged'}
-Card{id=p4n7o8, name='Runic Automaton', type='construct', attack=5, hp=11, cost=5, ability='Spell Shield'}
-Card{id=p4n7o8, name='Runic Automaton', type='construct', attack=5, hp=11, cost=5, ability='Spell Shield'}
-Card{id=av0z6a1, name='Silverthorn Druid', type='nature', attack=4, hp=7, cost=4, ability='Overgrowth: summons a 1/3 Vine Wall'}
-Card{id=aq8p3r9, name='Starfall Wizard', type='mage', attack=6, hp=6, cost=5, ability='Meteor: deals 4 damage to one enemy and 1 to all others'}
-Card{id=am9h2i7, name='Tidus the Ancient', type='aquatic', attack=7, hp=11, cost=8, ability='Flood: all ground units take 2 damage'}
-Card{id=n5j1k6, name='Verdant Treant', type='nature', attack=5, hp=14, cost=6, ability='Rooted: cannot move but gains +2 attack'}

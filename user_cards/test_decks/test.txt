@@ -1,1 +1,0 @@
-Card{id=ak1d9e3, name='Gilded Golem', type='construct', attack=4, hp=16, cost=7, ability='Taunt, immune to spell damage'}

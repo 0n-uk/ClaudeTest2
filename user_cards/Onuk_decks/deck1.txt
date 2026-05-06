@@ -1,4 +1,4 @@
-Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
 Card{id=__SCRAP__, name='Scrap', type='item', attack=0, hp=1, cost=0, ability='Used as fuel for bot abilities'}
 Card{id=smi001, name='Shield Imp', type='demon', attack=1, hp=2, cost=2, ability='(P) Ward- Takes -1 damage from attacks'}
 Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
@@ -17,3 +17,4 @@ Card{id=upb001, name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability=
 Card{id=rcb001, name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
 Card{id=fnb001, name='Furnace Bot', type='bot', attack=5, hp=7, cost=7, ability='(A) Smelt- Select Scraps to use. For each Scrap used, give a bot +2 ATK & HP'}
 Card{id=mnb001, name='Miner Bot', type='bot', attack=2, hp=2, cost=2, ability='(A) Mine- Flip a coin. On heads, summon 2 Scrap'}
+Card

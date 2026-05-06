@@ -1,46 +1,71 @@
 
-Card{id=t8v6w5, name='Ironjaw Croc', type='beast', attack=6, hp=9, cost=5, ability='Bite: ignores 2 armour'}
-Card{id=r6q9s3, name='Molten Colossus', type='elemental', attack=11, hp=12, cost=9, ability='Enrage: gains +2 attack when damaged'}
-Card{id=d5p0q9, name='Thornback Turtle', type='creature', attack=2, hp=20, cost=5, ability='Taunt, Regenerate 1 HP per turn'}
-Card{id=g4v1w3, name='Cursed Wraith', type='undead', attack=4, hp=3, cost=2, ability='Drain: heals 1 HP on hit'}
-Card{id=v9z8a0, name='Gale Hawk', type='beast', attack=4, hp=3, cost=2, ability='Haste, Aerial: cannot be targeted by ground units'}
-Card{id=ao6l8m2, name='Blessed Unicorn', type='holy', attack=3, hp=8, cost=4, ability='Purify: removes all debuffs from an ally'}
-Card{id=af9t8u2, name='Mistblade Ninja', type='assassin', attack=6, hp=4, cost=3, ability='Vanish: returns to hand after attacking'}
-Card{id=ad6p0q3, name='Sapphire Djinn', type='elemental', attack=6, hp=8, cost=6, ability='Wish: draw 2 cards on play'}
-Card{id=ac2n4o9, name='Blizzard Owl', type='beast', attack=3, hp=5, cost=3, ability='Chill: reduces enemy attack by 2 for 2 turns'}
-Card{id=aq8p3r9, name='Starfall Wizard', type='mage', attack=6, hp=6, cost=5, ability='Meteor: deals 4 damage to one enemy and 1 to all others'}
-Card{id=sb001, name='Scrap Bot', type='bot', attack=1, hp=1, cost=1, ability='(A) Fabricate- Summon 1 Scrap token to your frontline'}
-Card{id=__SCRAP__, name='Scrap', type='item', attack=0, hp=1, cost=0, ability='Used as fuel for bot abilities'}
-Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
-Card{id=smi001, name='Shield Imp', type='demon', attack=1, hp=2, cost=2, ability='(P) Ward- Takes -1 damage from attacks'}
-Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
-Card{id=f9t2u8, name='Stormrider', type='elemental', attack=7, hp=5, cost=4, ability='Haste'}
-Card{id=h6x5y0, name='Granite Sentinel', type='construct', attack=3, hp=18, cost=5, ability='Taunt, Shield'}
-Card{id=n5j1k6, name='Verdant Treant', type='nature', attack=5, hp=14, cost=6, ability='Rooted: cannot move but gains +2 attack'}
-Card{id=m2h8i4, name='Frostbite Sprite', type='elemental', attack=3, hp=3, cost=2, ability='Freeze target for 1 turn'}
-Card{id=s1t4u7, name='Moonlit Faerie', type='fae', attack=2, hp=4, cost=1, ability='Evasion: 30% dodge chance'}
-Card{id=av0z6a1, name='Silverthorn Druid', type='nature', attack=4, hp=7, cost=4, ability='Overgrowth: summons a 1/3 Vine Wall'}
-Card{id=ab8l1m5, name='Netherfiend', type='demon', attack=8, hp=6, cost=5, ability='Lifesteal'}
-Card{id=ad6p0q3, name='Sapphire Djinn', type='elemental', attack=6, hp=8, cost=6, ability='Wish: draw 2 cards on play'}
-Card{id=ao6l8m2, name='Blessed Unicorn', type='holy', attack=3, hp=8, cost=4, ability='Purify: removes all debuffs from an ally'}
-Card{id=am9h2i7, name='Tidus the Ancient', type='aquatic', attack=7, hp=11, cost=8, ability='Flood: all ground units take 2 damage'}
-Card{id=upb001, name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
-Card{id=__SCRAP__, name='Scrap', type='item', attack=0, hp=1, cost=0, ability='Used as fuel for bot abilities'}
-Card{id=stk001, name='Stickling', type='bug', attack=2, hp=1, cost=2, ability=''}
-Card{id=shb001, name='Shield Bot', type='bot', attack=3, hp=5, cost=3, ability=''}
-Card{id=hd001, name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
-Card{id=rcb001, name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
-Card{id=fnb001, name='Furnace Bot', type='bot', attack=5, hp=7, cost=7, ability='(A) Smelt- Select Scraps to use. For each Scrap used, give a bot +2 ATK & HP'}
-Card{id=tlb001, name='Turtle Bot', type='bot', attack=3, hp=8, cost=5, ability='(A) Steel Shell- Use 1 Scrap to gain +5 ATK until next attack'}
-Card{id=mnb001, name='Miner Bot', type='bot', attack=2, hp=2, cost=2, ability='(A) Mine- Flip a coin. On heads, summon 2 Scrap'}
-Card{id=itb001, name='Iron Tusks Bot', type='bot', attack=4, hp=16, cost=9, ability='(A) Fortify- Select Scraps to use. For each Scrap used, gain +4 HP'}
-Card{id=y1f5g9, name='Lava Titan', type='elemental', attack=12, hp=14, cost=10, ability='Erupt: deals 3 damage to all enemies on death'}
-Card{id=c2k8m1, name='Flamecaller', type='mage', attack=6, hp=7, cost=4, ability='Deals 2 damage to all enemies on play'}
-Card{id=u3x0y2, name='Spectral Knight', type='undead', attack=6, hp=7, cost=5, ability='Phased: immune to physical damage for 1 turn'}
-Card{id=b7e9d4, name='Shadow Wisp', type='spirit', attack=3, hp=4, cost=2, ability='Stealth'}
-Card{id=l7f0g2, name='Bonebreaker Ogre', type='creature', attack=10, hp=10, cost=7, ability='Cleave'}
-Card{id=ai4z2a8, name='Ashen Phoenix', type='creature', attack=5, hp=5, cost=5, ability='Rebirth: returns with 2 HP on death once'}
-Card{id=ah0x7y1, name='Cursebinder Witch', type='mage', attack=4, hp=6, cost=4, ability='Hex: target loses 2 attack for 3 turns'}
-Card{id=ac2n4o9, name='Blizzard Owl', type='beast', attack=3, hp=5, cost=3, ability='Chill: reduces enemy attack by 2 for 2 turns'}
-Card{id=aj7b6c0, name='Swampfiend', type='creature', attack=4, hp=7, cost=3, ability='Camouflage in swamp terrain'}
-Card{id=z4h2i8, name='Windwhisper Fox', type='creature', attack=3, hp=4, cost=2, ability='Swap: exchange position with any ally'}
+Card{id='hd001', name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
+Card{id='stk001', name='Stickling', type='bug', attack=2, hp=1, cost=2, ability=''}
+Card{id='sb001', name='Scrap Bot', type='bot', attack=1, hp=1, cost=1, ability='(A) Fabricate- Summon 1 Scrap token to your frontline'}
+Card{id='bb001', name='Battle Bot', type='bot', attack=5, hp=3, cost=3, ability=''}
+Card{id='shb001', name='Shield Bot', type='bot', attack=3, hp=5, cost=3, ability=''}
+Card{id='upb001', name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
+Card{id='wsp001', name='Wisp', type='spirit', attack=1, hp=1, cost=1, ability='(A) Drift- Spend 1 soul to draw 1 card'}
+Card{id='rod001', name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+Card{id='smi001', name='Shield Imp', type='demon', attack=1, hp=2, cost=2, ability='(P) Ward- Takes -1 damage from attacks'}
+Card{id='cnb001', name='Constructor Bot', type='bot', attack=2, hp=4, cost=3, ability='(A) Construct- Use 2 Scrap to summon any bot from hand that costs 3 or less soul'}
+Card{id='mtb001', name='Mantis Bot', type='bot', attack=5, hp=3, cost=6, ability='(P) Dual Strike- Can attack twice per turn'}
+Card{id='tlb001', name='Turtle Bot', type='bot', attack=3, hp=8, cost=5, ability='(A) Steel Shell- Use 1 Scrap to gain +5 ATK until next attack'}
+Card{id='mnb001', name='Miner Bot', type='bot', attack=2, hp=2, cost=2, ability='(A) Mine- Flip a coin. On heads, summon 2 Scrap'}
+Card{id='fnb001', name='Furnace Bot', type='bot', attack=5, hp=7, cost=7, ability='(A) Smelt- Select Scraps to use. For each Scrap used, give a bot +2 ATK & HP'}
+Card{id='trb001', name='Transport Bot', type='bot', attack=3, hp=3, cost=3, ability='(A) Haul- Use 1 Scrap to return a bot and this card to hand'}
+Card{id='mwb001', name='Metal Wings Bot', type='bot', attack=12, hp=7, cost=9, ability='(On Attack) Evade- When attacked, flip a coin. On heads, dodge the attack and return to hand'}
+Card{id='itb001', name='Iron Tusks Bot', type='bot', attack=4, hp=16, cost=9, ability='(A) Fortify- Select Scraps to use. For each Scrap used, gain +4 HP'}
+Card{id='svb001', name='Survey Bot', type='bot', attack=4, hp=2, cost=3, ability='(P) Survey- All Scrap Bots summon an additional Scrap when using their ability'}
+Card{id='ttb001', name='Turret Bot', type='bot', attack=2, hp=2, cost=2, ability='(P) Autofire- Attacks an enemy automatically when placed in frontline'}
+Card{id='rcb001', name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
+Card{id='shs001', name='Straw Shaman', type='spirit', attack=3, hp=5, cost=4, ability='(A) Focus- Use 2 soul to attack with double atk'}
+Card{id='drw001', name='Dream Wanderer', type='spirit', attack=5, hp=5, cost=5, ability='(P) Can attack cards in backline even with cards in enemy frontline'}
+Card{id='lmt001', name='Large Mantis', type='bug', attack=6, hp=3, cost=7, ability='Can attack twice'}
+Card{id='glm001', name='Golem', type='spirit', attack=3, hp=12, cost=7, ability=''}
+Card{id='bte001', name='Bat Eye', type='beast', attack=3, hp=1, cost=3, ability="Can't be targeted by enemy front line"}
+Card{id='esr001', name='Eye Shrew', type='beast', attack=2, hp=1, cost=2, ability='Can attack twice'}
+Card{id='frs001', name='Fire Spirit', type='spirit', attack=5, hp=4, cost=4, ability='Attacks inflict Burn status (takes 1 dmg every turn)'}
+Card{id='ics001', name='Ice Spirit', type='spirit', attack=2, hp=3, cost=3, ability='(A) Freeze 1 enemy for 3 rounds'}
+Card{id='wts001', name='Water Spirit', type='spirit', attack=2, hp=5, cost=3, ability='When placed, all cards gain +2 hp'}
+Card{id='nts001', name='Nature Spirit', type='spirit', attack=2, hp=3, cost=2, ability='(A) Heal 1 card by 5 hp'}
+Card{id='ers001', name='Earth Spirit', type='spirit', attack=5, hp=5, cost=4, ability='(A) Mud Wall- Summon a mud wall in the frontline'}
+Card{id='wns001', name='Wind Spirit', type='spirit', attack=2, hp=2, cost=2, ability='When attacked, on heads, dodges attack'}
+Card{id='cld001', name='Cloudling', type='spirit', attack=0, hp=4, cost=2, ability='(A) Return a card to hand'}
+Card{id='icd001', name='Ice Dragon', type='dragon', attack=10, hp=15, cost=10, ability='Attacks inflict freeze for 1 round'}
+Card{id='spd001', name='Spike Dragon', type='dragon', attack=7, hp=9, cost=8, ability='When attacked, deal 5 dmg to attacker'}
+Card{id='hd001', name='Honeydew', type='bug', attack=1, hp=1, cost=1, ability='(A) Dew Drop- Spend 1 soul to give a bug +1 ATK & HP'}
+Card{id='stk001', name='Stickling', type='bug', attack=2, hp=1, cost=2, ability=''}
+Card{id='sb001', name='Scrap Bot', type='bot', attack=1, hp=1, cost=1, ability='(A) Fabricate- Summon 1 Scrap token to your frontline'}
+Card{id='bb001', name='Battle Bot', type='bot', attack=5, hp=3, cost=3, ability=''}
+Card{id='shb001', name='Shield Bot', type='bot', attack=3, hp=5, cost=3, ability=''}
+Card{id='upb001', name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
+Card{id='wsp001', name='Wisp', type='spirit', attack=1, hp=1, cost=1, ability='(A) Drift- Spend 1 soul to draw 1 card'}
+Card{id='rod001', name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+Card{id='smi001', name='Shield Imp', type='demon', attack=1, hp=2, cost=2, ability='(P) Ward- Takes -1 damage from attacks'}
+Card{id='cnb001', name='Constructor Bot', type='bot', attack=2, hp=4, cost=3, ability='(A) Construct- Use 2 Scrap to summon any bot from hand that costs 3 or less soul'}
+Card{id='mtb001', name='Mantis Bot', type='bot', attack=5, hp=3, cost=6, ability='(P) Dual Strike- Can attack twice per turn'}
+Card{id='tlb001', name='Turtle Bot', type='bot', attack=3, hp=8, cost=5, ability='(A) Steel Shell- Use 1 Scrap to gain +5 ATK until next attack'}
+Card{id='mnb001', name='Miner Bot', type='bot', attack=2, hp=2, cost=2, ability='(A) Mine- Flip a coin. On heads, summon 2 Scrap'}
+Card{id='fnb001', name='Furnace Bot', type='bot', attack=5, hp=7, cost=7, ability='(A) Smelt- Select Scraps to use. For each Scrap used, give a bot +2 ATK & HP'}
+Card{id='trb001', name='Transport Bot', type='bot', attack=3, hp=3, cost=3, ability='(A) Haul- Use 1 Scrap to return a bot and this card to hand'}
+Card{id='mwb001', name='Metal Wings Bot', type='bot', attack=12, hp=7, cost=9, ability='(On Attack) Evade- When attacked, flip a coin. On heads, dodge the attack and return to hand'}
+Card{id='itb001', name='Iron Tusks Bot', type='bot', attack=4, hp=16, cost=9, ability='(A) Fortify- Select Scraps to use. For each Scrap used, gain +4 HP'}
+Card{id='svb001', name='Survey Bot', type='bot', attack=4, hp=2, cost=3, ability='(P) Survey- All Scrap Bots summon an additional Scrap when using their ability'}
+Card{id='ttb001', name='Turret Bot', type='bot', attack=2, hp=2, cost=2, ability='(P) Autofire- Attacks an enemy automatically when placed in frontline'}
+Card{id='rcb001', name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
+Card{id='shs001', name='Straw Shaman', type='spirit', attack=3, hp=5, cost=4, ability='(A) Focus- Use 2 soul to attack with double atk'}
+Card{id='drw001', name='Dream Wanderer', type='spirit', attack=5, hp=5, cost=5, ability='(P) Can attack cards in backline even with cards in enemy frontline'}
+Card{id='lmt001', name='Large Mantis', type='bug', attack=6, hp=3, cost=7, ability='Can attack twice'}
+Card{id='glm001', name='Golem', type='spirit', attack=3, hp=12, cost=7, ability=''}
+Card{id='bte001', name='Bat Eye', type='beast', attack=3, hp=1, cost=3, ability="Can't be targeted by enemy front line"}
+Card{id='esr001', name='Eye Shrew', type='beast', attack=2, hp=1, cost=2, ability='Can attack twice'}
+Card{id='frs001', name='Fire Spirit', type='spirit', attack=5, hp=4, cost=4, ability='Attacks inflict Burn status (takes 1 dmg every turn)'}
+Card{id='ics001', name='Ice Spirit', type='spirit', attack=2, hp=3, cost=3, ability='(A) Freeze 1 enemy for 3 rounds'}
+Card{id='wts001', name='Water Spirit', type='spirit', attack=2, hp=5, cost=3, ability='When placed, all cards gain +2 hp'}
+Card{id='nts001', name='Nature Spirit', type='spirit', attack=2, hp=3, cost=2, ability='(A) Heal 1 card by 5 hp'}
+Card{id='ers001', name='Earth Spirit', type='spirit', attack=5, hp=5, cost=4, ability='(A) Mud Wall- Summon a mud wall in the frontline'}
+Card{id='wns001', name='Wind Spirit', type='spirit', attack=2, hp=2, cost=2, ability='When attacked, on heads, dodges attack'}
+Card{id='cld001', name='Cloudling', type='spirit', attack=0, hp=4, cost=2, ability='(A) Return a card to hand'}
+Card{id='icd001', name='Ice Dragon', type='dragon', attack=10, hp=15, cost=10, ability='Attacks inflict freeze for 1 round'}
+Card{id='spd001', name='Spike Dragon', type='dragon', attack=7, hp=9, cost=8, ability='When attacked, deal 5 dmg to attacker'}
