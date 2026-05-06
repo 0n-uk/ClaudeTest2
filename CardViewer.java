@@ -108,14 +108,14 @@ public class CardViewer {
     }
 
     static JPanel buildCardPanel(Card card) {
-        return buildCardPanel(card, 200, 260);
+        return buildCardPanel(card, 230, 300);
     }
 
     static JPanel buildCardPanel(Card card, int w, int h) {
-        int symSize  = Math.max(14, w / 13);
-        int topFont  = Math.max(9,  w / 17);
-        int imgSize  = Math.max(40, (int)(h * 0.44));
-        int statFont = Math.max(10, w / 18);
+        int symSize  = Math.max(18, w / 10);
+        int topFont  = Math.max(12, w / 15);
+        int imgSize  = Math.max(60, (int)(h * 0.55));
+        int statFont = Math.max(12, w / 15);
 
         JPanel panel = new JPanel(new BorderLayout(0, 4));
         panel.setBackground(new Color(50, 50, 70));
