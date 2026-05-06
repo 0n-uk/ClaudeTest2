@@ -54,26 +54,21 @@ public class PackScreen {
             "cnb001", "mtb001", "tlb001", "mnb001", "fnb001", "trb001",
             "mwb001", "itb001", "svb001", "ttb001", "rcb001"));
 
-        Set<String> endoraIDs = new HashSet<>(Arrays.asList(
-            "sb001", "bb001"
-        ));
+        Set<String> endoraIds = new HashSet<>(Arrays.asList(
+            "psh001", "pod001", "sen001", "sbu001",
+            "gen001", "dru001", "gbu001", "tbu001"));
 
         List<Card> starter = new ArrayList<>();
         List<Card> scrap   = new ArrayList<>();
-        List<Card> remaining = new ArrayList<>();
-        List<Card> endora = new ArrayList<>();
+        List<Card> endora  = new ArrayList<>();
         for (Card c : all) {
-            if (starterIds.contains(c.getId())) starter.add(c);
+            if (starterIds.contains(c.getId()))  starter.add(c);
             else if (scrapIds.contains(c.getId())) scrap.add(c);
-            else if (endoraIDs.contains(c.getId())) endora.add(c);
-            else remaining.add(c);
+            else if (endoraIds.contains(c.getId())) endora.add(c);
         }
-        List<Card> plains = remaining.size() > 0
-                ? new ArrayList<>(remaining.subList(0, Math.min(25, remaining.size())))
-                : new ArrayList<>();
 
         JPanel header     = buildHeader("Open Packs", onBack);
-        JPanel packsPanel = new JPanel(new GridLayout(1, 4, 18, 0));
+        JPanel packsPanel = new JPanel(new GridLayout(1, 3, 18, 0));
         packsPanel.setBackground(BG);
         packsPanel.setBorder(new EmptyBorder(30, 40, 60, 40));
 
@@ -86,12 +81,8 @@ public class PackScreen {
             new Color(160, 130, 80), scrap, user, wrapper, onBack, timers));
 
         packsPanel.add(packCard("ENDORA", "Endora Pack",
-            "Ancient woodland spirits, beasts, and nature's guardians.",
-            new Color(60, 170, 80), endora, user, wrapper, onBack, timers));
-
-        packsPanel.add(packCard("PLAINS", "Plains Pack",
-            "Warriors of the open plains — fighters, constructs, and elements.",
-            new Color(210, 165, 55), plains, user, wrapper, onBack, timers));
+            "Ancient pod creatures that transform and evolve over time.",
+            new Color(120, 80, 200), endora, user, wrapper, onBack, timers));
 
         wrapper.add(header,     BorderLayout.NORTH);
         wrapper.add(packsPanel, BorderLayout.CENTER);

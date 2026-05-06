@@ -37,3 +37,11 @@ Card{id='spd001', name='Spike Dragon', type='dragon', attack=7, hp=9, cost=8, ab
 Card{id='__MUD_WALL__', name='Mud Wall', type='item', attack=0, hp=5, cost=0, ability='Token'}
 Card{id='ecs001', name='Echo Spirit', type='spirit', attack=7, hp=5, cost=6, ability='(A) Echo- Use 1 soul cap to copy and use the ability of a card on field'}
 Card{id='cng001', name='Conglamorat', type='spirit', attack=0, hp=0, cost=0, ability='Stats and cost equal remaining souls when placed'}
+Card{id='psh001', name='Pod Shooter', type='pod', attack=5, hp=5, cost=6, ability='(A) Sprout- Summon 2 Pod tokens to your frontline'}
+Card{id='pod001', name='Pod', type='pod', attack=1, hp=1, cost=1, ability='(P) After 1 round, flip a coin. Heads: Small Ent. Tails: Small Bushy'}
+Card{id='sen001', name='Small Ent', type='pod', attack=4, hp=3, cost=3, ability='(P) After 2 rounds, flip a coin. Heads: Great Ent. Tails: Druid'}
+Card{id='sbu001', name='Small Bushy', type='pod', attack=2, hp=4, cost=3, ability='(P) When attacked, gain +3 HP. After 2 rounds, flip a coin. Heads: Great Bushy. Tails: Thorny Bushy'}
+Card{id='gen001', name='Great Ent', type='pod', attack=9, hp=12, cost=10, ability='(P) Shield- Backline card behind Great Ent is untargetable until Great Ent dies, then advances. Field locked.'}
+Card{id='dru001', name='Druid', type='pod', attack=7, hp=11, cost=10, ability='(P) Grove- All your Pod cards gain +1 ATK and HP each turn'}
+Card{id='gbu001', name='Great Bushy', type='pod', attack=3, hp=18, cost=10, ability='(P) When attacked, gain +6 HP'}
+Card{id='tbu001', name='Thorny Bushy', type='pod', attack=6, hp=14, cost=10, ability='(P) Thorns- When attacked, deals 6 damage to attacker'}

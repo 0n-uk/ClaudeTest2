@@ -87,6 +87,7 @@ public class AbilityResolver {
         // ── Active (no-target): new cards ─────────────────────────────────
         ACTIVE.put("shs001", (bs, isP1, cm) -> strawShamanFocus(bs, isP1));
         ACTIVE.put("ers001", (bs, isP1, cm) -> mudWall(bs, isP1));
+        ACTIVE.put("psh001", (bs, isP1, cm) -> sprout(bs, isP1));
 
         // ── Active (targeted): new cards ──────────────────────────────────
         TARGETED_ACTIVE.put("ics001", (bs, isP1, ti, tf, tidx, ch, cm) -> iceSpirit(bs, ti, tf, tidx, cm));
@@ -214,7 +215,7 @@ public class AbilityResolver {
     /** Returns the effective soul cost for placing a card, considering passives. */
     public static int effectiveCost(Card card, BattleState bs, boolean isP1,
                                      Map<String, ChampionLine> lines) {
-        if ("cng001".equals(card.getId())) return isP1 ? bs.p1Souls : bs.p2Souls;
+        if ("cng001".equals(card.getId())) return Math.max(1, isP1 ? bs.p1Souls : bs.p2Souls);
         int cost = card.getCost();
         // Elder Mothling (B4) – all your cards cost 1 less
         if ("B4".equals(currentChampId(bs, isP1))) cost = Math.max(0, cost - 1);
@@ -615,6 +616,7 @@ public class AbilityResolver {
         Card tgtCard = cardMap.get(tgtId);
         if (tgtCard == null || !"bot".equals(tgtCard.getType())) return "Haul: target must be a bot.";
         String tgtPosKey = BattleState.posKey(isP1, tgtFront, tgtIdx);
+        if (bs.fieldLockedCards.contains(tgtPosKey)) return "Haul: " + tgtCard.getName() + " is field locked.";
         bs.fieldAtkBonus.remove(tgtPosKey);
         bs.turtleBotCharged.remove(tgtPosKey);
         tgtRow[tgtIdx] = "";
@@ -789,6 +791,7 @@ public class AbilityResolver {
         Card   c  = cardMap.get(id);
         if (c == null || "item".equals(c.getType())) return "Return: cannot return item tokens.";
         String posKey = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        if (bs.fieldLockedCards.contains(posKey)) return "Return: " + c.getName() + " is field locked.";
         bs.fieldAtkBonus.remove(posKey);
         bs.turtleBotCharged.remove(posKey);
         bs.focusedCards.remove(posKey);
@@ -798,6 +801,41 @@ public class AbilityResolver {
         List<String> hand = isP1 ? bs.p1Hand : bs.p2Hand;
         hand.add(id);
         return "Return: " + c.getName() + " returned to hand!";
+    }
+
+    // Pod Shooter (psh001): summon 2 Pod tokens to own frontline, starting their transform counters
+    private static String sprout(BattleState bs, boolean isP1) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        int placed = 0;
+        for (int i = 0; i < 5 && placed < 2; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot("pod001", 1);
+                bs.transformCounters.put(BattleState.posKey(isP1, true, i), 2);
+                placed++;
+            }
+        }
+        if (placed == 0) return "Sprout: frontline is full!";
+        return "Sprout: summoned " + placed + " Pod" + (placed > 1 ? "s" : "") + "!";
+    }
+
+    /** Returns the cardId that a transforming card evolves into (heads=true, tails=false). */
+    public static String transformTarget(String cardId, boolean heads) {
+        switch (cardId) {
+            case "pod001": return heads ? "sen001" : "sbu001";
+            case "sen001": return heads ? "gen001" : "dru001";
+            case "sbu001": return heads ? "gbu001" : "tbu001";
+            default: return null;
+        }
+    }
+
+    /** Returns turns (2 per round) until transform, or -1 if the card doesn't transform. */
+    public static int transformDelay(String cardId) {
+        switch (cardId) {
+            case "pod001": return 2;
+            case "sen001": return 4;
+            case "sbu001": return 4;
+            default: return -1;
+        }
     }
 
     // T-Bot Mega (T4): spend 2 Scrap for 2 extra actions
