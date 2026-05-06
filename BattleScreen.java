@@ -475,23 +475,20 @@ public class BattleScreen {
                         if (txDelay > 0) st2.transformCounters.put(newPosKey, txDelay);
                         // Great Ent: mark as field-locked on placement
                         if ("gen001".equals(id)) st2.fieldLockedCards.add(newPosKey);
-                        // Turret Bot auto-attack on placement
-                        if ("ttb001".equals(id) && isFront) {
-                            String[] enemyFront = amP1 ? st2.p2Front : st2.p1Front;
-                            int tgtEnemy = -1;
-                            for (int ei = 0; ei < 5; ei++) {
-                                if (enemyFront[ei] != null && !enemyFront[ei].isEmpty()) {
-                                    tgtEnemy = ei; break;
+                        // Turret Bot: when opponent places on frontline, auto-attack the placed card
+                        if (isFront) {
+                            boolean oppIsP1 = !amP1;
+                            String[] oppFront = oppIsP1 ? st2.p1Front : st2.p2Front;
+                            for (int ti = 0; ti < 5; ti++) {
+                                if ("ttb001".equals(BattleState.slotId(oppFront[ti]))
+                                        && st2.hasAction(oppIsP1, true, ti)) {
+                                    doAttack(st2, cardMap, champLines, oppIsP1,
+                                             BattleState.posKey(oppIsP1, true, ti),
+                                             amP1, true, idx,
+                                             stRef, selHand, selField, msg, rebuildRef, bypass, user);
+                                    return;
                                 }
                             }
-                            if (tgtEnemy >= 0) {
-                                doAttack(st2, cardMap, champLines, amP1,
-                                         BattleState.posKey(amP1, true, idx),
-                                         !amP1, true, tgtEnemy,
-                                         stRef, selHand, selField, msg, rebuildRef, bypass, user);
-                                return;
-                            }
-                            st2.useAction(amP1, true, idx);
                         }
                         st2.save(); rebuildRef[0].run();
                     } else if (canSelect) {
@@ -1084,7 +1081,7 @@ public class BattleScreen {
             if (!harvestMsg.isEmpty()) msg[0] += " " + harvestMsg;
             st.useAction(amP1, false, BattleState.CHAMP_SLOT);
             st.save(); stRef[0] = st;
-            doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+            rebuildRef[0].run();
             return;
         }
         rebuildRef[0].run();
