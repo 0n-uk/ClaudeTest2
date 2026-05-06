@@ -61,20 +61,14 @@ public class PackScreen {
         List<Card> starter = new ArrayList<>();
         List<Card> scrap   = new ArrayList<>();
         List<Card> endora  = new ArrayList<>();
-        List<Card> remaining = new ArrayList<>();
         for (Card c : all) {
             if (starterIds.contains(c.getId()))  starter.add(c);
             else if (scrapIds.contains(c.getId())) scrap.add(c);
             else if (endoraIds.contains(c.getId())) endora.add(c);
-            else remaining.add(c);
         }
-        List<Card> forest = new ArrayList<>(remaining.subList(0, Math.min(25, remaining.size())));
-        List<Card> plains = remaining.size() > 25
-                ? new ArrayList<>(remaining.subList(25, Math.min(50, remaining.size())))
-                : new ArrayList<>();
 
         JPanel header     = buildHeader("Open Packs", onBack);
-        JPanel packsPanel = new JPanel(new GridLayout(1, 5, 18, 0));
+        JPanel packsPanel = new JPanel(new GridLayout(1, 3, 18, 0));
         packsPanel.setBackground(BG);
         packsPanel.setBorder(new EmptyBorder(30, 40, 60, 40));
 
@@ -85,14 +79,6 @@ public class PackScreen {
         packsPanel.add(packCard("SCRAP", "Scrap Pack",
             "Mechanical bots powered by scrap — build, recycle, and overwhelm.",
             new Color(160, 130, 80), scrap, user, wrapper, onBack, timers));
-
-        packsPanel.add(packCard("FOREST", "Forest Pack",
-            "Ancient woodland spirits, beasts, and nature's guardians.",
-            new Color(60, 170, 80), forest, user, wrapper, onBack, timers));
-
-        packsPanel.add(packCard("PLAINS", "Plains Pack",
-            "Warriors of the open plains — fighters, constructs, and elements.",
-            new Color(210, 165, 55), plains, user, wrapper, onBack, timers));
 
         packsPanel.add(packCard("ENDORA", "Endora Pack",
             "Ancient pod creatures that transform and evolve over time.",
