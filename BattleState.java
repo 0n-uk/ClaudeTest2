@@ -33,6 +33,8 @@ public class BattleState {
     Map<String,Integer> burnedCards     = new HashMap<>(); // posKey -> 1 if card is burning (1 dmg/turn)
     Map<String,Integer> frozenCards     = new HashMap<>(); // posKey -> turns remaining frozen
     Set<String>     focusedCards        = new HashSet<>();  // posKeys where Focus (double ATK) is active
+    Map<String,Integer> transformCounters = new HashMap<>(); // posKey -> turns remaining until transform
+    Set<String>     fieldLockedCards    = new HashSet<>();  // posKeys that cannot return to hand/move
 
     List<String> p1Hand    = new ArrayList<>();
     List<String> p2Hand    = new ArrayList<>();
@@ -114,6 +116,15 @@ public class BattleState {
                                                 } break;
                     case "focusedCards":       if (!val.isEmpty())
                                                     bs.focusedCards.addAll(Arrays.asList(val.split(","))); break;
+                    case "transformCounters":  if (!val.isEmpty()) {
+                                                    for (String entry : val.split(",")) {
+                                                        int c2 = entry.lastIndexOf(':');
+                                                        if (c2 > 0) bs.transformCounters.put(
+                                                            entry.substring(0, c2), parseInt(entry.substring(c2 + 1)));
+                                                    }
+                                                } break;
+                    case "fieldLockedCards":   if (!val.isEmpty())
+                                                    bs.fieldLockedCards.addAll(Arrays.asList(val.split(","))); break;
                     case "p1Hand":              bs.p1Hand    = parseList(val); break;
                     case "p2Hand":              bs.p2Hand    = parseList(val); break;
                     case "p1Deck":              bs.p1Deck    = parseList(val); break;
@@ -173,6 +184,13 @@ public class BattleState {
             }
             w.write("frozenCards=" + frozenSb); w.newLine();
             w.write("focusedCards=" + String.join(",", focusedCards)); w.newLine();
+            StringBuilder txSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : transformCounters.entrySet()) {
+                if (txSb.length() > 0) txSb.append(',');
+                txSb.append(e.getKey()).append(':').append(e.getValue());
+            }
+            w.write("transformCounters=" + txSb); w.newLine();
+            w.write("fieldLockedCards=" + String.join(",", fieldLockedCards)); w.newLine();
             w.write("p1Hand="    + String.join(",", p1Hand));    w.newLine();
             w.write("p2Hand="    + String.join(",", p2Hand));    w.newLine();
             w.write("p1Deck="    + String.join(",", p1Deck));    w.newLine();
@@ -241,6 +259,7 @@ public class BattleState {
                                : (targetIsP1 ? p1Back  : p2Back);
         if (row[slot] == null || row[slot].isEmpty()) return false;
         if (!isFront && frontlineCount(targetIsP1) > 0) return false;
+        if (!isFront && isShieldedByGreatEnt(targetIsP1, slot)) return false;
         return true;
     }
 
@@ -251,7 +270,14 @@ public class BattleState {
     boolean isTargetableBypass(boolean targetIsP1, boolean isFront, int slot) {
         String[] row = isFront ? (targetIsP1 ? p1Front : p2Front)
                                : (targetIsP1 ? p1Back  : p2Back);
-        return row[slot] != null && !row[slot].isEmpty();
+        if (row[slot] == null || row[slot].isEmpty()) return false;
+        if (!isFront && isShieldedByGreatEnt(targetIsP1, slot)) return false;
+        return true;
+    }
+
+    boolean isShieldedByGreatEnt(boolean isP1, int col) {
+        String[] front = isP1 ? p1Front : p2Front;
+        return "gen001".equals(slotId(front[col]));
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

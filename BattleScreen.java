@@ -260,8 +260,9 @@ public class BattleScreen {
         boolean inEchoCopySelect   = "ECHO_COPY_SELECT".equals(multiStepPhase[0]);
         boolean inMimicSelect      = "MIMIC_SELECT".equals(multiStepPhase[0]);
         boolean inCopyTargetSelect = "COPY_TARGET_SELECT".equals(multiStepPhase[0]);
-        boolean isFrozenCard  = !empty && st.isFrozen(posKey);
-        boolean isBurnedCard  = !empty && st.burnedCards.containsKey(posKey);
+        boolean isFrozenCard   = !empty && st.isFrozen(posKey);
+        boolean isBurnedCard   = !empty && st.burnedCards.containsKey(posKey);
+        boolean isShieldedSlot = !isFront && !empty && st.isShieldedByGreatEnt(fieldIsP1, idx);
 
         // Dream Wanderer: attacker can bypass frontline to hit backline
         boolean atkIsDreamWanderer = selField[0] != null
@@ -282,10 +283,12 @@ public class BattleScreen {
         // Ability targeting mode — supports both friendly and enemy targets depending on ability
         String abilitySourceCardId = abilitySource[0] != null ? getCardIdAtPosKey(st, abilitySource[0]) : null;
         boolean abilityTargetsEnemy = "enemy".equals(AbilityResolver.TARGET_SIDE.get(abilitySourceCardId));
-        boolean tgtSideImmune = !isMyField && AbilityResolver.isImmuneToAbilities(fieldIsP1, st);
+        boolean tgtSideImmune    = !isMyField && AbilityResolver.isImmuneToAbilities(fieldIsP1, st);
+        boolean shieldedByEnt    = !isFront && !isMyField && st.isShieldedByGreatEnt(fieldIsP1, idx);
         boolean canAbilityTarget = !empty && myTurn && abilitySource[0] != null
                 && card != null
                 && !tgtSideImmune
+                && !shieldedByEnt
                 && !anyNewPhase
                 && (abilityTargetsEnemy ? !isMyField : isMyField)
                 && (abilityTgtType[0] == null || abilityTgtType[0].equals(card.getType().toLowerCase()));
@@ -305,6 +308,7 @@ public class BattleScreen {
         boolean canCopyTarget = inCopyTargetSelect && !empty && myTurn && card != null
                 && (copiedAbilityTargetsEnemy ? !isMyField : isMyField)
                 && !(copiedAbilityTargetsEnemy && AbilityResolver.isImmuneToAbilities(fieldIsP1, st))
+                && !(copiedAbilityTargetsEnemy && !isFront && st.isShieldedByGreatEnt(fieldIsP1, idx))
                 && (copiedTargetType == null || copiedTargetType.equals(card.getType().toLowerCase()));
 
         // Scrap-select mode: click scraps on MY field to toggle selection
@@ -405,6 +409,22 @@ public class BattleScreen {
                 focL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 p.add(focL);
             }
+            int txTurns = st.transformCounters.getOrDefault(posKey, 0);
+            if (txTurns > 0) {
+                JLabel txL = lbl("→" + txTurns + "t", Font.ITALIC, 8, new Color(160, 220, 100));
+                txL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(txL);
+            }
+            if (st.fieldLockedCards.contains(posKey)) {
+                JLabel lockL = lbl("Locked", Font.ITALIC, 8, new Color(200, 160, 60));
+                lockL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(lockL);
+            }
+            if (isShieldedSlot) {
+                JLabel shL = lbl("Shielded", Font.ITALIC, 8, new Color(100, 200, 100));
+                shL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                p.add(shL);
+            }
             if (isMyField && !hasAct) {
                 JLabel used = lbl("Used", Font.ITALIC, 8, new Color(100, 100, 120));
                 used.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -450,6 +470,11 @@ public class BattleScreen {
                             waterSpiritBuff(st2);
                             msg[0] = "Water Spirit: all field cards gained +2 HP!";
                         }
+                        // Pod cards: start transform countdown on placement
+                        int txDelay = AbilityResolver.transformDelay(id);
+                        if (txDelay > 0) st2.transformCounters.put(newPosKey, txDelay);
+                        // Great Ent: mark as field-locked on placement
+                        if ("gen001".equals(id)) st2.fieldLockedCards.add(newPosKey);
                         // Turret Bot auto-attack on placement
                         if ("ttb001".equals(id) && isFront) {
                             String[] enemyFront = amP1 ? st2.p2Front : st2.p1Front;
@@ -673,6 +698,8 @@ public class BattleScreen {
                 st.burnedCards.remove(atkPosKey);
                 st.frozenCards.remove(atkPosKey);
                 st.focusedCards.remove(atkPosKey);
+                st.transformCounters.remove(atkPosKey);
+                st.fieldLockedCards.remove(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
                     if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
                 }
@@ -686,6 +713,11 @@ public class BattleScreen {
                 if (newTgtHp <= 0) {
                     tgtRow[tgtIdx] = "";
                     st.fieldAtkBonus.remove(tgtPosKey);
+                    st.burnedCards.remove(tgtPosKey);
+                    st.frozenCards.remove(tgtPosKey);
+                    st.focusedCards.remove(tgtPosKey);
+                    st.transformCounters.remove(tgtPosKey);
+                    st.fieldLockedCards.remove(tgtPosKey);
                     if (!(tgtC instanceof Champion)) {
                         if (!"item".equals(tgtC.getType())) {
                             if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
@@ -701,6 +733,53 @@ public class BattleScreen {
             } else {
                 atkRow[atkIdx] = BattleState.makeSlot(atkId, Math.max(1, atkNewHp));
                 msg[0] += "Spike Dragon retaliates for 5! ";
+            }
+        }
+
+        // Thorny Bushy: deal 6 damage to attacker when attacked
+        if ("tbu001".equals(tgtId)) {
+            int atkNewHp = BattleState.slotHp(atkSv) - 6;
+            if (atkNewHp <= 0 && !(atkC instanceof Champion)) {
+                atkRow[atkIdx] = "";
+                st.fieldAtkBonus.remove(atkPosKey);
+                st.burnedCards.remove(atkPosKey);
+                st.frozenCards.remove(atkPosKey);
+                st.focusedCards.remove(atkPosKey);
+                st.transformCounters.remove(atkPosKey);
+                st.fieldLockedCards.remove(atkPosKey);
+                if (!"item".equals(atkC.getType())) {
+                    if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String thornDeathMsg = AbilityResolver.onDeath(st, atkId, atkIsP1, cardMap);
+                if (atkIsP1) st.p1Discard.add(atkId); else st.p2Discard.add(atkId);
+                selField[0] = null;
+                st.useAction(atkIsP1, atkFront, atkIdx);
+                msg[0] += "Thorns: " + atkC.getName() + " destroyed!"
+                           + (thornDeathMsg.isEmpty() ? "" : " " + thornDeathMsg);
+                // Still apply the attack damage to Thorny Bushy
+                if (newTgtHp <= 0) {
+                    tgtRow[tgtIdx] = "";
+                    st.fieldAtkBonus.remove(tgtPosKey);
+                    st.burnedCards.remove(tgtPosKey);
+                    st.frozenCards.remove(tgtPosKey);
+                    st.focusedCards.remove(tgtPosKey);
+                    st.transformCounters.remove(tgtPosKey);
+                    st.fieldLockedCards.remove(tgtPosKey);
+                    if (!(tgtC instanceof Champion)) {
+                        if (!"item".equals(tgtC.getType())) {
+                            if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                        }
+                        AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
+                        if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
+                    }
+                } else {
+                    tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
+                }
+                st.save(); stRef[0] = st;
+                rebuildRef[0].run(); return;
+            } else {
+                atkRow[atkIdx] = BattleState.makeSlot(atkId, Math.max(1, atkNewHp));
+                msg[0] += "Thorns: " + atkC.getName() + " takes 6 retaliation damage! ";
             }
         }
 
@@ -721,6 +800,8 @@ public class BattleScreen {
             st.burnedCards.remove(tgtPosKey);
             st.frozenCards.remove(tgtPosKey);
             st.focusedCards.remove(tgtPosKey);
+            st.transformCounters.remove(tgtPosKey);
+            st.fieldLockedCards.remove(tgtPosKey);
 
             if (!(tgtC instanceof Champion)) {
                 if (!"item".equals(tgtC.getType())) {
@@ -729,6 +810,21 @@ public class BattleScreen {
                 String onDeathMsg = AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                 msg[0] += tgtC.getName() + " defeated! " + onDeathMsg;
+                // Great Ent: shielded backline card advances to frontline
+                if ("gen001".equals(tgtId) && tgtFront) {
+                    String[] backRow = tgtIsP1 ? st.p1Back : st.p2Back;
+                    if (backRow[tgtIdx] != null && !backRow[tgtIdx].isEmpty()) {
+                        String shPk = BattleState.posKey(tgtIsP1, false, tgtIdx);
+                        tgtRow[tgtIdx] = backRow[tgtIdx]; backRow[tgtIdx] = "";
+                        Integer a = st.fieldAtkBonus.remove(shPk);    if (a != null) st.fieldAtkBonus.put(tgtPosKey, a);
+                        Integer b = st.burnedCards.remove(shPk);       if (b != null) st.burnedCards.put(tgtPosKey, b);
+                        Integer f = st.frozenCards.remove(shPk);       if (f != null) st.frozenCards.put(tgtPosKey, f);
+                        if (st.focusedCards.remove(shPk)) st.focusedCards.add(tgtPosKey);
+                        Integer t = st.transformCounters.remove(shPk); if (t != null) st.transformCounters.put(tgtPosKey, t);
+                        if (st.fieldLockedCards.remove(shPk)) st.fieldLockedCards.add(tgtPosKey);
+                        msg[0] += " Shielded card advances!";
+                    }
+                }
             } else {
                 if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
@@ -755,6 +851,13 @@ public class BattleScreen {
             tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
             String suffix = reduction > 0 ? " (blocked " + reduction + ")" : "";
             msg[0] += "Hit " + tgtC.getName() + " for " + dmg + suffix + "!";
+            // Small Bushy / Great Bushy: gain HP when attacked
+            if ("sbu001".equals(tgtId) || "gbu001".equals(tgtId)) {
+                int bonus = "sbu001".equals(tgtId) ? 3 : 6;
+                int curHp = BattleState.slotHp(tgtRow[tgtIdx]);
+                tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, curHp + bonus);
+                msg[0] += " " + tgtC.getName() + " absorbed the hit, gaining +" + bonus + " HP!";
+            }
             // Fire Spirit: apply Burn on hit
             if ("frs001".equals(atkId)) {
                 st.burnedCards.put(tgtPosKey, 1);
@@ -911,6 +1014,35 @@ public class BattleScreen {
         rebuildRef[0].run();
     }
 
+    // ── Transform helper ──────────────────────────────────────────────────────
+
+    private static void applyTransform(BattleState st, String posKey,
+                                        Map<String, Card> cardMap, String[] msg) {
+        boolean posIsP1  = posKey.startsWith("p1");
+        boolean posFront = posKey.charAt(2) == 'f';
+        int posIdx = Character.getNumericValue(posKey.charAt(3));
+        String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                : (posIsP1 ? st.p1Back  : st.p2Back);
+        if (row[posIdx] == null || row[posIdx].isEmpty()) return;
+        String oldId = BattleState.slotId(row[posIdx]);
+        int curHp = BattleState.slotHp(row[posIdx]);
+        Card oldC = cardMap.get(oldId);
+        if (oldC == null) return;
+        boolean heads = AbilityResolver.coinFlip();
+        String newId = AbilityResolver.transformTarget(oldId, heads);
+        Card newC = newId != null ? cardMap.get(newId) : null;
+        if (newC == null) return;
+        int damageTaken = oldC.getHp() - curHp;
+        int newHp = Math.max(1, newC.getHp() - damageTaken);
+        row[posIdx] = BattleState.makeSlot(newId, newHp);
+        int delay = AbilityResolver.transformDelay(newId);
+        if (delay > 0) st.transformCounters.put(posKey, delay);
+        if ("gen001".equals(newId)) st.fieldLockedCards.add(posKey);
+        String flip = heads ? "Heads" : "Tails";
+        String appendMsg = oldC.getName() + " → " + newC.getName() + " (" + flip + ")!";
+        msg[0] = msg[0].isEmpty() ? appendMsg : msg[0] + " | " + appendMsg;
+    }
+
     // ── End turn ──────────────────────────────────────────────────────────────
 
     private static void doEndTurn(boolean amP1, BattleState[] stRef,
@@ -941,6 +1073,8 @@ public class BattleScreen {
                 st.frozenCards.remove(posKey);
                 st.focusedCards.remove(posKey);
                 st.turtleBotCharged.remove(posKey);
+                st.transformCounters.remove(posKey);
+                st.fieldLockedCards.remove(posKey);
                 if (bc != null && !"item".equals(bc.getType())) {
                     if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
                 }
@@ -948,6 +1082,20 @@ public class BattleScreen {
                 if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
                 String burnNotice = (bc != null ? bc.getName() : cId) + " burned to death!";
                 if (!deathMsg.isEmpty()) burnNotice += " " + deathMsg;
+                if ("gen001".equals(cId) && posFront) {
+                    String[] backRow = posIsP1 ? st.p1Back : st.p2Back;
+                    if (backRow[posIdx] != null && !backRow[posIdx].isEmpty()) {
+                        String shPk = BattleState.posKey(posIsP1, false, posIdx);
+                        row[posIdx] = backRow[posIdx]; backRow[posIdx] = "";
+                        Integer a = st.fieldAtkBonus.remove(shPk);    if (a != null) st.fieldAtkBonus.put(posKey, a);
+                        Integer b = st.burnedCards.remove(shPk);       if (b != null) st.burnedCards.put(posKey, b);
+                        Integer f = st.frozenCards.remove(shPk);       if (f != null) st.frozenCards.put(posKey, f);
+                        if (st.focusedCards.remove(shPk)) st.focusedCards.add(posKey);
+                        Integer t = st.transformCounters.remove(shPk); if (t != null) st.transformCounters.put(posKey, t);
+                        if (st.fieldLockedCards.remove(shPk)) st.fieldLockedCards.add(posKey);
+                        burnNotice += " Shielded card advances!";
+                    }
+                }
                 msg[0] = burnNotice;
             } else {
                 row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
@@ -959,6 +1107,39 @@ public class BattleScreen {
             int turns = st.frozenCards.get(posKey) - 1;
             if (turns <= 0) st.frozenCards.remove(posKey);
             else st.frozenCards.put(posKey, turns);
+        }
+
+        // ── Transform countdown ────────────────────────────────────────────
+        for (String txKey : new ArrayList<>(st.transformCounters.keySet())) {
+            int turns = st.transformCounters.get(txKey) - 1;
+            if (turns <= 0) {
+                st.transformCounters.remove(txKey);
+                applyTransform(st, txKey, cardMap, msg);
+            } else {
+                st.transformCounters.put(txKey, turns);
+            }
+        }
+
+        // ── Druid aura: all Pod cards +1 ATK & HP each turn ───────────────
+        for (boolean pSide : new boolean[]{true, false}) {
+            String[] frt = pSide ? st.p1Front : st.p2Front;
+            String[] bck = pSide ? st.p1Back  : st.p2Back;
+            boolean hasDruid = false;
+            for (String s : frt) if ("dru001".equals(BattleState.slotId(s))) { hasDruid = true; break; }
+            if (!hasDruid)
+                for (String s : bck) if ("dru001".equals(BattleState.slotId(s))) { hasDruid = true; break; }
+            if (!hasDruid) continue;
+            for (int pass = 0; pass < 2; pass++) {
+                String[] row = pass == 0 ? frt : bck;
+                for (int i = 0; i < 5; i++) {
+                    String cid = BattleState.slotId(row[i]);
+                    Card c = cid != null ? cardMap.get(cid) : null;
+                    if (c == null || !"pod".equals(c.getType())) continue;
+                    String pk = BattleState.posKey(pSide, pass == 0, i);
+                    st.fieldAtkBonus.merge(pk, 1, Integer::sum);
+                    row[i] = BattleState.makeSlot(cid, BattleState.slotHp(row[i]) + 1);
+                }
+            }
         }
 
         boolean nextIsP1   = !amP1;
