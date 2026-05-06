@@ -232,8 +232,8 @@ public class AbilityResolver {
     public static String onAbilityUsed(BattleState bs, boolean isP1) {
         // Shade (M1) – gain 1 soul when any ability used
         if ("M1".equals(currentChampId(bs, isP1))) {
-            if (isP1) bs.p1Souls = Math.min(bs.p1Souls + 1, bs.p1SoulCap);
-            else      bs.p2Souls = Math.min(bs.p2Souls + 1, bs.p2SoulCap);
+            if (isP1) bs.p1Souls++;
+            else      bs.p2Souls++;
             return "Harvest: gained 1 soul!";
         }
         return "";
