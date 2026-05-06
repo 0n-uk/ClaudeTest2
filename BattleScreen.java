@@ -375,7 +375,7 @@ public class BattleScreen {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(bgColor);
-        p.setPreferredSize(new Dimension(108, 120));
+        p.setPreferredSize(new Dimension(120, 148));
         boolean anyClickable = canPlace || canSelect || canTarget || canAbilityTarget
                                || canSelectScrap || isSelectedScrap || canBotTarget
                                || canEchoCopy || canMimicTarget || canCopyTarget;
@@ -400,14 +400,14 @@ public class BattleScreen {
             JPanel topRow = new JPanel(new BorderLayout(2, 0));
             topRow.setOpaque(false);
             topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-            topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 15));
-            JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 12, 12));
+            topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
+            JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 18, 18));
             JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
-            nameL.setFont(new Font("SansSerif", Font.BOLD, 9));
+            nameL.setFont(new Font("SansSerif", Font.BOLD, 11));
             nameL.setForeground(isChamp ? CHAMP_CLR : Color.WHITE);
             Color hpClr = hp <= card.getHp() / 3 + 1 ? new Color(220, 80, 80) : new Color(80, 200, 100);
             JLabel hpTopL = new JLabel(hp + "/" + card.getHp(), SwingConstants.RIGHT);
-            hpTopL.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hpTopL.setFont(new Font("SansSerif", Font.BOLD, 11));
             hpTopL.setForeground(hpClr);
             topRow.add(symL,   BorderLayout.WEST);
             topRow.add(nameL,  BorderLayout.CENTER);
@@ -415,7 +415,7 @@ public class BattleScreen {
             p.add(topRow);
 
             // Center: card image
-            JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), 44, 44));
+            JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), 62, 62));
             imgL.setAlignmentX(Component.CENTER_ALIGNMENT);
             p.add(imgL);
             p.add(Box.createVerticalStrut(1));
@@ -424,13 +424,13 @@ public class BattleScreen {
             JPanel botRow = new JPanel(new BorderLayout(2, 0));
             botRow.setOpaque(false);
             botRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-            botRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 15));
+            botRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
             String atkText = atkBonus > 0 ? "⚔" + displayAtk + "(+" + atkBonus + ")" : "⚔" + displayAtk;
             JLabel atkBotL = new JLabel(atkText);
-            atkBotL.setFont(new Font("SansSerif", Font.BOLD, 9));
+            atkBotL.setFont(new Font("SansSerif", Font.BOLD, 11));
             atkBotL.setForeground(atkBonus > 0 ? new Color(140, 220, 140) : new Color(220, 120, 80));
             JButton infoBtn = new JButton("ℹ");
-            infoBtn.setFont(new Font("SansSerif", Font.BOLD, 8));
+            infoBtn.setFont(new Font("SansSerif", Font.BOLD, 10));
             infoBtn.setForeground(new Color(220, 200, 120));
             infoBtn.setBackground(bgColor);
             infoBtn.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
@@ -445,7 +445,7 @@ public class BattleScreen {
                     "Ability", JOptionPane.INFORMATION_MESSAGE));
             String stageStr = isChamp ? "S" + ((Champion) card).getStage() : "";
             JLabel stageR = new JLabel(stageStr, SwingConstants.RIGHT);
-            stageR.setFont(new Font("SansSerif", Font.ITALIC, 8));
+            stageR.setFont(new Font("SansSerif", Font.ITALIC, 10));
             stageR.setForeground(CHAMP_CLR);
             botRow.add(atkBotL, BorderLayout.WEST);
             botRow.add(infoBtn, BorderLayout.CENTER);
@@ -1322,7 +1322,7 @@ public class BattleScreen {
             JPanel card = new JPanel();
             card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
             card.setBackground(bgColor);
-            card.setPreferredSize(new Dimension(93, 78));
+            card.setPreferredSize(new Dimension(110, 96));
             card.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(border, sel ? 2 : 1, true), new EmptyBorder(4, 5, 4, 5)));
             if (clickable) card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -1339,13 +1339,13 @@ public class BattleScreen {
             JPanel hTop = new JPanel(new BorderLayout(2, 0));
             hTop.setOpaque(false);
             hTop.setAlignmentX(Component.LEFT_ALIGNMENT);
-            hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 14));
-            JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 12, 12));
+            hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+            JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 15, 15));
             JLabel hName = new JLabel(c.getName(), SwingConstants.CENTER);
-            hName.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hName.setFont(new Font("SansSerif", Font.BOLD, 10));
             hName.setForeground(nameClr);
             JLabel hCost = new JLabel(costTxt, SwingConstants.RIGHT);
-            hCost.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hCost.setFont(new Font("SansSerif", Font.BOLD, 10));
             hCost.setForeground(costClr);
             hTop.add(hSym,  BorderLayout.WEST);
             hTop.add(hName, BorderLayout.CENTER);
@@ -1354,7 +1354,7 @@ public class BattleScreen {
             card.add(Box.createVerticalStrut(2));
 
             // Center: tiny card image
-            JLabel hImg = new JLabel(CardImageLoader.get(c.getId(), 24, 24));
+            JLabel hImg = new JLabel(CardImageLoader.get(c.getId(), 36, 36));
             hImg.setAlignmentX(Component.CENTER_ALIGNMENT);
             card.add(hImg);
             card.add(Box.createVerticalStrut(2));
@@ -1363,15 +1363,15 @@ public class BattleScreen {
             JPanel hBot = new JPanel(new BorderLayout(2, 0));
             hBot.setOpaque(false);
             hBot.setAlignmentX(Component.LEFT_ALIGNMENT);
-            hBot.setMaximumSize(new Dimension(Integer.MAX_VALUE, 14));
+            hBot.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
             JLabel hAtk = new JLabel("⚔" + handBaseAtk);
-            hAtk.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hAtk.setFont(new Font("SansSerif", Font.BOLD, 10));
             hAtk.setForeground(new Color(220, 80, 80));
             JLabel hHp = new JLabel(handBaseHp + "♥", SwingConstants.RIGHT);
-            hHp.setFont(new Font("SansSerif", Font.BOLD, 9));
+            hHp.setFont(new Font("SansSerif", Font.BOLD, 10));
             hHp.setForeground(new Color(80, 200, 100));
             JButton hInfo = new JButton("ℹ");
-            hInfo.setFont(new Font("SansSerif", Font.BOLD, 8));
+            hInfo.setFont(new Font("SansSerif", Font.BOLD, 10));
             hInfo.setForeground(new Color(220, 200, 120));
             hInfo.setBackground(bgColor);
             hInfo.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
