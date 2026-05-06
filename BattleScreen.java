@@ -454,11 +454,11 @@ public class BattleScreen {
                         st2.burnedCards.remove(newPosKey);
                         st2.frozenCards.remove(newPosKey);
                         st2.focusedCards.remove(newPosKey);
-                        // Conglamorat: HP and ATK equal current souls at placement time
+                        // Conglamorat: HP and ATK equal cost (= current souls, min 1)
                         int placeHp = c != null ? c.getHp() : 1;
                         if ("cng001".equals(id)) {
-                            placeHp = souls;
-                            st2.fieldAtkBonus.put(newPosKey, souls);
+                            placeHp = cost;
+                            st2.fieldAtkBonus.put(newPosKey, cost);
                         }
                         targetRow[idx] = BattleState.makeSlot(id, placeHp);
                         hand.remove(selHand[0]);
@@ -1203,7 +1203,7 @@ public class BattleScreen {
             String costTxt = isFree ? "FREE" : "Cost:" + cost;
 
             String statStr = "cng001".equals(c.getId())
-                    ? "A:" + souls + " H:" + souls + " (=souls)"
+                    ? "A:" + cost + " H:" + cost + " (=souls)"
                     : "A:" + c.getAttack() + " H:" + c.getHp();
             JLabel n = lbl(c.getName(), Font.BOLD,  9, nameClr); n.setAlignmentX(Component.LEFT_ALIGNMENT);
             JLabel o = lbl(costTxt,     Font.PLAIN, 9, costClr); o.setAlignmentX(Component.LEFT_ALIGNMENT);

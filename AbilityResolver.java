@@ -215,7 +215,7 @@ public class AbilityResolver {
     /** Returns the effective soul cost for placing a card, considering passives. */
     public static int effectiveCost(Card card, BattleState bs, boolean isP1,
                                      Map<String, ChampionLine> lines) {
-        if ("cng001".equals(card.getId())) return isP1 ? bs.p1Souls : bs.p2Souls;
+        if ("cng001".equals(card.getId())) return Math.max(1, isP1 ? bs.p1Souls : bs.p2Souls);
         int cost = card.getCost();
         // Elder Mothling (B4) – all your cards cost 1 less
         if ("B4".equals(currentChampId(bs, isP1))) cost = Math.max(0, cost - 1);
