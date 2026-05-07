@@ -419,7 +419,7 @@ public class BattleScreen {
                         Graphics2D g2 = (Graphics2D) g;
                         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                                             RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                        g2.drawImage(rawImg, 0, 0, getWidth(), getHeight(), null);
+                        g2.drawImage(rawImg, 0, 0, 64, 64, null);
                     }
                 }
             };
