@@ -226,6 +226,36 @@ public class BattleState {
         return (isP1 ? "p1" : "p2") + (isFront ? "f" : "b") + slot;
     }
 
+    static boolean posKeyIsP1(String pk)    { return pk.startsWith("p1"); }
+    static boolean posKeyIsFront(String pk) { return pk.charAt(2) == 'f'; }
+    static int     posKeyIdx(String pk)     { return Character.getNumericValue(pk.charAt(3)); }
+
+    String[] getRow(boolean isP1, boolean isFront) {
+        return isFront ? (isP1 ? p1Front : p2Front) : (isP1 ? p1Back : p2Back);
+    }
+
+    void clearCardState(String posKey) {
+        fieldAtkBonus.remove(posKey);
+        burnedCards.remove(posKey);
+        frozenCards.remove(posKey);
+        focusedCards.remove(posKey);
+        turtleBotCharged.remove(posKey);
+        transformCounters.remove(posKey);
+        fieldLockedCards.remove(posKey);
+    }
+
+    void migrateCardState(String from, String to) {
+        Integer a = fieldAtkBonus.remove(from);       if (a != null) fieldAtkBonus.put(to, a);
+        Integer b = burnedCards.remove(from);          if (b != null) burnedCards.put(to, b);
+        Integer f = frozenCards.remove(from);          if (f != null) frozenCards.put(to, f);
+        if (focusedCards.remove(from))        focusedCards.add(to);
+        Integer t = transformCounters.remove(from);    if (t != null) transformCounters.put(to, t);
+        if (fieldLockedCards.remove(from))    fieldLockedCards.add(to);
+        if (mantisSecondAttack.remove(from))  mantisSecondAttack.add(to);
+        if (actionsUsed.remove(from))         actionsUsed.add(to);
+        if (abilityUsedThisTurn.remove(from)) abilityUsedThisTurn.add(to);
+    }
+
     boolean hasAction(boolean isP1, boolean isFront, int slot) {
         String key = posKey(isP1, isFront, slot);
         if (!actionsUsed.contains(key)) return true;

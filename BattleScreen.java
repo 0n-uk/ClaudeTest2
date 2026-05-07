@@ -16,8 +16,13 @@ public class BattleScreen {
     private static final Color CARD_BG   = new Color(42, 42, 65);
     private static final Color SEL_ATK   = new Color(80, 160, 255);
     private static final Color SEL_TGT   = new Color(220, 60,  60);
-    private static final Color SEL_ABL   = new Color(220, 180, 60);  // ability target highlight
+    private static final Color SEL_ABL   = new Color(220, 180, 60);
     private static final Color CHAMP_CLR = new Color(220, 180, 60);
+
+    private static final Font  FONT_BOLD_11   = new Font("SansSerif", Font.BOLD,   11);
+    private static final Font  FONT_BOLD_10   = new Font("SansSerif", Font.BOLD,   10);
+    private static final Font  FONT_ITALIC_8  = new Font("SansSerif", Font.ITALIC,  8);
+    private static final Font  FONT_ITALIC_10 = new Font("SansSerif", Font.ITALIC, 10);
 
     private static Clip battleMusic;
 
@@ -398,11 +403,11 @@ public class BattleScreen {
             topRow.setOpaque(false);
             JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 32, 32));
             JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
-            nameL.setFont(new Font("SansSerif", Font.BOLD, 11));
+            nameL.setFont(FONT_BOLD_11);
             nameL.setForeground(isChamp ? CHAMP_CLR : Color.WHITE);
             Color hpClr = hp <= card.getHp() / 3 + 1 ? new Color(220, 80, 80) : new Color(80, 200, 100);
             JLabel hpTopL = new JLabel(hp + "/" + card.getHp(), SwingConstants.RIGHT);
-            hpTopL.setFont(new Font("SansSerif", Font.BOLD, 11));
+            hpTopL.setFont(FONT_BOLD_11);
             hpTopL.setForeground(hpClr);
             topRow.add(symL,   BorderLayout.WEST);
             topRow.add(nameL,  BorderLayout.CENTER);
@@ -410,22 +415,7 @@ public class BattleScreen {
             p.add(topRow, BorderLayout.NORTH);
 
             // CENTER: card image — scales to fill all available space
-            final java.awt.image.BufferedImage rawImg = CardImageLoader.getRaw(card.getId());
-            final Color slotBg = bgColor;
-            JPanel imgPanel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    if (rawImg != null) {
-                        Graphics2D g2 = (Graphics2D) g;
-                        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                                            RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                        g2.drawImage(rawImg, 0, 0, 64, 64, null);
-                    }
-                }
-            };
-            imgPanel.setBackground(slotBg);
-            imgPanel.setOpaque(true);
-            p.add(imgPanel, BorderLayout.CENTER);
+            p.add(new ScaledImagePanel(CardImageLoader.getRaw(card.getId()), bgColor), BorderLayout.CENTER);
 
             // SOUTH: ATK + info button + stage, then status badges
             JPanel southPanel = new JPanel();
@@ -436,25 +426,12 @@ public class BattleScreen {
             botRow.setOpaque(false);
             String atkText = atkBonus > 0 ? "⚔" + displayAtk + "(+" + atkBonus + ")" : "⚔" + displayAtk;
             JLabel atkBotL = new JLabel(atkText);
-            atkBotL.setFont(new Font("SansSerif", Font.BOLD, 11));
+            atkBotL.setFont(FONT_BOLD_11);
             atkBotL.setForeground(atkBonus > 0 ? new Color(140, 220, 140) : new Color(220, 120, 80));
-            JButton infoBtn = new JButton("ℹ");
-            infoBtn.setFont(new Font("SansSerif", Font.BOLD, 10));
-            infoBtn.setForeground(new Color(220, 200, 120));
-            infoBtn.setBackground(bgColor);
-            infoBtn.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
-            infoBtn.setContentAreaFilled(false);
-            infoBtn.setFocusPainted(false);
-            infoBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            final String slotAbilText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
-            final String slotCardName = card.getName();
-            infoBtn.addActionListener(ae -> JOptionPane.showMessageDialog(
-                    infoBtn,
-                    "<html><b>" + slotCardName + "</b><br><br>" + slotAbilText + "</html>",
-                    "Ability", JOptionPane.INFORMATION_MESSAGE));
+            JButton infoBtn = infoButton(bgColor, card.getName(), card.getAbility());
             String stageStr = isChamp ? "S" + ((Champion) card).getStage() : "";
             JLabel stageR = new JLabel(stageStr, SwingConstants.RIGHT);
-            stageR.setFont(new Font("SansSerif", Font.ITALIC, 10));
+            stageR.setFont(FONT_ITALIC_10);
             stageR.setForeground(CHAMP_CLR);
             botRow.add(atkBotL, BorderLayout.WEST);
             botRow.add(infoBtn, BorderLayout.CENTER);
@@ -462,38 +439,38 @@ public class BattleScreen {
             southPanel.add(botRow);
 
             if (isFrozenCard) {
-                JLabel frozenL = lbl("Frozen(" + st.frozenCards.get(posKey) + ")", Font.ITALIC, 8, new Color(100, 200, 255));
+                JLabel frozenL = lbl("Frozen(" + st.frozenCards.get(posKey) + ")", FONT_ITALIC_8, new Color(100, 200, 255));
                 frozenL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(frozenL);
             }
             if (isBurnedCard) {
-                JLabel burnL = lbl("Burned", Font.ITALIC, 8, new Color(255, 130, 50));
+                JLabel burnL = lbl("Burned", FONT_ITALIC_8, new Color(255, 130, 50));
                 burnL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(burnL);
             }
             if (st.focusedCards.contains(posKey)) {
-                JLabel focL = lbl("Focus!", Font.ITALIC, 8, new Color(255, 220, 80));
+                JLabel focL = lbl("Focus!", FONT_ITALIC_8, new Color(255, 220, 80));
                 focL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(focL);
             }
             int txTurns = st.transformCounters.getOrDefault(posKey, 0);
             if (txTurns > 0) {
-                JLabel txL = lbl("→" + txTurns + "t", Font.ITALIC, 8, new Color(160, 220, 100));
+                JLabel txL = lbl("→" + txTurns + "t", FONT_ITALIC_8, new Color(160, 220, 100));
                 txL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(txL);
             }
             if (st.fieldLockedCards.contains(posKey)) {
-                JLabel lockL = lbl("Locked", Font.ITALIC, 8, new Color(200, 160, 60));
+                JLabel lockL = lbl("Locked", FONT_ITALIC_8, new Color(200, 160, 60));
                 lockL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(lockL);
             }
             if (isShieldedSlot) {
-                JLabel shL = lbl("Shielded", Font.ITALIC, 8, new Color(100, 200, 100));
+                JLabel shL = lbl("Shielded", FONT_ITALIC_8, new Color(100, 200, 100));
                 shL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(shL);
             }
             if (isMyField && !hasAct) {
-                JLabel used = lbl("Used", Font.ITALIC, 8, new Color(100, 100, 120));
+                JLabel used = lbl("Used", FONT_ITALIC_8, new Color(100, 100, 120));
                 used.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(used);
             }
@@ -588,8 +565,7 @@ public class BattleScreen {
                         boolean srcIsP1  = multiStepCard[0].startsWith("p1");
                         stRef[0].useAction(srcIsP1, srcFront, srcIdx);
                         stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
-                        String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
-                        msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                        msg[0] = withHarvest(result, AbilityResolver.onAbilityUsed(stRef[0], amP1));
                         multiStepPhase[0] = null; multiStepCard[0] = null; scrapSelected[0].clear();
                         selField[0] = null;
                         stRef[0].save(); rebuildRef[0].run();
@@ -607,9 +583,8 @@ public class BattleScreen {
                             boolean srcIsP1  = multiStepCard[0].startsWith("p1");
                             stRef[0].useAction(srcIsP1, srcFront, srcIdx);
                             stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
-                            String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
-                            msg[0] = "Echo: copied " + (card != null ? card.getName() : cardId)
-                                     + " — " + result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                            msg[0] = withHarvest("Echo: copied " + (card != null ? card.getName() : cardId)
+                                     + " — " + result, AbilityResolver.onAbilityUsed(stRef[0], amP1));
                             echoCopiedCard[0] = null;
                             multiStepPhase[0] = null; multiStepCard[0] = null;
                             selField[0] = null;
@@ -633,9 +608,8 @@ public class BattleScreen {
                             boolean srcIsP1  = multiStepCard[0].startsWith("p1");
                             stRef[0].useAction(srcIsP1, srcFront, srcIdx);
                             stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
-                            String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
-                            msg[0] = "Mimic: stole " + (card != null ? card.getName() : cardId)
-                                     + " — " + result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                            msg[0] = withHarvest("Mimic: stole " + (card != null ? card.getName() : cardId)
+                                     + " — " + result, AbilityResolver.onAbilityUsed(stRef[0], amP1));
                             echoCopiedCard[0] = null;
                             multiStepPhase[0] = null; multiStepCard[0] = null;
                             selField[0] = null;
@@ -664,9 +638,8 @@ public class BattleScreen {
                                 amP1, fieldIsP1, isFront, idx, 0, cardMap);
                         stRef[0].useAction(srcIsP1, srcFront, srcIdx);
                         stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
-                        String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
                         String prefix = isEchoSrc ? "Echo: " : "Mimic: ";
-                        msg[0] = prefix + result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                        msg[0] = withHarvest(prefix + result, AbilityResolver.onAbilityUsed(stRef[0], amP1));
                         echoCopiedCard[0] = null;
                         multiStepPhase[0] = null; multiStepCard[0] = null;
                         selField[0] = null;
@@ -759,12 +732,7 @@ public class BattleScreen {
             int atkNewHp = atkCurHp - 5;
             if (atkNewHp <= 0 && !(atkC instanceof Champion)) {
                 atkRow[atkIdx] = "";
-                st.fieldAtkBonus.remove(atkPosKey);
-                st.burnedCards.remove(atkPosKey);
-                st.frozenCards.remove(atkPosKey);
-                st.focusedCards.remove(atkPosKey);
-                st.transformCounters.remove(atkPosKey);
-                st.fieldLockedCards.remove(atkPosKey);
+                st.clearCardState(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
                     if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
                 }
@@ -777,12 +745,7 @@ public class BattleScreen {
                 // still apply the attack damage to Spike Dragon before exiting
                 if (newTgtHp <= 0) {
                     tgtRow[tgtIdx] = "";
-                    st.fieldAtkBonus.remove(tgtPosKey);
-                    st.burnedCards.remove(tgtPosKey);
-                    st.frozenCards.remove(tgtPosKey);
-                    st.focusedCards.remove(tgtPosKey);
-                    st.transformCounters.remove(tgtPosKey);
-                    st.fieldLockedCards.remove(tgtPosKey);
+                    st.clearCardState(tgtPosKey);
                     if (!(tgtC instanceof Champion)) {
                         if (!"item".equals(tgtC.getType())) {
                             if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
@@ -806,12 +769,7 @@ public class BattleScreen {
             int atkNewHp = BattleState.slotHp(atkSv) - 6;
             if (atkNewHp <= 0 && !(atkC instanceof Champion)) {
                 atkRow[atkIdx] = "";
-                st.fieldAtkBonus.remove(atkPosKey);
-                st.burnedCards.remove(atkPosKey);
-                st.frozenCards.remove(atkPosKey);
-                st.focusedCards.remove(atkPosKey);
-                st.transformCounters.remove(atkPosKey);
-                st.fieldLockedCards.remove(atkPosKey);
+                st.clearCardState(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
                     if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
                 }
@@ -824,12 +782,7 @@ public class BattleScreen {
                 // Still apply the attack damage to Thorny Bushy
                 if (newTgtHp <= 0) {
                     tgtRow[tgtIdx] = "";
-                    st.fieldAtkBonus.remove(tgtPosKey);
-                    st.burnedCards.remove(tgtPosKey);
-                    st.frozenCards.remove(tgtPosKey);
-                    st.focusedCards.remove(tgtPosKey);
-                    st.transformCounters.remove(tgtPosKey);
-                    st.fieldLockedCards.remove(tgtPosKey);
+                    st.clearCardState(tgtPosKey);
                     if (!(tgtC instanceof Champion)) {
                         if (!"item".equals(tgtC.getType())) {
                             if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
@@ -861,12 +814,7 @@ public class BattleScreen {
 
         if (newTgtHp <= 0) {
             tgtRow[tgtIdx] = "";
-            st.fieldAtkBonus.remove(tgtPosKey);
-            st.burnedCards.remove(tgtPosKey);
-            st.frozenCards.remove(tgtPosKey);
-            st.focusedCards.remove(tgtPosKey);
-            st.transformCounters.remove(tgtPosKey);
-            st.fieldLockedCards.remove(tgtPosKey);
+            st.clearCardState(tgtPosKey);
 
             if (!(tgtC instanceof Champion)) {
                 if (!"item".equals(tgtC.getType())) {
@@ -881,12 +829,7 @@ public class BattleScreen {
                     if (backRow[tgtIdx] != null && !backRow[tgtIdx].isEmpty()) {
                         String shPk = BattleState.posKey(tgtIsP1, false, tgtIdx);
                         tgtRow[tgtIdx] = backRow[tgtIdx]; backRow[tgtIdx] = "";
-                        Integer a = st.fieldAtkBonus.remove(shPk);    if (a != null) st.fieldAtkBonus.put(tgtPosKey, a);
-                        Integer b = st.burnedCards.remove(shPk);       if (b != null) st.burnedCards.put(tgtPosKey, b);
-                        Integer f = st.frozenCards.remove(shPk);       if (f != null) st.frozenCards.put(tgtPosKey, f);
-                        if (st.focusedCards.remove(shPk)) st.focusedCards.add(tgtPosKey);
-                        Integer t = st.transformCounters.remove(shPk); if (t != null) st.transformCounters.put(tgtPosKey, t);
-                        if (st.fieldLockedCards.remove(shPk)) st.fieldLockedCards.add(tgtPosKey);
+                        st.migrateCardState(shPk, tgtPosKey);
                         msg[0] += " Shielded card advances!";
                     }
                 }
@@ -916,9 +859,7 @@ public class BattleScreen {
                             int splashNewHp = BattleState.slotHp(sRow[sIdx]) - actualSplash;
                             if (splashNewHp <= 0 && !(sCard instanceof Champion)) {
                                 sRow[sIdx] = "";
-                                st.fieldAtkBonus.remove(sPosKey); st.burnedCards.remove(sPosKey);
-                                st.frozenCards.remove(sPosKey);   st.focusedCards.remove(sPosKey);
-                                st.transformCounters.remove(sPosKey); st.fieldLockedCards.remove(sPosKey);
+                                st.clearCardState(sPosKey);
                                 if (!"item".equals(sCard.getType())) {
                                     if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
                                 }
@@ -930,12 +871,7 @@ public class BattleScreen {
                                     if (sBackRow[sIdx] != null && !sBackRow[sIdx].isEmpty()) {
                                         String shPk2 = BattleState.posKey(tgtIsP1, false, sIdx);
                                         sRow[sIdx] = sBackRow[sIdx]; sBackRow[sIdx] = "";
-                                        Integer a2 = st.fieldAtkBonus.remove(shPk2); if (a2 != null) st.fieldAtkBonus.put(sPosKey, a2);
-                                        Integer b2 = st.burnedCards.remove(shPk2);   if (b2 != null) st.burnedCards.put(sPosKey, b2);
-                                        Integer f2 = st.frozenCards.remove(shPk2);   if (f2 != null) st.frozenCards.put(sPosKey, f2);
-                                        if (st.focusedCards.remove(shPk2)) st.focusedCards.add(sPosKey);
-                                        Integer t2 = st.transformCounters.remove(shPk2); if (t2 != null) st.transformCounters.put(sPosKey, t2);
-                                        if (st.fieldLockedCards.remove(shPk2)) st.fieldLockedCards.add(sPosKey);
+                                        st.migrateCardState(shPk2, sPosKey);
                                         msg[0] += " Shielded card advances!";
                                     }
                                 }
@@ -1000,13 +936,7 @@ public class BattleScreen {
                 String newPosKey = BattleState.posKey(atkIsP1, targetFront, atkIdx);
                 otherRow[atkIdx] = atkRow[atkIdx];
                 atkRow[atkIdx]   = "";
-                Integer av = st.fieldAtkBonus.remove(atkPosKey);       if (av != null) st.fieldAtkBonus.put(newPosKey, av);
-                Integer bv = st.burnedCards.remove(atkPosKey);          if (bv != null) st.burnedCards.put(newPosKey, bv);
-                Integer fv = st.frozenCards.remove(atkPosKey);          if (fv != null) st.frozenCards.put(newPosKey, fv);
-                if (st.focusedCards.remove(atkPosKey))       st.focusedCards.add(newPosKey);
-                if (st.mantisSecondAttack.remove(atkPosKey)) st.mantisSecondAttack.add(newPosKey);
-                if (st.actionsUsed.remove(atkPosKey))        st.actionsUsed.add(newPosKey);
-                if (st.abilityUsedThisTurn.remove(atkPosKey)) st.abilityUsedThisTurn.add(newPosKey);
+                st.migrateCardState(atkPosKey, newPosKey);
                 msg[0] += " Pawn dashes to the " + (targetFront ? "frontline" : "backline") + "!";
             }
         }
@@ -1026,7 +956,6 @@ public class BattleScreen {
                                                BattleState[] stRef, int[] selHand,
                                                String[] selField, String[] msg,
                                                Runnable[] rebuildRef) {
-        boolean isP1Front = posKey.charAt(1) == '1';
         boolean isFront   = posKey.charAt(2) == 'f';
         int     idx       = Character.getNumericValue(posKey.charAt(3));
         boolean fieldIsP1 = posKey.startsWith("p1");
@@ -1046,8 +975,7 @@ public class BattleScreen {
         if (result != null) {
             st.useAction(fieldIsP1, isFront, idx);
             st.abilityUsedThisTurn.add(posKey);
-            String harvestMsg = AbilityResolver.onAbilityUsed(st, amP1);
-            msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+            msg[0] = withHarvest(result, AbilityResolver.onAbilityUsed(st, amP1));
             selField[0] = null;
             st.save(); stRef[0] = st;
         }
@@ -1089,8 +1017,7 @@ public class BattleScreen {
                                                           abilityChoice, cardMap);
         st.useAction(srcIsP1, srcFront, srcIdx);
         st.abilityUsedThisTurn.add(sourceKey);
-        String harvestMsg = AbilityResolver.onAbilityUsed(st, amP1);
-        msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+        msg[0] = withHarvest(result, AbilityResolver.onAbilityUsed(st, amP1));
         abilitySource[0]  = null;
         abilityTgtType[0] = null;
         selField[0]       = null;
@@ -1143,10 +1070,8 @@ public class BattleScreen {
         if (result == null) {
             msg[0] = "This champion has a passive ability.";
         } else {
-            msg[0] = result;
+            msg[0] = withHarvest(result, AbilityResolver.onAbilityUsed(st, amP1));
             st.abilityUsedThisTurn.add(BattleState.posKey(amP1, false, BattleState.CHAMP_SLOT));
-            String harvestMsg = AbilityResolver.onAbilityUsed(st, amP1);
-            if (!harvestMsg.isEmpty()) msg[0] += " " + harvestMsg;
             st.useAction(amP1, false, BattleState.CHAMP_SLOT);
             st.save(); stRef[0] = st;
             rebuildRef[0].run();
@@ -1209,13 +1134,7 @@ public class BattleScreen {
             int    newHp = chp - 1;
             if (newHp <= 0 && !(bc instanceof Champion)) {
                 row[posIdx] = "";
-                st.burnedCards.remove(posKey);
-                st.fieldAtkBonus.remove(posKey);
-                st.frozenCards.remove(posKey);
-                st.focusedCards.remove(posKey);
-                st.turtleBotCharged.remove(posKey);
-                st.transformCounters.remove(posKey);
-                st.fieldLockedCards.remove(posKey);
+                st.clearCardState(posKey);
                 if (bc != null && !"item".equals(bc.getType())) {
                     if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
                 }
@@ -1228,12 +1147,7 @@ public class BattleScreen {
                     if (backRow[posIdx] != null && !backRow[posIdx].isEmpty()) {
                         String shPk = BattleState.posKey(posIsP1, false, posIdx);
                         row[posIdx] = backRow[posIdx]; backRow[posIdx] = "";
-                        Integer a = st.fieldAtkBonus.remove(shPk);    if (a != null) st.fieldAtkBonus.put(posKey, a);
-                        Integer b = st.burnedCards.remove(shPk);       if (b != null) st.burnedCards.put(posKey, b);
-                        Integer f = st.frozenCards.remove(shPk);       if (f != null) st.frozenCards.put(posKey, f);
-                        if (st.focusedCards.remove(shPk)) st.focusedCards.add(posKey);
-                        Integer t = st.transformCounters.remove(shPk); if (t != null) st.transformCounters.put(posKey, t);
-                        if (st.fieldLockedCards.remove(shPk)) st.fieldLockedCards.add(posKey);
+                        st.migrateCardState(shPk, posKey);
                         burnNotice += " Shielded card advances!";
                     }
                 }
@@ -1352,10 +1266,10 @@ public class BattleScreen {
             hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
             JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 15, 15));
             JLabel hName = new JLabel(c.getName(), SwingConstants.CENTER);
-            hName.setFont(new Font("SansSerif", Font.BOLD, 10));
+            hName.setFont(FONT_BOLD_10);
             hName.setForeground(nameClr);
             JLabel hCost = new JLabel(costTxt, SwingConstants.RIGHT);
-            hCost.setFont(new Font("SansSerif", Font.BOLD, 10));
+            hCost.setFont(FONT_BOLD_10);
             hCost.setForeground(costClr);
             hTop.add(hSym,  BorderLayout.WEST);
             hTop.add(hName, BorderLayout.CENTER);
@@ -1363,46 +1277,18 @@ public class BattleScreen {
             card.add(hTop, BorderLayout.NORTH);
 
             // CENTER: card image scaled to fill
-            final java.awt.image.BufferedImage hRawImg = CardImageLoader.getRaw(c.getId());
-            final Color hBgColor = bgColor;
-            JPanel hImgPanel = new JPanel() {
-                @Override protected void paintComponent(Graphics g) {
-                    super.paintComponent(g);
-                    if (hRawImg != null) {
-                        Graphics2D g2 = (Graphics2D) g;
-                        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                                            RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                        g2.drawImage(hRawImg, 0, 0, getWidth(), getHeight(), null);
-                    }
-                }
-            };
-            hImgPanel.setBackground(hBgColor);
-            hImgPanel.setOpaque(true);
-            card.add(hImgPanel, BorderLayout.CENTER);
+            card.add(new ScaledImagePanel(CardImageLoader.getRaw(c.getId()), bgColor), BorderLayout.CENTER);
 
             // SOUTH: ATK + info button + HP
             JPanel hBot = new JPanel(new BorderLayout(2, 0));
             hBot.setOpaque(false);
             JLabel hAtk = new JLabel("⚔" + handBaseAtk);
-            hAtk.setFont(new Font("SansSerif", Font.BOLD, 10));
+            hAtk.setFont(FONT_BOLD_10);
             hAtk.setForeground(new Color(220, 80, 80));
             JLabel hHp = new JLabel(handBaseHp + "♥", SwingConstants.RIGHT);
-            hHp.setFont(new Font("SansSerif", Font.BOLD, 10));
+            hHp.setFont(FONT_BOLD_10);
             hHp.setForeground(new Color(80, 200, 100));
-            JButton hInfo = new JButton("ℹ");
-            hInfo.setFont(new Font("SansSerif", Font.BOLD, 10));
-            hInfo.setForeground(new Color(220, 200, 120));
-            hInfo.setBackground(bgColor);
-            hInfo.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
-            hInfo.setContentAreaFilled(false);
-            hInfo.setFocusPainted(false);
-            hInfo.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            final String hAbilText = c.getAbility().isEmpty() ? "No ability." : c.getAbility();
-            final String hCardName = c.getName();
-            hInfo.addActionListener(ae -> JOptionPane.showMessageDialog(
-                    hInfo,
-                    "<html><b>" + hCardName + "</b><br><br>" + hAbilText + "</html>",
-                    "Ability", JOptionPane.INFORMATION_MESSAGE));
+            JButton hInfo = infoButton(bgColor, c.getName(), c.getAbility());
             hBot.add(hAtk,  BorderLayout.WEST);
             hBot.add(hInfo, BorderLayout.CENTER);
             hBot.add(hHp,   BorderLayout.EAST);
@@ -1479,8 +1365,7 @@ public class BattleScreen {
                         String result = AbilityResolver.fortify(stRef[0], amP1, scrapSelected[0], cardMap);
                         stRef[0].useAction(srcIsP1, srcFront, srcIdx);
                         stRef[0].abilityUsedThisTurn.add(multiStepCard[0]);
-                        String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
-                        msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                        msg[0] = withHarvest(result, AbilityResolver.onAbilityUsed(stRef[0], amP1));
                         multiStepPhase[0] = null; multiStepCard[0] = null; scrapSelected[0].clear();
                         selField[0] = null;
                         stRef[0].save(); rebuildRef[0].run();
@@ -1557,8 +1442,7 @@ public class BattleScreen {
                                     eligible.get(choice).getId(), cardMap);
                                 stRef[0].useAction(srcIsP1, srcFront, srcIdx);
                                 stRef[0].abilityUsedThisTurn.add(selField[0]);
-                                String harvestMsg = AbilityResolver.onAbilityUsed(stRef[0], amP1);
-                                msg[0] = result + (harvestMsg.isEmpty() ? "" : " " + harvestMsg);
+                                msg[0] = withHarvest(result, AbilityResolver.onAbilityUsed(stRef[0], amP1));
                                 selField[0] = null;
                                 stRef[0].save(); rebuildRef[0].run();
                             } else if (isMultiStep) {
@@ -1709,6 +1593,13 @@ public class BattleScreen {
         return l;
     }
 
+    private static JLabel lbl(String text, Font font, Color color) {
+        JLabel l = new JLabel(text);
+        l.setFont(font);
+        l.setForeground(color);
+        return l;
+    }
+
     private static JButton smallBtn(String text, Color accent) {
         JButton b = new JButton(text);
         b.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -1719,5 +1610,43 @@ public class BattleScreen {
             new LineBorder(accent, 2, true), new EmptyBorder(6, 16, 6, 16)));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return b;
+    }
+
+    private static JButton infoButton(Color bg, String cardName, String abilityText) {
+        JButton btn = new JButton("ℹ");
+        btn.setFont(FONT_BOLD_10);
+        btn.setForeground(new Color(220, 200, 120));
+        btn.setBackground(bg);
+        btn.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        String abl = abilityText.isEmpty() ? "No ability." : abilityText;
+        btn.addActionListener(ae -> JOptionPane.showMessageDialog(btn,
+                "<html><b>" + cardName + "</b><br><br>" + abl + "</html>",
+                "Ability", JOptionPane.INFORMATION_MESSAGE));
+        return btn;
+    }
+
+    private static String withHarvest(String result, String harvestMsg) {
+        return harvestMsg.isEmpty() ? result : result + " " + harvestMsg;
+    }
+
+    private static class ScaledImagePanel extends JPanel {
+        private final java.awt.image.BufferedImage img;
+        ScaledImagePanel(java.awt.image.BufferedImage img, Color bg) {
+            this.img = img;
+            setBackground(bg);
+            setOpaque(true);
+        }
+        @Override protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (img != null) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g2.drawImage(img, 0, 0, getWidth(), getHeight(), null);
+            }
+        }
     }
 }
