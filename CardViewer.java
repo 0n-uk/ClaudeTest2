@@ -1,9 +1,9 @@
-import javax.swing.*;
-import javax.swing.border.*;
 import java.awt.*;
 import java.io.*;
 import java.util.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.*;
 
 public class CardViewer {
 
@@ -112,7 +112,7 @@ public class CardViewer {
     }
 
     static JPanel buildCardPanel(Card card, int w, int h) {
-        int symSize  = Math.max(18, w / 10);
+        int symSize  = Math.max(32, w / 10);
         int topFont  = Math.max(12, w / 15);
         int imgSize  = Math.max(60, (int)(h * 0.55));
         int statFont = Math.max(12, w / 15);

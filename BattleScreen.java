@@ -401,7 +401,7 @@ public class BattleScreen {
             topRow.setOpaque(false);
             topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
             topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-            JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 18, 18));
+            JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 32, 32));
             JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
             nameL.setFont(new Font("SansSerif", Font.BOLD, 11));
             nameL.setForeground(isChamp ? CHAMP_CLR : Color.WHITE);
@@ -1340,7 +1340,7 @@ public class BattleScreen {
             hTop.setOpaque(false);
             hTop.setAlignmentX(Component.LEFT_ALIGNMENT);
             hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
-            JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 15, 15));
+            JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 32, 32));
             JLabel hName = new JLabel(c.getName(), SwingConstants.CENTER);
             hName.setFont(new Font("SansSerif", Font.BOLD, 10));
             hName.setForeground(nameClr);
