@@ -61,7 +61,10 @@ public class PackScreen {
         Set<String> endoraIds = new HashSet<>(Arrays.asList(
             "psh001", "pod001", "sen001", "sbu001",
             "gen001", "dru001", "gbu001", "tbu001",
-            "ima001", "trp001", "cmf001", "blw001"));
+            "ima001", "trp001", "cmf001", "blw001",
+            // Flame and Fungal pod lines
+            "ffp001", "fbl001",
+            "fgp001", "fgs001", "fgb001", "fhm001", "fgc001"));
 
         List<Card> starter = new ArrayList<>();
         List<Card> scrap   = new ArrayList<>();

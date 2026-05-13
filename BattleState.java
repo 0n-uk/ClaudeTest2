@@ -36,6 +36,10 @@ public class BattleState {
     Set<String>     focusedCards        = new HashSet<>();  // posKeys where Focus (double ATK) is active
     Map<String,Integer> transformCounters = new HashMap<>(); // posKey -> turns remaining until transform
     Set<String>     fieldLockedCards    = new HashSet<>();  // posKeys that cannot return to hand/move
+    Map<String,Integer> sporedCards      = new HashMap<>(); // posKey -> rounds remaining when spored
+    Map<String,Integer> fungalBeastKills = new HashMap<>(); // posKey -> kill count for Fungal Beast
+    int             p1FungalDomain   = 0; // turns remaining for P1's Fungal Domain aura
+    int             p2FungalDomain   = 0; // turns remaining for P2's Fungal Domain aura
 
     List<String> p1Hand    = new ArrayList<>();
     List<String> p2Hand    = new ArrayList<>();
@@ -128,6 +132,20 @@ public class BattleState {
                                                 } break;
                     case "fieldLockedCards":   if (!val.isEmpty())
                                                     bs.fieldLockedCards.addAll(Arrays.asList(val.split(","))); break;
+                    case "sporedCards":       if (!val.isEmpty()) {
+                                                  for (String entry : val.split(",")) {
+                                                      int c2 = entry.lastIndexOf(':');
+                                                      if (c2 > 0) bs.sporedCards.put(entry.substring(0, c2), parseInt(entry.substring(c2+1)));
+                                                  }
+                                              } break;
+                    case "fungalBeastKills":  if (!val.isEmpty()) {
+                                                  for (String entry : val.split(",")) {
+                                                      int c2 = entry.lastIndexOf(':');
+                                                      if (c2 > 0) bs.fungalBeastKills.put(entry.substring(0, c2), parseInt(entry.substring(c2+1)));
+                                                  }
+                                              } break;
+                    case "p1FungalDomain":    bs.p1FungalDomain = parseInt(val); break;
+                    case "p2FungalDomain":    bs.p2FungalDomain = parseInt(val); break;
                     case "p1Hand":              bs.p1Hand    = parseList(val); break;
                     case "p2Hand":              bs.p2Hand    = parseList(val); break;
                     case "p1Deck":              bs.p1Deck    = parseList(val); break;
@@ -195,6 +213,20 @@ public class BattleState {
             }
             w.write("transformCounters=" + txSb); w.newLine();
             w.write("fieldLockedCards=" + String.join(",", fieldLockedCards)); w.newLine();
+            StringBuilder sporedSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : sporedCards.entrySet()) {
+                if (sporedSb.length() > 0) sporedSb.append(',');
+                sporedSb.append(e.getKey()).append(':').append(e.getValue());
+            }
+            w.write("sporedCards=" + sporedSb); w.newLine();
+            StringBuilder fbkSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : fungalBeastKills.entrySet()) {
+                if (fbkSb.length() > 0) fbkSb.append(',');
+                fbkSb.append(e.getKey()).append(':').append(e.getValue());
+            }
+            w.write("fungalBeastKills=" + fbkSb); w.newLine();
+            w.write("p1FungalDomain=" + p1FungalDomain); w.newLine();
+            w.write("p2FungalDomain=" + p2FungalDomain); w.newLine();
             w.write("p1Hand="    + String.join(",", p1Hand));    w.newLine();
             w.write("p2Hand="    + String.join(",", p2Hand));    w.newLine();
             w.write("p1Deck="    + String.join(",", p1Deck));    w.newLine();
@@ -247,6 +279,8 @@ public class BattleState {
         turtleBotCharged.remove(posKey);
         transformCounters.remove(posKey);
         fieldLockedCards.remove(posKey);
+        sporedCards.remove(posKey);
+        fungalBeastKills.remove(posKey);
     }
 
     void migrateCardState(String from, String to) {
@@ -260,6 +294,8 @@ public class BattleState {
         if (mantisSecondAttack.remove(from))  mantisSecondAttack.add(to);
         if (actionsUsed.remove(from))         actionsUsed.add(to);
         if (abilityUsedThisTurn.remove(from)) abilityUsedThisTurn.add(to);
+        Integer sp = sporedCards.remove(from);       if (sp != null) sporedCards.put(to, sp);
+        Integer fk = fungalBeastKills.remove(from);  if (fk != null) fungalBeastKills.put(to, fk);
     }
 
     boolean hasAction(boolean isP1, boolean isFront, int slot) {
