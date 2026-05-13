@@ -55,6 +55,8 @@ public class AbilityResolver {
     public static final Map<String, String>     TARGET_TYPE     = new HashMap<>();
     /** cardId → "enemy" if ability targets the enemy field; defaults to friendly */
     public static final Map<String, String>     TARGET_SIDE     = new HashMap<>();
+    /** cardId → minimum incoming damage required to actually damage this card (threshold check) */
+    public static final Map<String, Integer>    DAMAGE_THRESHOLD = new HashMap<>();
 
     static {
         // ── On-death: regular cards ───────────────────────────────────────
@@ -97,11 +99,20 @@ public class AbilityResolver {
         TARGETED_ACTIVE.put("nts001", (bs, isP1, ti, tf, tidx, ch, cm) -> natureSpirit(bs, ti, tf, tidx, cm));
         TARGETED_ACTIVE.put("cld001", (bs, isP1, ti, tf, tidx, ch, cm) -> cloudling(bs, isP1, ti, tf, tidx, cm));
 
+        // ── Active (no-target): bug cards ────────────────────────────────
+        ACTIVE.put("msp001", (bs, isP1, cm) -> mamaSpiderlingSpawn(bs, isP1));
+
         // ── Passive: damage reduction ─────────────────────────────────────
         PASSIVE_REDUCTION.put("smi001", 1);
+        PASSIVE_REDUCTION.put("lcp001", 2);
+
+        // ── Damage thresholds (attacks below threshold deal 0) ────────────
+        DAMAGE_THRESHOLD.put("rpl001", 1);
+        DAMAGE_THRESHOLD.put("ebw001", 8);
 
         // ── Soul costs ────────────────────────────────────────────────────
         SOUL_COST.put("hd001",  1);
+        SOUL_COST.put("msp001", 3);
         SOUL_COST.put("wsp001", 1);
         SOUL_COST.put("D2",     3);
         SOUL_COST.put("shs001", 2);
@@ -158,6 +169,11 @@ public class AbilityResolver {
     /** Returns how much incoming damage is reduced for this card (passive). */
     public static int passiveDamageReduction(String cardId) {
         return PASSIVE_REDUCTION.getOrDefault(cardId, 0);
+    }
+
+    /** Returns the minimum raw damage required to damage this card; 0 = no threshold. */
+    public static int damageThreshold(String cardId) {
+        return DAMAGE_THRESHOLD.getOrDefault(cardId, 0);
     }
 
     /** Returns whether the player can currently afford to use this card's ability. */
@@ -839,6 +855,21 @@ public class AbilityResolver {
             case "sbu001": return 4;
             default: return -1;
         }
+    }
+
+    // Mama Spiderling (msp001): spend 3 souls to summon a Spiderling to own frontline
+    private static String mamaSpiderlingSpawn(BattleState bs, boolean isP1) {
+        int souls = isP1 ? bs.p1Souls : bs.p2Souls;
+        if (souls < 3) return "Spawn: need 3 souls (have " + souls + ").";
+        if (isP1) bs.p1Souls -= 3; else bs.p2Souls -= 3;
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        for (int i = 0; i < 5; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot("spl001", 3);
+                return "Spawn: Mama Spiderling summoned a Spiderling!";
+            }
+        }
+        return "Spawn: frontline is full!";
     }
 
     // T-Bot Mega (T4): spend 2 Scrap for 2 extra actions

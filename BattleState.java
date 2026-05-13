@@ -31,6 +31,7 @@ public class BattleState {
     Set<String>     turtleBotCharged    = new HashSet<>(); // posKeys with active Turtle Bot +5 ATK buff
     Set<String>     mantisSecondAttack  = new HashSet<>(); // posKeys where Mantis Bot has used first attack
     Map<String,Integer> burnedCards     = new HashMap<>(); // posKey -> 1 if card is burning (1 dmg/turn)
+    Set<String>     poisonedCards       = new HashSet<>();  // posKeys with active poison (1 dmg/turn)
     Map<String,Integer> frozenCards     = new HashMap<>(); // posKey -> turns remaining frozen
     Set<String>     focusedCards        = new HashSet<>();  // posKeys where Focus (double ATK) is active
     Map<String,Integer> transformCounters = new HashMap<>(); // posKey -> turns remaining until transform
@@ -96,6 +97,8 @@ public class BattleState {
                                                             parseInt(entry.substring(c2 + 1)));
                                                     }
                                                 } break;
+                    case "poisonedCards":       if (!val.isEmpty())
+                                                    bs.poisonedCards.addAll(Arrays.asList(val.split(","))); break;
                     case "turtleBotCharged":   if (!val.isEmpty())
                                                     bs.turtleBotCharged.addAll(Arrays.asList(val.split(","))); break;
                     case "mantisSecondAttack": if (!val.isEmpty())
@@ -169,6 +172,7 @@ public class BattleState {
                 atkBonusSb.append(e.getKey()).append(':').append(e.getValue());
             }
             w.write("fieldAtkBonus=" + atkBonusSb);                                  w.newLine();
+            w.write("poisonedCards="      + String.join(",", poisonedCards));     w.newLine();
             w.write("turtleBotCharged="   + String.join(",", turtleBotCharged));   w.newLine();
             w.write("mantisSecondAttack=" + String.join(",", mantisSecondAttack)); w.newLine();
             StringBuilder burnSb = new StringBuilder();
@@ -237,6 +241,7 @@ public class BattleState {
     void clearCardState(String posKey) {
         fieldAtkBonus.remove(posKey);
         burnedCards.remove(posKey);
+        poisonedCards.remove(posKey);
         frozenCards.remove(posKey);
         focusedCards.remove(posKey);
         turtleBotCharged.remove(posKey);
@@ -247,6 +252,7 @@ public class BattleState {
     void migrateCardState(String from, String to) {
         Integer a = fieldAtkBonus.remove(from);       if (a != null) fieldAtkBonus.put(to, a);
         Integer b = burnedCards.remove(from);          if (b != null) burnedCards.put(to, b);
+        if (poisonedCards.remove(from))       poisonedCards.add(to);
         Integer f = frozenCards.remove(from);          if (f != null) frozenCards.put(to, f);
         if (focusedCards.remove(from))        focusedCards.add(to);
         Integer t = transformCounters.remove(from);    if (t != null) transformCounters.put(to, t);

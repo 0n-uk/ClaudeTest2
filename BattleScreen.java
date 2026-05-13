@@ -448,6 +448,11 @@ public class BattleScreen {
                 burnL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(burnL);
             }
+            if (st.poisonedCards.contains(posKey)) {
+                JLabel poisL = lbl("Poisoned", FONT_ITALIC_8, new Color(140, 200, 80));
+                poisL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                southPanel.add(poisL);
+            }
             if (st.focusedCards.contains(posKey)) {
                 JLabel focL = lbl("Focus!", FONT_ITALIC_8, new Color(255, 220, 80));
                 focL.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -510,6 +515,11 @@ public class BattleScreen {
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
                         if (amP1) st2.p1Souls -= cost; else st2.p2Souls -= cost;
                         selHand[0] = -1; msg[0] = "";
+                        // Worker Ant: add a Worker Ant2 to owner's hand on placement
+                        if ("wka001".equals(id)) {
+                            hand.add("wka002");
+                            msg[0] = "Colony: Worker Ant2 added to your hand!";
+                        }
                         // Water Spirit: all cards on field gain +2 HP when placed
                         if ("wts001".equals(id)) {
                             waterSpiritBuff(st2);
@@ -801,8 +811,27 @@ public class BattleScreen {
             }
         }
 
-        // Dual-strike: Mantis Bot, Large Mantis, Eye Shrew — first attack doesn't consume action
+        // Damage threshold: Roly Poly blocks <1 dmg; Elder Beetle Warrior blocks <8 dmg
+        int dmgThreshold = AbilityResolver.damageThreshold(tgtId);
         boolean isDualStrike = "mtb001".equals(atkId) || "lmt001".equals(atkId) || "esr001".equals(atkId);
+        if (dmgThreshold > 0 && dmg < dmgThreshold) {
+            if (isDualStrike && !st.mantisSecondAttack.contains(atkPosKey)) {
+                st.mantisSecondAttack.add(atkPosKey);
+            } else {
+                st.mantisSecondAttack.remove(atkPosKey);
+                st.useAction(atkIsP1, atkFront, atkIdx);
+            }
+            selField[0] = null;
+            msg[0] += atkC.getName() + " attacks " + tgtC.getName() + " but the attack is too weak — blocked!";
+            if (atkC instanceof Champion) {
+                doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+            } else {
+                st.save(); stRef[0] = st;
+                rebuildRef[0].run();
+            }
+            return;
+        }
+
         if (isDualStrike && !st.mantisSecondAttack.contains(atkPosKey)) {
             st.mantisSecondAttack.add(atkPosKey);
             // Don't call useAction — card gets a second attack
@@ -919,6 +948,11 @@ public class BattleScreen {
             if ("frs001".equals(atkId)) {
                 st.burnedCards.put(tgtPosKey, 1);
                 msg[0] += " " + tgtC.getName() + " is now Burned!";
+            }
+            // Spiderling: apply Poison on hit
+            if ("spl001".equals(atkId)) {
+                st.poisonedCards.add(tgtPosKey);
+                msg[0] += " " + tgtC.getName() + " is Poisoned!";
             }
             // Ice Dragon: apply Freeze on hit (1 round = 2 turns)
             if ("icd001".equals(atkId)) {
@@ -1152,6 +1186,36 @@ public class BattleScreen {
                     }
                 }
                 msg[0] = burnNotice;
+            } else {
+                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+
+        // ── Apply poison damage (1 dmg per poisoned card) ─────────────────
+        for (String posKey : new ArrayList<>(st.poisonedCards)) {
+            boolean posIsP1 = posKey.startsWith("p1");
+            boolean posFront = posKey.charAt(2) == 'f';
+            int posIdx = Character.getNumericValue(posKey.charAt(3));
+            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                    : (posIsP1 ? st.p1Back  : st.p2Back);
+            if (row[posIdx] == null || row[posIdx].isEmpty()) {
+                st.poisonedCards.remove(posKey); continue;
+            }
+            String cId = BattleState.slotId(row[posIdx]);
+            int    chp = BattleState.slotHp(row[posIdx]);
+            Card   pc  = cardMap.get(cId);
+            int    newHp = chp - 1;
+            if (newHp <= 0 && !(pc instanceof Champion)) {
+                row[posIdx] = "";
+                st.clearCardState(posKey);
+                if (pc != null && !"item".equals(pc.getType())) {
+                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
+                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
+                String poisonNotice = (pc != null ? pc.getName() : cId) + " died from poison!";
+                if (!deathMsg.isEmpty()) poisonNotice += " " + deathMsg;
+                msg[0] = poisonNotice;
             } else {
                 row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
             }

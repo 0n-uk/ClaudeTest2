@@ -48,7 +48,10 @@ public class PackScreen {
             "frs001", "ics001", "wts001", "nts001", "ers001", "wns001",
             "cld001", "icd001", "spd001",
             "ecs001", "cng001",
-            "pwn001", "trp001"));
+            "pwn001", "trp001",
+            // Bug cards
+            "wka001", "wka002", "fly001", "rpl001", "spl001",
+            "msp001", "lcp001", "ebw001"));
 
         Set<String> scrapIds = new HashSet<>(Arrays.asList(
             "sb001", "bb001", "shb001",
