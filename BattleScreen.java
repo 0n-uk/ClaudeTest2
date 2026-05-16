@@ -448,6 +448,16 @@ public class BattleScreen {
                 burnL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(burnL);
             }
+            if (st.poisonedCards.contains(posKey)) {
+                JLabel poisL = lbl("Poisoned", FONT_ITALIC_8, new Color(140, 200, 80));
+                poisL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                southPanel.add(poisL);
+            }
+            if (st.sporedCards.containsKey(posKey)) {
+                JLabel sporeL = lbl("Spored(" + st.sporedCards.get(posKey) + ")", FONT_ITALIC_8, new Color(180, 140, 255));
+                sporeL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                southPanel.add(sporeL);
+            }
             if (st.focusedCards.contains(posKey)) {
                 JLabel focL = lbl("Focus!", FONT_ITALIC_8, new Color(255, 220, 80));
                 focL.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -510,6 +520,11 @@ public class BattleScreen {
                         st2.freeplayCards.remove(id + "_" + (amP1 ? "p1" : "p2"));
                         if (amP1) st2.p1Souls -= cost; else st2.p2Souls -= cost;
                         selHand[0] = -1; msg[0] = "";
+                        // Worker Ant: add a Worker Ant2 to owner's hand on placement
+                        if ("wka001".equals(id)) {
+                            hand.add("wka002");
+                            msg[0] = "Colony: Worker Ant2 added to your hand!";
+                        }
                         // Water Spirit: all cards on field gain +2 HP when placed
                         if ("wts001".equals(id)) {
                             waterSpiritBuff(st2);
@@ -731,6 +746,7 @@ public class BattleScreen {
             int atkCurHp = BattleState.slotHp(atkSv);
             int atkNewHp = atkCurHp - 5;
             if (atkNewHp <= 0 && !(atkC instanceof Champion)) {
+                String spikeAtkSporedMsg = handleSporedDeath(st, atkPosKey, atkIsP1, cardMap);
                 atkRow[atkIdx] = "";
                 st.clearCardState(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
@@ -741,9 +757,10 @@ public class BattleScreen {
                 selField[0] = null;
                 st.useAction(atkIsP1, atkFront, atkIdx);
                 msg[0] += "Spike Dragon retaliates! " + atkC.getName() + " destroyed!"
-                           + (spikeDeathMsg.isEmpty() ? "" : " " + spikeDeathMsg);
+                           + (spikeDeathMsg.isEmpty() ? "" : " " + spikeDeathMsg) + spikeAtkSporedMsg;
                 // still apply the attack damage to Spike Dragon before exiting
                 if (newTgtHp <= 0) {
+                    String spikeTgtSporedMsg = handleSporedDeath(st, tgtPosKey, tgtIsP1, cardMap);
                     tgtRow[tgtIdx] = "";
                     st.clearCardState(tgtPosKey);
                     if (!(tgtC instanceof Champion)) {
@@ -753,6 +770,7 @@ public class BattleScreen {
                         AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                         if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                     }
+                    msg[0] += spikeTgtSporedMsg;
                 } else {
                     tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
                 }
@@ -768,6 +786,7 @@ public class BattleScreen {
         if ("tbu001".equals(tgtId)) {
             int atkNewHp = BattleState.slotHp(atkSv) - 6;
             if (atkNewHp <= 0 && !(atkC instanceof Champion)) {
+                String thornAtkSporedMsg = handleSporedDeath(st, atkPosKey, atkIsP1, cardMap);
                 atkRow[atkIdx] = "";
                 st.clearCardState(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
@@ -778,9 +797,10 @@ public class BattleScreen {
                 selField[0] = null;
                 st.useAction(atkIsP1, atkFront, atkIdx);
                 msg[0] += "Thorns: " + atkC.getName() + " destroyed!"
-                           + (thornDeathMsg.isEmpty() ? "" : " " + thornDeathMsg);
+                           + (thornDeathMsg.isEmpty() ? "" : " " + thornDeathMsg) + thornAtkSporedMsg;
                 // Still apply the attack damage to Thorny Bushy
                 if (newTgtHp <= 0) {
+                    String thornTgtSporedMsg = handleSporedDeath(st, tgtPosKey, tgtIsP1, cardMap);
                     tgtRow[tgtIdx] = "";
                     st.clearCardState(tgtPosKey);
                     if (!(tgtC instanceof Champion)) {
@@ -790,6 +810,7 @@ public class BattleScreen {
                         AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                         if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                     }
+                    msg[0] += thornTgtSporedMsg;
                 } else {
                     tgtRow[tgtIdx] = BattleState.makeSlot(tgtId, newTgtHp);
                 }
@@ -801,8 +822,27 @@ public class BattleScreen {
             }
         }
 
-        // Dual-strike: Mantis Bot, Large Mantis, Eye Shrew — first attack doesn't consume action
+        // Damage threshold: Roly Poly blocks <1 dmg; Elder Beetle Warrior blocks <8 dmg
+        int dmgThreshold = AbilityResolver.damageThreshold(tgtId);
         boolean isDualStrike = "mtb001".equals(atkId) || "lmt001".equals(atkId) || "esr001".equals(atkId);
+        if (dmgThreshold > 0 && dmg < dmgThreshold) {
+            if (isDualStrike && !st.mantisSecondAttack.contains(atkPosKey)) {
+                st.mantisSecondAttack.add(atkPosKey);
+            } else {
+                st.mantisSecondAttack.remove(atkPosKey);
+                st.useAction(atkIsP1, atkFront, atkIdx);
+            }
+            selField[0] = null;
+            msg[0] += atkC.getName() + " attacks " + tgtC.getName() + " but the attack is too weak — blocked!";
+            if (atkC instanceof Champion) {
+                doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+            } else {
+                st.save(); stRef[0] = st;
+                rebuildRef[0].run();
+            }
+            return;
+        }
+
         if (isDualStrike && !st.mantisSecondAttack.contains(atkPosKey)) {
             st.mantisSecondAttack.add(atkPosKey);
             // Don't call useAction — card gets a second attack
@@ -813,6 +853,7 @@ public class BattleScreen {
         selField[0] = null;
 
         if (newTgtHp <= 0) {
+            String tgtSporedMsg = handleSporedDeath(st, tgtPosKey, tgtIsP1, cardMap);
             tgtRow[tgtIdx] = "";
             st.clearCardState(tgtPosKey);
 
@@ -822,7 +863,7 @@ public class BattleScreen {
                 }
                 String onDeathMsg = AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
-                msg[0] += tgtC.getName() + " defeated! " + onDeathMsg;
+                msg[0] += tgtC.getName() + " defeated! " + onDeathMsg + tgtSporedMsg;
                 // Great Ent: shielded backline card advances to frontline
                 if ("gen001".equals(tgtId) && tgtFront) {
                     String[] backRow = tgtIsP1 ? st.p1Back : st.p2Back;
@@ -858,6 +899,7 @@ public class BattleScreen {
                             int actualSplash = Math.max(0, splashDmg - reduction2);
                             int splashNewHp = BattleState.slotHp(sRow[sIdx]) - actualSplash;
                             if (splashNewHp <= 0 && !(sCard instanceof Champion)) {
+                                String splashSporedMsg = handleSporedDeath(st, sPosKey, tgtIsP1, cardMap);
                                 sRow[sIdx] = "";
                                 st.clearCardState(sPosKey);
                                 if (!"item".equals(sCard.getType())) {
@@ -865,7 +907,7 @@ public class BattleScreen {
                                 }
                                 AbilityResolver.onDeath(st, sId, tgtIsP1, cardMap);
                                 if (tgtIsP1) st.p1Discard.add(sId); else st.p2Discard.add(sId);
-                                msg[0] += " Tongue Grapple: " + actualSplash + " splash → " + sCard.getName() + " defeated!";
+                                msg[0] += " Tongue Grapple: " + actualSplash + " splash → " + sCard.getName() + " defeated!" + splashSporedMsg;
                                 if ("gen001".equals(sId) && sFront2) {
                                     String[] sBackRow = tgtIsP1 ? st.p1Back : st.p2Back;
                                     if (sBackRow[sIdx] != null && !sBackRow[sIdx].isEmpty()) {
@@ -920,10 +962,38 @@ public class BattleScreen {
                 st.burnedCards.put(tgtPosKey, 1);
                 msg[0] += " " + tgtC.getName() + " is now Burned!";
             }
+            // Spiderling: apply Poison on hit
+            if ("spl001".equals(atkId)) {
+                st.poisonedCards.add(tgtPosKey);
+                msg[0] += " " + tgtC.getName() + " is Poisoned!";
+            }
+            // Flame Flower Pod / Flame Bloomling: apply Burn on hit
+            if ("ffp001".equals(atkId) || "fbl001".equals(atkId)) {
+                st.burnedCards.put(tgtPosKey, 1);
+                msg[0] += " " + tgtC.getName() + " is Burned!";
+            }
+            // Fungal cards: apply Spore (2 rounds) on hit
+            if ("fgp001".equals(atkId) || "fgs001".equals(atkId)
+                    || "fgb001".equals(atkId) || "fgc001".equals(atkId)) {
+                st.sporedCards.put(tgtPosKey, 4); // 2 rounds = 4 turns
+                msg[0] += " " + tgtC.getName() + " is Spored!";
+            }
             // Ice Dragon: apply Freeze on hit (1 round = 2 turns)
             if ("icd001".equals(atkId)) {
                 st.frozenCards.put(tgtPosKey, Math.max(st.frozenCards.getOrDefault(tgtPosKey, 0), 2));
                 msg[0] += " " + tgtC.getName() + " is Frozen for 1 round!";
+            }
+        }
+
+        // Fungal Beast: track kills, transform to Colossal on 2nd kill
+        if ("fgb001".equals(atkId) && newTgtHp <= 0 && !(tgtC instanceof Champion)) {
+            int kills = st.fungalBeastKills.getOrDefault(atkPosKey, 0) + 1;
+            if (kills >= 2) {
+                st.fungalBeastKills.remove(atkPosKey);
+                atkRow[atkIdx] = BattleState.makeSlot("fgc001", 10);
+                msg[0] += " Fungal Beast evolved into Fungal Colossal!";
+            } else {
+                st.fungalBeastKills.put(atkPosKey, kills);
             }
         }
 
@@ -1133,6 +1203,7 @@ public class BattleScreen {
             Card   bc  = cardMap.get(cId);
             int    newHp = chp - 1;
             if (newHp <= 0 && !(bc instanceof Champion)) {
+                String burnSporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
                 row[posIdx] = "";
                 st.clearCardState(posKey);
                 if (bc != null && !"item".equals(bc.getType())) {
@@ -1142,6 +1213,7 @@ public class BattleScreen {
                 if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
                 String burnNotice = (bc != null ? bc.getName() : cId) + " burned to death!";
                 if (!deathMsg.isEmpty()) burnNotice += " " + deathMsg;
+                burnNotice += burnSporedMsg;
                 if ("gen001".equals(cId) && posFront) {
                     String[] backRow = posIsP1 ? st.p1Back : st.p2Back;
                     if (backRow[posIdx] != null && !backRow[posIdx].isEmpty()) {
@@ -1154,6 +1226,73 @@ public class BattleScreen {
                 msg[0] = burnNotice;
             } else {
                 row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+
+        // ── Apply poison damage (1 dmg per poisoned card) ─────────────────
+        for (String posKey : new ArrayList<>(st.poisonedCards)) {
+            boolean posIsP1 = posKey.startsWith("p1");
+            boolean posFront = posKey.charAt(2) == 'f';
+            int posIdx = Character.getNumericValue(posKey.charAt(3));
+            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                    : (posIsP1 ? st.p1Back  : st.p2Back);
+            if (row[posIdx] == null || row[posIdx].isEmpty()) {
+                st.poisonedCards.remove(posKey); continue;
+            }
+            String cId = BattleState.slotId(row[posIdx]);
+            int    chp = BattleState.slotHp(row[posIdx]);
+            Card   pc  = cardMap.get(cId);
+            int    newHp = chp - 1;
+            if (newHp <= 0 && !(pc instanceof Champion)) {
+                String poisonSporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
+                row[posIdx] = "";
+                st.clearCardState(posKey);
+                if (pc != null && !"item".equals(pc.getType())) {
+                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
+                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
+                String poisonNotice = (pc != null ? pc.getName() : cId) + " died from poison!";
+                if (!deathMsg.isEmpty()) poisonNotice += " " + deathMsg;
+                poisonNotice += poisonSporedMsg;
+                msg[0] = poisonNotice;
+            } else {
+                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+
+        // ── Flame Bloomling: +2 HP per burned card ────────────────────────
+        int burnedCount = st.burnedCards.size();
+        if (burnedCount > 0) {
+            String[][] fblRows = {st.p1Front, st.p1Back, st.p2Front, st.p2Back};
+            boolean[] fblSides = {true, true, false, false};
+            boolean[] fblFronts = {true, false, true, false};
+            for (int ri = 0; ri < 4; ri++) {
+                String[] row = fblRows[ri];
+                for (int i = 0; i < 5; i++) {
+                    if ("fbl001".equals(BattleState.slotId(row[i]))) {
+                        int gain = burnedCount * 2;
+                        row[i] = BattleState.makeSlot("fbl001", BattleState.slotHp(row[i]) + gain);
+                    }
+                }
+            }
+        }
+
+        // ── Decrement spored turns ─────────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.sporedCards.keySet())) {
+            int turns = st.sporedCards.get(posKey) - 1;
+            if (turns <= 0) st.sporedCards.remove(posKey);
+            else st.sporedCards.put(posKey, turns);
+        }
+
+        // ── Fungal Domain aura ─────────────────────────────────────────────
+        boolean domainActive = st.p1FungalDomain > 0 || st.p2FungalDomain > 0;
+        if (st.p1FungalDomain > 0) st.p1FungalDomain--;
+        if (st.p2FungalDomain > 0) st.p2FungalDomain--;
+        if (domainActive) {
+            String domainMsg = AbilityResolver.applyFungalDomainAura(st, cardMap);
+            if (!domainMsg.isEmpty()) {
+                msg[0] = msg[0].isEmpty() ? domainMsg : msg[0] + " | " + domainMsg;
             }
         }
 
@@ -1630,6 +1769,21 @@ public class BattleScreen {
 
     private static String withHarvest(String result, String harvestMsg) {
         return harvestMsg.isEmpty() ? result : result + " " + harvestMsg;
+    }
+
+    private static String handleSporedDeath(BattleState st, String posKey, boolean deadOwnerIsP1,
+                                             Map<String, Card> cardMap) {
+        if (!st.sporedCards.containsKey(posKey)) return "";
+        boolean oppIsP1 = !deadOwnerIsP1;
+        String[] front = oppIsP1 ? st.p1Front : st.p2Front;
+        for (int i = 0; i < 5; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot("fgp001", 2);
+                st.transformCounters.put(BattleState.posKey(oppIsP1, true, i), 2);
+                return " Spore: a Fungal Pod erupted on the enemy frontline!";
+            }
+        }
+        return " Spore: enemy frontline full, Fungal Pod lost!";
     }
 
     private static class ScaledImagePanel extends JPanel {

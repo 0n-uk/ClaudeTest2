@@ -55,6 +55,8 @@ public class AbilityResolver {
     public static final Map<String, String>     TARGET_TYPE     = new HashMap<>();
     /** cardId → "enemy" if ability targets the enemy field; defaults to friendly */
     public static final Map<String, String>     TARGET_SIDE     = new HashMap<>();
+    /** cardId → minimum incoming damage required to actually damage this card (threshold check) */
+    public static final Map<String, Integer>    DAMAGE_THRESHOLD = new HashMap<>();
 
     static {
         // ── On-death: regular cards ───────────────────────────────────────
@@ -97,11 +99,29 @@ public class AbilityResolver {
         TARGETED_ACTIVE.put("nts001", (bs, isP1, ti, tf, tidx, ch, cm) -> natureSpirit(bs, ti, tf, tidx, cm));
         TARGETED_ACTIVE.put("cld001", (bs, isP1, ti, tf, tidx, ch, cm) -> cloudling(bs, isP1, ti, tf, tidx, cm));
 
+        // ── Active (no-target): bug cards ────────────────────────────────
+        ACTIVE.put("msp001", (bs, isP1, cm) -> mamaSpiderlingSpawn(bs, isP1));
+
+        // ── Fungal Spire: Merge active ────────────────────────────────────
+        ACTIVE.put("fgs001", (bs, isP1, cm) -> fungalSpireMerge(bs, isP1, cm));
+        // ── Fungal Hive Mind: Domain active ──────────────────────────────
+        ACTIVE.put("fhm001", (bs, isP1, cm) -> hiveMindDomain(bs, isP1));
+        // ── Fungal Colossal: Consume targeted ────────────────────────────
+        TARGETED_ACTIVE.put("fgc001", (bs, isP1, ti, tf, tidx, ch, cm) -> fungalColossalConsume(bs, isP1, ti, tf, tidx, cm));
+        // Target type for Colossal consume (pod-type visual restriction)
+        TARGET_TYPE.put("fgc001", "pod");
+
         // ── Passive: damage reduction ─────────────────────────────────────
         PASSIVE_REDUCTION.put("smi001", 1);
+        PASSIVE_REDUCTION.put("lcp001", 2);
+
+        // ── Damage thresholds (attacks below threshold deal 0) ────────────
+        DAMAGE_THRESHOLD.put("rpl001", 1);
+        DAMAGE_THRESHOLD.put("ebw001", 8);
 
         // ── Soul costs ────────────────────────────────────────────────────
         SOUL_COST.put("hd001",  1);
+        SOUL_COST.put("msp001", 3);
         SOUL_COST.put("wsp001", 1);
         SOUL_COST.put("D2",     3);
         SOUL_COST.put("shs001", 2);
@@ -158,6 +178,11 @@ public class AbilityResolver {
     /** Returns how much incoming damage is reduced for this card (passive). */
     public static int passiveDamageReduction(String cardId) {
         return PASSIVE_REDUCTION.getOrDefault(cardId, 0);
+    }
+
+    /** Returns the minimum raw damage required to damage this card; 0 = no threshold. */
+    public static int damageThreshold(String cardId) {
+        return DAMAGE_THRESHOLD.getOrDefault(cardId, 0);
     }
 
     /** Returns whether the player can currently afford to use this card's ability. */
@@ -827,6 +852,8 @@ public class AbilityResolver {
             case "pod001": return heads ? "sen001" : "sbu001";
             case "sen001": return heads ? "gen001" : "dru001";
             case "sbu001": return heads ? "gbu001" : "tbu001";
+            case "ffp001": return "fbl001"; // always Flame Bloomling (deterministic, ignores coin)
+            case "fgp001": return heads ? "fgs001" : "fgb001";
             default: return null;
         }
     }
@@ -837,8 +864,134 @@ public class AbilityResolver {
             case "pod001": return 2;
             case "sen001": return 4;
             case "sbu001": return 4;
+            case "ffp001": return 4; // 2 rounds = 4 turns
+            case "fgp001": return 2; // 1 round = 2 turns
             default: return -1;
         }
+    }
+
+    // Mama Spiderling (msp001): spend 3 souls to summon a Spiderling to own frontline
+    private static String mamaSpiderlingSpawn(BattleState bs, boolean isP1) {
+        int souls = isP1 ? bs.p1Souls : bs.p2Souls;
+        if (souls < 3) return "Spawn: need 3 souls (have " + souls + ").";
+        if (isP1) bs.p1Souls -= 3; else bs.p2Souls -= 3;
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        for (int i = 0; i < 5; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot("spl001", 3);
+                return "Spawn: Mama Spiderling summoned a Spiderling!";
+            }
+        }
+        return "Spawn: frontline is full!";
+    }
+
+    // Returns true if cardId is a fungal card (for domain/sacrifice logic)
+    static boolean isFungalCard(String cardId) {
+        return "fgp001".equals(cardId) || "fgs001".equals(cardId) || "fgb001".equals(cardId)
+            || "fhm001".equals(cardId) || "fgc001".equals(cardId);
+    }
+
+    // Fungal Spire (fgs001): sacrifice 2 Fungal Spires to summon Fungal Hive Mind
+    private static String fungalSpireMerge(BattleState bs, boolean isP1, Map<String, Card> cardMap) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        List<int[]> spireSlots = new ArrayList<>();
+        for (int pass = 0; pass < 2; pass++) {
+            String[] row = pass == 0 ? front : back;
+            for (int i = 0; i < 5; i++) {
+                if ("fgs001".equals(BattleState.slotId(row[i]))) {
+                    spireSlots.add(new int[]{pass, i});
+                    if (spireSlots.size() == 2) break;
+                }
+            }
+            if (spireSlots.size() == 2) break;
+        }
+        if (spireSlots.size() < 2) return "Merge: need 2 Fungal Spires on field (have " + spireSlots.size() + ").";
+        for (int[] slot : spireSlots) {
+            String[] row = slot[0] == 0 ? front : back;
+            String pk = BattleState.posKey(isP1, slot[0] == 0, slot[1]);
+            bs.clearCardState(pk);
+            row[slot[1]] = "";
+        }
+        for (int i = 0; i < 5; i++) {
+            if (front[i] == null || front[i].isEmpty()) {
+                front[i] = BattleState.makeSlot("fhm001", 16);
+                return "Merge: 2 Fungal Spires merged into a Fungal Hive Mind!";
+            }
+        }
+        for (int i = 0; i < 5; i++) {
+            if (back[i] == null || back[i].isEmpty()) {
+                back[i] = BattleState.makeSlot("fhm001", 16);
+                return "Merge: Fungal Hive Mind placed in backline!";
+            }
+        }
+        return "Merge: no empty slot for Fungal Hive Mind!";
+    }
+
+    // Fungal Hive Mind (fhm001): activate 5-round domain aura
+    private static String hiveMindDomain(BattleState bs, boolean isP1) {
+        if (isP1) bs.p1FungalDomain = 10; else bs.p2FungalDomain = 10;
+        return "Fungal Domain: all fungal cards gain +1 ATK & HP per fungal card for 5 rounds!";
+    }
+
+    // Fungal Colossal (fgc001): sacrifice a friendly fungal card, absorb its stats
+    private static String fungalColossalConsume(BattleState bs, boolean isP1,
+                                                 boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                                 Map<String, Card> cardMap) {
+        String[] row = tgtFront ? (tgtIsP1 ? bs.p1Front : bs.p2Front)
+                                : (tgtIsP1 ? bs.p1Back  : bs.p2Back);
+        String sv = row[tgtIdx];
+        if (sv == null || sv.isEmpty()) return "Consume: no card at target.";
+        String tgtId = BattleState.slotId(sv);
+        if (!isFungalCard(tgtId)) return "Consume: target must be a Fungal card.";
+        if ("fgc001".equals(tgtId)) return "Consume: cannot sacrifice Fungal Colossal itself.";
+        Card tgtCard = cardMap.get(tgtId);
+        String tgtPk = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        int absorbAtk = (tgtCard != null ? tgtCard.getAttack() : 0) + bs.fieldAtkBonus.getOrDefault(tgtPk, 0);
+        int absorbHp  = BattleState.slotHp(sv);
+        bs.clearCardState(tgtPk);
+        row[tgtIdx] = "";
+        // Find and buff Fungal Colossal
+        String[] frt = isP1 ? bs.p1Front : bs.p2Front;
+        String[] bck = isP1 ? bs.p1Back  : bs.p2Back;
+        for (int pass = 0; pass < 2; pass++) {
+            String[] r = pass == 0 ? frt : bck;
+            for (int i = 0; i < 5; i++) {
+                if ("fgc001".equals(BattleState.slotId(r[i]))) {
+                    String pk = BattleState.posKey(isP1, pass == 0, i);
+                    bs.fieldAtkBonus.merge(pk, absorbAtk, Integer::sum);
+                    r[i] = BattleState.makeSlot("fgc001", BattleState.slotHp(r[i]) + absorbHp);
+                    String tgtName = tgtCard != null ? tgtCard.getName() : tgtId;
+                    return "Consume: absorbed " + tgtName + " — Fungal Colossal +" + absorbAtk + " ATK, +" + absorbHp + " HP!";
+                }
+            }
+        }
+        return "Consume: Fungal Colossal not found on field.";
+    }
+
+    // Apply fungal domain aura: all fungal cards gain +N ATK & HP where N = fungal card count
+    public static String applyFungalDomainAura(BattleState bs, Map<String, Card> cardMap) {
+        String[][] rows = {bs.p1Front, bs.p1Back, bs.p2Front, bs.p2Back};
+        boolean[] isP1s  = {true, true, false, false};
+        boolean[] fronts = {true, false, true, false};
+        int fungalCount = 0;
+        for (String[] row : rows)
+            for (String sv : row)
+                if (sv != null && !sv.isEmpty() && isFungalCard(BattleState.slotId(sv))) fungalCount++;
+        if (fungalCount == 0) return "";
+        int buff = fungalCount;
+        for (int ri = 0; ri < 4; ri++) {
+            String[] row = rows[ri];
+            for (int i = 0; i < 5; i++) {
+                if (row[i] == null || row[i].isEmpty()) continue;
+                String cId = BattleState.slotId(row[i]);
+                if (!isFungalCard(cId)) continue;
+                String pk = BattleState.posKey(isP1s[ri], fronts[ri], i);
+                bs.fieldAtkBonus.merge(pk, buff, Integer::sum);
+                row[i] = BattleState.makeSlot(cId, BattleState.slotHp(row[i]) + buff);
+            }
+        }
+        return "Fungal Domain: " + fungalCount + " fungal card(s) each gained +" + buff + " ATK & HP!";
     }
 
     // T-Bot Mega (T4): spend 2 Scrap for 2 extra actions
