@@ -76,3 +76,31 @@ Card{id='psh001', name='Pod Shooter', type='pod', attack=5, hp=5, cost=6, abilit
 Card{id='ecs001', name='Echo Spirit', type='spirit', attack=7, hp=5, cost=6, ability='(A) Echo- Use 1 soul cap to copy and use the ability of a card on field'}
 Card{id='cng001', name='Conglamorat', type='spirit', attack=0, hp=0, cost=0, ability='Stats and cost equal remaining souls when placed'}
 Card{id='psh001', name='Pod Shooter', type='pod', attack=5, hp=5, cost=6, ability='(A) Sprout- Summon 2 Pod tokens to your frontline'}
+Card{id='pwn001', name='Pawn', type='knight', attack=1, hp=1, cost=1, ability='(P) After attacking, if same-column adjacent row is empty, move to that row'}
+Card{id='ima001', name='Ice Mage Apprentice', type='knight', attack=3, hp=4, cost=4, ability='(A) Flip 3 coins. For each Heads, freeze a random enemy for 2 rounds'}
+Card{id='trp001', name='Trumpeteer', type='knight', attack=2, hp=3, cost=2, ability='(A) Frontline Pawns gain +1 HP. Backline Pawns gain +1 ATK'}
+Card{id='cmf001', name='Commander Fareth', type='knight', attack=9, hp=12, cost=10, ability='(A) Inspiration- All your Knight cards on field gain +3 ATK'}
+Card{id='blw001', name='Bollywurg', type='beast', attack=7, hp=17, cost=10, ability='(P) Tongue Grapple- When this kills an enemy, deal damage equal to that enemy max HP to a random other enemy'}
+Card{id='pwn001', name='Pawn', type='knight', attack=1, hp=1, cost=1, ability='(P) After attacking, if same-column adjacent row is empty, move to that row'}
+Card{id='ima001', name='Ice Mage Apprentice', type='knight', attack=3, hp=4, cost=4, ability='(A) Flip 3 coins. For each Heads, freeze a random enemy for 2 rounds'}
+Card{id='trp001', name='Trumpeteer', type='knight', attack=2, hp=3, cost=2, ability='(A) Frontline Pawns gain +1 HP. Backline Pawns gain +1 ATK'}
+Card{id='cmf001', name='Commander Fareth', type='knight', attack=9, hp=12, cost=10, ability='(A) Inspiration- All your Knight cards on field gain +3 ATK'}
+Card{id='blw001', name='Bollywurg', type='beast', attack=7, hp=17, cost=10, ability='(P) Tongue Grapple- When this kills an enemy, deal damage equal to that enemy max HP to a random other enemy'}
+Card{id='wka001', name='Worker Ant', type='bug', attack=1, hp=1, cost=1, ability='(On Placed) Colony- Summon a Worker Ant2 in your hand'}
+Card{id='fly001', name='Fly', type='bug', attack=0, hp=1, cost=0, ability=''}
+Card{id='rpl001', name='Roly Poly', type='bug', attack=2, hp=4, cost=3, ability='(P) Light Defense- Immune to attacks that deal less than 1 damage'}
+Card{id='spl001', name='Spiderling', type='bug', attack=3, hp=3, cost=3, ability='(P) Venom- Attacks inflict Poison (1 dmg/turn)'}
+Card{id='msp001', name='Mama Spiderling', type='bug', attack=3, hp=9, cost=6, ability='(A) Spawn- Spend 3 souls to summon a Spiderling to your frontline'}
+Card{id='lcp001', name='Large Centipede', type='bug', attack=6, hp=9, cost=7, ability='(P) Chitin- Takes -2 damage from attacks'}
+Card{id='ebw001', name='Elder Beetle Warrior', type='bug', attack=9, hp=14, cost=10, ability='(P) Heavy Defense- Immune to attacks that deal less than 8 damage'}
+Card{id='ffp001', name='Flame Flower Pod', type='pod', attack=2, hp=1, cost=1, ability='(P) Ember- Attacks inflict Burn. After 2 rounds, transforms into Flame Bloomling'}
+Card{id='fgp001', name='Fungal Pod', type='pod', attack=2, hp=2, cost=2, ability='(P) Spore- Attacks inflict Spored (2 rounds). After 1 round, transforms into Fungal Spire or Fungal Beast'}
+Card{id='wka001', name='Worker Ant', type='bug', attack=1, hp=1, cost=1, ability='(On Placed) Colony- Summon a Worker Ant2 in your hand'}
+Card{id='fly001', name='Fly', type='bug', attack=0, hp=1, cost=0, ability=''}
+Card{id='rpl001', name='Roly Poly', type='bug', attack=2, hp=4, cost=3, ability='(P) Light Defense- Immune to attacks that deal less than 1 damage'}
+Card{id='spl001', name='Spiderling', type='bug', attack=3, hp=3, cost=3, ability='(P) Venom- Attacks inflict Poison (1 dmg/turn)'}
+Card{id='msp001', name='Mama Spiderling', type='bug', attack=3, hp=9, cost=6, ability='(A) Spawn- Spend 3 souls to summon a Spiderling to your frontline'}
+Card{id='lcp001', name='Large Centipede', type='bug', attack=6, hp=9, cost=7, ability='(P) Chitin- Takes -2 damage from attacks'}
+Card{id='ebw001', name='Elder Beetle Warrior', type='bug', attack=9, hp=14, cost=10, ability='(P) Heavy Defense- Immune to attacks that deal less than 8 damage'}
+Card{id='ffp001', name='Flame Flower Pod', type='pod', attack=2, hp=1, cost=1, ability='(P) Ember- Attacks inflict Burn. After 2 rounds, transforms into Flame Bloomling'}
+Card{id='fgp001', name='Fungal Pod', type='pod', attack=2, hp=2, cost=2, ability='(P) Spore- Attacks inflict Spored (2 rounds). After 1 round, transforms into Fungal Spire or Fungal Beast'}
