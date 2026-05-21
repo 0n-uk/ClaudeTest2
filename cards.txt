@@ -20,7 +20,7 @@ Card{id='itb001', name='Iron Tusks Bot', type='bot', attack=4, hp=16, cost=9, ab
 Card{id='svb001', name='Survey Bot', type='bot', attack=4, hp=2, cost=3, ability='(P) Survey- All Scrap Bots summon an additional Scrap when using their ability'}
 Card{id='ttb001', name='Turret Bot', type='bot', attack=2, hp=2, cost=2, ability='(P) Autofire- Attacks an enemy automatically when placed in frontline'}
 Card{id='rcb001', name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
-Card{id='shs001', name='Straw Shaman', type='spirit', attack=3, hp=5, cost=4, ability='(A) Focus- Use 2 soul to attack with double atk'}
+Card{id='shs001', name='Straw Shaman', type='spirit', attack=5, hp=5, cost=5, ability='(A) Focus- Use 2 soul to attack with double atk'}
 Card{id='drw001', name='Dream Wanderer', type='spirit', attack=5, hp=5, cost=5, ability='(P) Can attack cards in backline even with cards in enemy frontline'}
 Card{id='lmt001', name='Large Mantis', type='bug', attack=6, hp=3, cost=7, ability='Can attack twice'}
 Card{id='glm001', name='Golem', type='spirit', attack=3, hp=12, cost=7, ability=''}
@@ -28,17 +28,17 @@ Card{id='bte001', name='Bat Eye', type='beast', attack=3, hp=1, cost=3, ability=
 Card{id='esr001', name='Eye Shrew', type='beast', attack=2, hp=1, cost=2, ability='Can attack twice'}
 Card{id='frs001', name='Fire Spirit', type='spirit', attack=5, hp=4, cost=4, ability='Attacks inflict Burn status (takes 1 dmg every turn)'}
 Card{id='ics001', name='Ice Spirit', type='spirit', attack=2, hp=3, cost=3, ability='(A) Freeze 1 enemy for 3 rounds'}
-Card{id='wts001', name='Water Spirit', type='spirit', attack=2, hp=5, cost=3, ability='When placed, all cards gain +2 hp'}
+Card{id='wts001', name='Water Spirit', type='spirit', attack=2, hp=5, cost=3, ability='When placed, all friendly cards gain +2 hp'}
 Card{id='nts001', name='Nature Spirit', type='spirit', attack=2, hp=3, cost=2, ability='(A) Heal 1 card by 5 hp'}
-Card{id='ers001', name='Earth Spirit', type='spirit', attack=5, hp=5, cost=4, ability='(A) Mud Wall- Summon a mud wall in the frontline'}
+Card{id='ers001', name='Earth Spirit', type='spirit', attack=3, hp=5, cost=5, ability='(A) Mud Wall- Summon a mud wall in the frontline'}
 Card{id='wns001', name='Wind Spirit', type='spirit', attack=2, hp=2, cost=2, ability='When attacked, on heads, dodges attack'}
 Card{id='cld001', name='Cloudling', type='spirit', attack=0, hp=4, cost=2, ability='(A) Return a card to hand'}
 Card{id='icd001', name='Ice Dragon', type='dragon', attack=10, hp=15, cost=10, ability='Attacks inflict freeze for 1 round'}
 Card{id='spd001', name='Spike Dragon', type='dragon', attack=7, hp=9, cost=8, ability='When attacked, deal 5 dmg to attacker'}
-Card{id='__MUD_WALL__', name='Mud Wall', type='item', attack=0, hp=5, cost=0, ability='Token'}
+Card{id='__MUD_WALL__', name='Mud Wall', type='item', attack=0, hp=3, cost=0, ability='Token'}
 Card{id='ecs001', name='Echo Spirit', type='spirit', attack=7, hp=5, cost=6, ability='(A) Echo- Use 1 soul cap to copy and use the ability of a card on field'}
 Card{id='cng001', name='Conglamorat', type='spirit', attack=0, hp=0, cost=0, ability='Stats and cost equal remaining souls when placed'}
-Card{id='psh001', name='Pod Shooter', type='pod', attack=5, hp=5, cost=6, ability='(A) Sprout- Summon 2 Pod tokens to your frontline'}
+Card{id='psh001', name='Pod Shooter', type='pod', attack=5, hp=5, cost=5, ability='(A) Sprout- Spend 3 soul to summon 2 Pod tokens to your frontline'}
 Card{id='pod001', name='Pod', type='pod', attack=1, hp=1, cost=1, ability='(P) After 1 round, flip a coin. Heads: Small Ent. Tails: Small Bushy'}
 Card{id='sen001', name='Small Ent', type='pod', attack=4, hp=3, cost=3, ability='(P) After 2 rounds, flip a coin. Heads: Great Ent. Tails: Druid'}
 Card{id='sbu001', name='Small Bushy', type='pod', attack=2, hp=4, cost=3, ability='(P) When attacked, gain +3 HP. After 2 rounds, flip a coin. Heads: Great Bushy. Tails: Thorny Bushy'}
@@ -47,7 +47,7 @@ Card{id='dru001', name='Druid', type='pod', attack=7, hp=11, cost=10, ability='(
 Card{id='gbu001', name='Great Bushy', type='pod', attack=3, hp=18, cost=10, ability='(P) When attacked, gain +6 HP'}
 Card{id='tbu001', name='Thorny Bushy', type='pod', attack=6, hp=14, cost=10, ability='(P) Thorns- When attacked, deals 6 damage to attacker'}
 Card{id='pwn001', name='Pawn', type='knight', attack=1, hp=1, cost=1, ability='(P) After attacking, if same-column adjacent row is empty, move to that row'}
-Card{id='ima001', name='Ice Mage Apprentice', type='knight', attack=3, hp=4, cost=4, ability='(A) Flip 3 coins. For each Heads, freeze a random enemy for 2 rounds'}
+Card{id='ima001', name='Ice Mage Apprentice', type='knight', attack=3, hp=4, cost=4, ability='(A) Spend 2 soul. Flip 3 coins. For each Heads, freeze a random enemy for 2 rounds and deal 3 dmg'}
 Card{id='trp001', name='Trumpeteer', type='knight', attack=2, hp=3, cost=2, ability='(A) Frontline Pawns gain +1 HP. Backline Pawns gain +1 ATK'}
 Card{id='cmf001', name='Commander Fareth', type='knight', attack=9, hp=12, cost=10, ability='(A) Inspiration- All your Knight cards on field gain +3 ATK'}
 Card{id='blw001', name='Bollywurg', type='beast', attack=7, hp=17, cost=10, ability='(P) Tongue Grapple- When this kills an enemy, deal damage equal to that enemy max HP to a random other enemy'}
@@ -66,3 +66,10 @@ Card{id='fgs001', name='Fungal Spire', type='pod', attack=2, hp=5, cost=3, abili
 Card{id='fgb001', name='Fungal Beast', type='pod', attack=5, hp=3, cost=3, ability='(P) Spore- Attacks inflict Spored (2 rounds). On 2nd kill, evolves into Fungal Colossal'}
 Card{id='fhm001', name='Fungal Hive Mind', type='pod', attack=0, hp=16, cost=10, ability='(A) Fungal Domain- For 5 rounds, all fungal cards gain +1 ATK & HP for each fungal card on field'}
 Card{id='fgc001', name='Fungal Colossal', type='pod', attack=10, hp=10, cost=10, ability='(P) Spore- Attacks inflict Spored (2 rounds). (A) Consume- Sacrifice a fungal card to absorb its stats'}
+Card{id='bgm001', name='Beginner Mage', type='knight', attack=1, hp=1, cost=1, ability='(A) Spend 1 soul. Attack up to 3 adjacent enemy frontline cards'}
+Card{id='prd001', name='Prayerful Deacon', type='knight', attack=0, hp=1, cost=1, ability='(P) Mage abilities cost 1 soul less'}
+Card{id='frm001', name='Fire Mage', type='knight', attack=3, hp=3, cost=3, ability='(A) Spend 3 soul. Deal 3 dmg to up to 3 enemy frontline cards'}
+Card{id='tmw001', name='Time Wizard', type='knight', attack=6, hp=10, cost=10, ability='(A) Spend 10 soul and 10 soul cap. Skip forward 3 rounds. Your turn ends'}
+Card{id='dod001', name='Deity of Decay', type='knight', attack=7, hp=8, cost=7, ability='(A) Spend 1 soul cap. For 1 round, cards defeated by mages give no soul cap and are removed from the game'}
+Card{id='gwz001', name='Grand Wizard of Omerlia', type='knight', attack=7, hp=11, cost=10, ability='(P) If in backline, attacks all enemy frontline cards. If in frontline, attacks all enemy backline cards'}
+Card{id='ssk001', name='Soul Seeker', type='spirit', attack=3, hp=4, cost=5, ability='(A) Spend 1 soul. Lower enemy soul cap by 1'}
