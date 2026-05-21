@@ -295,6 +295,8 @@ public class BattleScreen {
         // Dream Wanderer: attacker can bypass frontline to hit backline
         boolean atkIsDreamWanderer = selField[0] != null
                 && "drw001".equals(getCardIdAtPosKey(st, selField[0]));
+        // Catapult: can only target enemy backline, bypassing frontline
+        boolean atkIsCatapult = selField[0] != null && "cat001".equals(getCardIdAtPosKey(st, selField[0]));
         // Bat Eye: cannot be targeted by enemy frontline cards
         boolean atkIsFrontline = selField[0] != null && selField[0].charAt(2) == 'f';
         boolean batEyeBlocked  = "bte001".equals(cardId) && atkIsFrontline;
@@ -304,22 +306,24 @@ public class BattleScreen {
         boolean canSelect = isMyField && !empty && myTurn && hasAct && !isFrozenCard && selHand[0] < 0 && abilitySource[0] == null && !inScrapSelect && !inBotTarget && !anyNewPhase;
         boolean canTarget = !isMyField && !empty && myTurn && selField[0] != null && abilitySource[0] == null
                              && !inScrapSelect && !inBotTarget && !anyNewPhase && !batEyeBlocked
-                             && ((bypass[0] || atkIsDreamWanderer)
-                                 ? st.isTargetableBypass(fieldIsP1, isFront, idx)
-                                 : st.isTargetable(fieldIsP1, isFront, idx));
+                             && (atkIsCatapult
+                                 ? (!isFront && st.isTargetableBypass(fieldIsP1, isFront, idx))
+                                 : ((bypass[0] || atkIsDreamWanderer)
+                                     ? st.isTargetableBypass(fieldIsP1, isFront, idx)
+                                     : st.isTargetable(fieldIsP1, isFront, idx)));
 
         // Ability targeting mode — supports both friendly and enemy targets depending on ability
         String abilitySourceCardId = abilitySource[0] != null ? getCardIdAtPosKey(st, abilitySource[0]) : null;
         boolean abilityTargetsEnemy = "enemy".equals(AbilityResolver.TARGET_SIDE.get(abilitySourceCardId));
+        boolean abilityTargetsEmptySlot = AbilityResolver.TARGETS_EMPTY_SLOT.contains(abilitySourceCardId);
         boolean tgtSideImmune    = !isMyField && AbilityResolver.isImmuneToAbilities(fieldIsP1, st);
         boolean shieldedByEnt    = !isFront && !isMyField && st.isShieldedByGreatEnt(fieldIsP1, idx);
-        boolean canAbilityTarget = !empty && myTurn && abilitySource[0] != null
-                && card != null
-                && !tgtSideImmune
-                && !shieldedByEnt
-                && !anyNewPhase
-                && (abilityTargetsEnemy ? !isMyField : isMyField)
-                && (abilityTgtType[0] == null || abilityTgtType[0].equals(card.getType().toLowerCase()));
+        boolean canAbilityTarget = myTurn && abilitySource[0] != null && !anyNewPhase
+                && (abilityTargetsEmptySlot
+                    ? (empty && !isMyField)
+                    : (!empty && card != null && !tgtSideImmune && !shieldedByEnt
+                       && (abilityTargetsEnemy ? !isMyField : isMyField)
+                       && (abilityTgtType[0] == null || abilityTgtType[0].equals(card.getType().toLowerCase()))));
 
         // Echo copy select: click a friendly card with a copyable ability
         boolean canEchoCopy = inEchoCopySelect && isMyField && !empty && myTurn
@@ -397,6 +401,11 @@ public class BattleScreen {
                 pl.setHorizontalAlignment(SwingConstants.CENTER);
                 p.add(pl, BorderLayout.CENTER);
             }
+            if (st.sealedSlots.containsKey(posKey)) {
+                JLabel sealL = lbl("Sealed(" + st.sealedSlots.get(posKey) + ")", FONT_ITALIC_8, new Color(210, 70, 70));
+                sealL.setHorizontalAlignment(SwingConstants.CENTER);
+                p.add(sealL, BorderLayout.SOUTH);
+            }
         } else if (card != null) {
             // NORTH: type symbol + name + current/max HP
             JPanel topRow = new JPanel(new BorderLayout(2, 0));
@@ -458,6 +467,16 @@ public class BattleScreen {
                 sporeL.setAlignmentX(Component.LEFT_ALIGNMENT);
                 southPanel.add(sporeL);
             }
+            if (st.decayedCards.containsKey(posKey)) {
+                JLabel decayL = lbl("Decay(" + st.decayedCards.get(posKey) + ")", FONT_ITALIC_8, new Color(180, 120, 40));
+                decayL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                southPanel.add(decayL);
+            }
+            if (st.sealedSlots.containsKey(posKey)) {
+                JLabel sealL = lbl("Sealed(" + st.sealedSlots.get(posKey) + ")", FONT_ITALIC_8, new Color(210, 70, 70));
+                sealL.setAlignmentX(Component.LEFT_ALIGNMENT);
+                southPanel.add(sealL);
+            }
             if (st.focusedCards.contains(posKey)) {
                 JLabel focL = lbl("Focus!", FONT_ITALIC_8, new Color(255, 220, 80));
                 focL.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -506,6 +525,11 @@ public class BattleScreen {
                                                      : (amP1 ? st2.p1Back  : st2.p2Back);
                         // Clear any lingering effects from a previous occupant of this slot
                         String newPosKey = BattleState.posKey(amP1, isFront, idx);
+                        if (st2.sealedSlots.containsKey(newPosKey)) {
+                            msg[0] = "That slot is sealed and cannot be used!";
+                            rebuildRef[0].run();
+                            return;
+                        }
                         st2.burnedCards.remove(newPosKey);
                         st2.frozenCards.remove(newPosKey);
                         st2.focusedCards.remove(newPosKey);
@@ -700,6 +724,13 @@ public class BattleScreen {
         }
         bypass[0] = false;
 
+        // Catapult: can only target backline
+        if ("cat001".equals(atkId) && tgtFront) {
+            msg[0] = "Catapult can only target the backline!";
+            st.save(); stRef[0] = st;
+            rebuildRef[0].run(); return;
+        }
+
         String myChampId = AbilityResolver.currentChampId(st, amP1);
         String tgtPosKey = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
 
@@ -751,6 +782,12 @@ public class BattleScreen {
                 st.clearCardState(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
                     if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                    // Soul Sipper: Spike Dragon's side gains 1 soul
+                    if (AbilityResolver.hasSoulSipper(st, !amP1)) {
+                        int cur = !amP1 ? st.p1Souls : st.p2Souls;
+                        int cap = !amP1 ? st.p1SoulCap : st.p2SoulCap;
+                        if (!amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                    }
                 }
                 String spikeDeathMsg = AbilityResolver.onDeath(st, atkId, atkIsP1, cardMap);
                 if (atkIsP1) st.p1Discard.add(atkId); else st.p2Discard.add(atkId);
@@ -766,6 +803,12 @@ public class BattleScreen {
                     if (!(tgtC instanceof Champion)) {
                         if (!"item".equals(tgtC.getType())) {
                             if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                            // Soul Sipper: attacker's side gains 1 soul
+                            if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                                int cur = amP1 ? st.p1Souls : st.p2Souls;
+                                int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                                if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                            }
                         }
                         AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                         if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
@@ -791,6 +834,12 @@ public class BattleScreen {
                 st.clearCardState(atkPosKey);
                 if (!"item".equals(atkC.getType())) {
                     if (atkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                    // Soul Sipper: Thorny Bushy's side gains 1 soul
+                    if (AbilityResolver.hasSoulSipper(st, !amP1)) {
+                        int cur = !amP1 ? st.p1Souls : st.p2Souls;
+                        int cap = !amP1 ? st.p1SoulCap : st.p2SoulCap;
+                        if (!amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                    }
                 }
                 String thornDeathMsg = AbilityResolver.onDeath(st, atkId, atkIsP1, cardMap);
                 if (atkIsP1) st.p1Discard.add(atkId); else st.p2Discard.add(atkId);
@@ -806,6 +855,12 @@ public class BattleScreen {
                     if (!(tgtC instanceof Champion)) {
                         if (!"item".equals(tgtC.getType())) {
                             if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                            // Soul Sipper: attacker's side gains 1 soul
+                            if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                                int cur = amP1 ? st.p1Souls : st.p2Souls;
+                                int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                                if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                            }
                         }
                         AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                         if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
@@ -849,6 +904,10 @@ public class BattleScreen {
         } else {
             st.mantisSecondAttack.remove(atkPosKey);
             st.useAction(atkIsP1, atkFront, atkIdx);
+            // Sloth Bear: freeze self for 1 round after attacking
+            if ("slb001".equals(atkId)) {
+                st.frozenCards.put(atkPosKey, 2);
+            }
         }
         selField[0] = null;
 
@@ -907,6 +966,12 @@ public class BattleScreen {
             if (!(tgtC instanceof Champion)) {
                 if (!"item".equals(tgtC.getType())) {
                 if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                // Soul Sipper: gain 1 soul when enemy dies
+                if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                    int cur = amP1 ? st.p1Souls : st.p2Souls;
+                    int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                    if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                }
                 }
                 String onDeathMsg = AbilityResolver.onDeath(st, tgtId, tgtIsP1, cardMap);
                 if (tgtIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
@@ -951,6 +1016,12 @@ public class BattleScreen {
                                 st.clearCardState(sPosKey);
                                 if (!"item".equals(sCard.getType())) {
                                     if (amP1) st.p2SoulCap++; else st.p1SoulCap++;
+                                    // Soul Sipper: gain 1 soul when enemy dies
+                                    if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                                        int cur = amP1 ? st.p1Souls : st.p2Souls;
+                                        int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                                        if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                                    }
                                 }
                                 AbilityResolver.onDeath(st, sId, tgtIsP1, cardMap);
                                 if (tgtIsP1) st.p1Discard.add(sId); else st.p2Discard.add(sId);
@@ -1041,6 +1112,40 @@ public class BattleScreen {
                 msg[0] += " Fungal Beast evolved into Fungal Colossal!";
             } else {
                 st.fungalBeastKills.put(atkPosKey, kills);
+            }
+        }
+
+        // Lancer: also hits backline card in same column when attacking frontline
+        if ("lcr001".equals(atkId) && tgtFront) {
+            String[] tgtBackRow = tgtIsP1 ? st.p1Back : st.p2Back;
+            if (tgtBackRow[tgtIdx] != null && !tgtBackRow[tgtIdx].isEmpty()) {
+                String bkId = BattleState.slotId(tgtBackRow[tgtIdx]);
+                Card bkC = cardMap.get(bkId);
+                if (bkC != null && !(bkC instanceof Champion)) {
+                    int bkDmg = Math.max(0, (atkC.getAttack() + st.fieldAtkBonus.getOrDefault(atkPosKey, 0))
+                                          - AbilityResolver.passiveDamageReduction(bkId));
+                    int bkNewHp = BattleState.slotHp(tgtBackRow[tgtIdx]) - bkDmg;
+                    String bkPk = BattleState.posKey(tgtIsP1, false, tgtIdx);
+                    if (bkNewHp <= 0) {
+                        String sporedMsg = handleSporedDeath(st, bkPk, tgtIsP1, cardMap);
+                        tgtBackRow[tgtIdx] = "";
+                        st.clearCardState(bkPk);
+                        if (!"item".equals(bkC.getType())) {
+                            if (tgtIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                            if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                                int cur = amP1 ? st.p1Souls : st.p2Souls;
+                                int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                                if (amP1) st.p1Souls = Math.min(cur+1,cap); else st.p2Souls = Math.min(cur+1,cap);
+                            }
+                        }
+                        AbilityResolver.onDeath(st, bkId, tgtIsP1, cardMap);
+                        if (tgtIsP1) st.p1Discard.add(bkId); else st.p2Discard.add(bkId);
+                        msg[0] += " Pierce: " + bkC.getName() + " defeated!" + sporedMsg;
+                    } else {
+                        tgtBackRow[tgtIdx] = BattleState.makeSlot(bkId, bkNewHp);
+                        msg[0] += " Pierce: " + bkC.getName() + "(-" + bkDmg + ")";
+                    }
+                }
             }
         }
 
@@ -1166,6 +1271,93 @@ public class BattleScreen {
             msg[0] = "Sovereign: the enemy champion makes their cards immune to abilities!";
             abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
             rebuildRef[0].run(); return;
+        }
+
+        // ── GreatWing: return enemy card to opponent's hand ───────────────────
+        if ("gwg001".equals(srcCardId)) {
+            String[] tgtRowR = tgtFront ? (tgtIsP1 ? st.p1Front : st.p2Front)
+                                        : (tgtIsP1 ? st.p1Back  : st.p2Back);
+            String tgtSvR = tgtRowR[tgtIdx];
+            if (tgtSvR == null || tgtSvR.isEmpty()) {
+                msg[0] = "GreatWing: no card at target.";
+                abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+                rebuildRef[0].run(); return;
+            }
+            String tgtIdR = BattleState.slotId(tgtSvR);
+            Card tgtCR = cardMap.get(tgtIdR);
+            if (tgtCR instanceof Champion) {
+                msg[0] = "GreatWing: cannot return Champions.";
+                abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+                rebuildRef[0].run(); return;
+            }
+            String tgtPkR = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+            tgtRowR[tgtIdx] = "";
+            st.clearCardState(tgtPkR);
+            List<String> enemyHand = tgtIsP1 ? st.p1Hand : st.p2Hand;
+            enemyHand.add(tgtIdR);
+            st.useAction(srcIsP1, srcFront, srcIdx);
+            st.abilityUsedThisTurn.add(sourceKey);
+            msg[0] = withHarvest("GreatWing: " + (tgtCR != null ? tgtCR.getName() : tgtIdR) + " returned to opponent's hand!",
+                                  AbilityResolver.onAbilityUsed(st, amP1));
+            abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+            st.save(); stRef[0] = st; rebuildRef[0].run(); return;
+        }
+
+        // ── Rook: Castle — swap with friendly card, target regains action ──────
+        if ("rok001".equals(srcCardId)) {
+            String rookPk = sourceKey;
+            String tgtPkS = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+            String[] rookRow = srcFront ? (srcIsP1 ? st.p1Front : st.p2Front)
+                                        : (srcIsP1 ? st.p1Back  : st.p2Back);
+            String[] tgtRowS = tgtFront ? (tgtIsP1 ? st.p1Front : st.p2Front)
+                                        : (tgtIsP1 ? st.p1Back  : st.p2Back);
+            if (rookPk.equals(tgtPkS)) {
+                msg[0] = "Castle: cannot swap with yourself.";
+                abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+                rebuildRef[0].run(); return;
+            }
+            String tgtSvS = tgtRowS[tgtIdx];
+            Card tgtCS = cardMap.get(BattleState.slotId(tgtSvS));
+            // Swap slot values
+            String tmp = rookRow[srcIdx]; rookRow[srcIdx] = tgtRowS[tgtIdx]; tgtRowS[tgtIdx] = tmp;
+            // Swap all card state between rookPk and tgtPkS
+            Integer rookBonus = st.fieldAtkBonus.remove(rookPk);
+            Integer tgtBonus  = st.fieldAtkBonus.remove(tgtPkS);
+            if (rookBonus != null) st.fieldAtkBonus.put(tgtPkS, rookBonus);
+            if (tgtBonus  != null) st.fieldAtkBonus.put(rookPk, tgtBonus);
+            Integer rookFrz = st.frozenCards.remove(rookPk);
+            Integer tgtFrz  = st.frozenCards.remove(tgtPkS);
+            if (rookFrz != null) st.frozenCards.put(tgtPkS, rookFrz);
+            if (tgtFrz  != null) st.frozenCards.put(rookPk, tgtFrz);
+            Integer rookBrn = st.burnedCards.remove(rookPk);
+            Integer tgtBrn  = st.burnedCards.remove(tgtPkS);
+            if (rookBrn != null) st.burnedCards.put(tgtPkS, rookBrn);
+            if (tgtBrn  != null) st.burnedCards.put(rookPk, tgtBrn);
+            boolean rookPsn = st.poisonedCards.remove(rookPk);
+            boolean tgtPsn  = st.poisonedCards.remove(tgtPkS);
+            if (rookPsn) st.poisonedCards.add(tgtPkS);
+            if (tgtPsn)  st.poisonedCards.add(rookPk);
+            Integer rookSp = st.sporedCards.remove(rookPk); Integer tgtSp = st.sporedCards.remove(tgtPkS);
+            if (rookSp != null) st.sporedCards.put(tgtPkS, rookSp); if (tgtSp != null) st.sporedCards.put(rookPk, tgtSp);
+            Integer rookDc = st.decayedCards.remove(rookPk); Integer tgtDc = st.decayedCards.remove(tgtPkS);
+            if (rookDc != null) st.decayedCards.put(tgtPkS, rookDc); if (tgtDc != null) st.decayedCards.put(rookPk, tgtDc);
+            Integer rookTx = st.transformCounters.remove(rookPk); Integer tgtTx = st.transformCounters.remove(tgtPkS);
+            if (rookTx != null) st.transformCounters.put(tgtPkS, rookTx); if (tgtTx != null) st.transformCounters.put(rookPk, tgtTx);
+            boolean rookLk = st.fieldLockedCards.remove(rookPk); boolean tgtLk = st.fieldLockedCards.remove(tgtPkS);
+            if (rookLk) st.fieldLockedCards.add(tgtPkS); if (tgtLk) st.fieldLockedCards.add(rookPk);
+            Integer rookFk = st.fungalBeastKills.remove(rookPk); Integer tgtFk = st.fungalBeastKills.remove(tgtPkS);
+            if (rookFk != null) st.fungalBeastKills.put(tgtPkS, rookFk); if (tgtFk != null) st.fungalBeastKills.put(rookPk, tgtFk);
+            // actionsUsed: Rook (now at tgtPkS) consumed its action; target (now at rookPk) regains action
+            st.actionsUsed.remove(rookPk); st.actionsUsed.remove(tgtPkS);
+            st.actionsUsed.add(tgtPkS); // Rook is now at tgtPkS, mark used
+            // Target at rookPk gets its action restored (NOT added to actionsUsed)
+            st.abilityUsedThisTurn.add(sourceKey);
+            Card srcCard = cardMap.get(srcCardId);
+            msg[0] = withHarvest("Castle: swapped " + (srcCard != null ? srcCard.getName() : srcCardId) + " with " + (tgtCS != null ? tgtCS.getName() : "target")
+                                 + "! " + (tgtCS != null ? tgtCS.getName() : "Target") + " can act again.",
+                                  AbilityResolver.onAbilityUsed(st, amP1));
+            abilitySource[0] = null; abilityTgtType[0] = null; selField[0] = null;
+            st.save(); stRef[0] = st; rebuildRef[0].run(); return;
         }
 
         String result = AbilityResolver.executeTargeted(st, srcCardId, amP1,
@@ -1743,6 +1935,11 @@ public class BattleScreen {
                 if (!decayActive) {
                     if (!"item".equals(tgtC.getType())) {
                         if (enemyIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                        if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                            int cur = amP1 ? st.p1Souls : st.p2Souls;
+                            int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                            if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                        }
                     }
                     if (enemyIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                     AbilityResolver.onDeath(st, tgtId, enemyIsP1, cardMap);
@@ -1792,6 +1989,11 @@ public class BattleScreen {
                 if (!decayActive) {
                     if (!"item".equals(tgtC.getType())) {
                         if (enemyIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                        if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                            int cur = amP1 ? st.p1Souls : st.p2Souls;
+                            int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                            if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                        }
                     }
                     if (enemyIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                     AbilityResolver.onDeath(st, tgtId, enemyIsP1, cardMap);
@@ -1861,6 +2063,11 @@ public class BattleScreen {
                         if (!decayActive) {
                             if (!"item".equals(tgtC.getType())) {
                                 if (pkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                                if (AbilityResolver.hasSoulSipper(st, amP1)) {
+                                    int cur = amP1 ? st.p1Souls : st.p2Souls;
+                                    int cap = amP1 ? st.p1SoulCap : st.p2SoulCap;
+                                    if (amP1) st.p1Souls = Math.min(cur + 1, cap); else st.p2Souls = Math.min(cur + 1, cap);
+                                }
                             }
                             if (pkIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
                             AbilityResolver.onDeath(st, tgtId, pkIsP1, cardMap);
@@ -1935,6 +2142,14 @@ public class BattleScreen {
                 st.clearCardState(posKey);
                 if (bc != null && !"item".equals(bc.getType())) {
                     if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                    // Soul Sipper: fire side gains 1 soul (opposite of dying card's side)
+                    boolean burnKillerIsP1 = !posIsP1;
+                    if (AbilityResolver.hasSoulSipper(st, burnKillerIsP1)) {
+                        int cur = burnKillerIsP1 ? st.p1Souls : st.p2Souls;
+                        int cap = burnKillerIsP1 ? st.p1SoulCap : st.p2SoulCap;
+                        if (burnKillerIsP1) st.p1Souls = Math.min(cur + 1, cap);
+                        else                st.p2Souls = Math.min(cur + 1, cap);
+                    }
                 }
                 String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
                 if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
@@ -1944,6 +2159,48 @@ public class BattleScreen {
                 msg[0] = burnNotice;
             } else {
                 row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+        // ── Apply decay damage (−1 ATK and −1 HP per occupied decayed card) ───
+        for (String posKey : new ArrayList<>(st.decayedCards.keySet())) {
+            boolean posIsP1 = posKey.startsWith("p1");
+            boolean posFront = posKey.charAt(2) == 'f';
+            int posIdx = Character.getNumericValue(posKey.charAt(3));
+            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                    : (posIsP1 ? st.p1Back  : st.p2Back);
+            if (row[posIdx] == null || row[posIdx].isEmpty()) {
+                st.decayedCards.remove(posKey); continue;
+            }
+            int turns = st.decayedCards.get(posKey) - 1;
+            if (turns <= 0) st.decayedCards.remove(posKey);
+            else st.decayedCards.put(posKey, turns);
+            // Apply −1 ATK and −1 HP
+            st.fieldAtkBonus.merge(posKey, -1, Integer::sum);
+            String cId = BattleState.slotId(row[posIdx]);
+            int    chp = BattleState.slotHp(row[posIdx]);
+            Card   dc  = cardMap.get(cId);
+            int    newHp = chp - 1;
+            if (newHp <= 0 && dc != null && !(dc instanceof Champion)) {
+                String sporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
+                row[posIdx] = "";
+                st.clearCardState(posKey);
+                if (!"item".equals(dc.getType())) {
+                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                // Soul Sipper: attacker is the opposite side
+                boolean killerIsP1 = !posIsP1;
+                if (AbilityResolver.hasSoulSipper(st, killerIsP1)) {
+                    int cur = killerIsP1 ? st.p1Souls : st.p2Souls;
+                    int cap = killerIsP1 ? st.p1SoulCap : st.p2SoulCap;
+                    if (killerIsP1) st.p1Souls = Math.min(cur + 1, cap);
+                    else             st.p2Souls = Math.min(cur + 1, cap);
+                }
+                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
+                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
+                String notice = dc.getName() + " decayed to death!" + (deathMsg.isEmpty() ? "" : " " + deathMsg) + sporedMsg;
+                msg[0] = msg[0].isEmpty() ? notice : msg[0] + " | " + notice;
+            } else if (newHp > 0) {
+                row[posIdx] = BattleState.makeSlot(cId, newHp);
             }
         }
         // ── Apply poison damage ────────────────────────────────────────────
@@ -1964,6 +2221,14 @@ public class BattleScreen {
                 st.clearCardState(posKey);
                 if (pc != null && !"item".equals(pc.getType())) {
                     if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                    // Soul Sipper: opposite side gains 1 soul
+                    boolean poisonKillerIsP1 = !posIsP1;
+                    if (AbilityResolver.hasSoulSipper(st, poisonKillerIsP1)) {
+                        int cur = poisonKillerIsP1 ? st.p1Souls : st.p2Souls;
+                        int cap = poisonKillerIsP1 ? st.p1SoulCap : st.p2SoulCap;
+                        if (poisonKillerIsP1) st.p1Souls = Math.min(cur + 1, cap);
+                        else                  st.p2Souls = Math.min(cur + 1, cap);
+                    }
                 }
                 String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
                 if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
@@ -2010,6 +2275,12 @@ public class BattleScreen {
             int turns = st.frozenCards.get(posKey) - 1;
             if (turns <= 0) st.frozenCards.remove(posKey);
             else st.frozenCards.put(posKey, turns);
+        }
+        // ── Decrement sealed slot timers ───────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.sealedSlots.keySet())) {
+            int turns = st.sealedSlots.get(posKey) - 1;
+            if (turns <= 0) st.sealedSlots.remove(posKey);
+            else st.sealedSlots.put(posKey, turns);
         }
         // ── Decrement mage decay rounds ────────────────────────────────────
         if (st.p1MageDecayRounds > 0) st.p1MageDecayRounds--;
