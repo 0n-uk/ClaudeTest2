@@ -172,7 +172,7 @@ public class AbilityResolver {
         TARGETED_ACTIVE.put("gwg001", (bs, isP1, ti, tf, tidx, ch, cm) -> "intercepted");
         TARGETED_ACTIVE.put("rok001", (bs, isP1, ti, tf, tidx, ch, cm) -> "intercepted");
 
-        // ── Target side ───────────────────────────────────────────────────────────
+        // ── Target side ───────────────────────────────────────────────────────
         TARGET_SIDE.put("asl001", "enemy");
         TARGET_SIDE.put("glc001", "enemy");
         TARGET_SIDE.put("cdr001", "enemy");

@@ -323,7 +323,7 @@ public class BattleState {
         if (abilityUsedThisTurn.remove(from)) abilityUsedThisTurn.add(to);
         Integer sp = sporedCards.remove(from);       if (sp != null) sporedCards.put(to, sp);
         Integer fk = fungalBeastKills.remove(from);  if (fk != null) fungalBeastKills.put(to, fk);
-        Integer dc = decayedCards.remove(from); if (dc != null) decayedCards.put(to, dc);
+        Integer dc = decayedCards.remove(from);      if (dc != null) decayedCards.put(to, dc);
     }
 
     boolean hasAction(boolean isP1, boolean isFront, int slot) {
