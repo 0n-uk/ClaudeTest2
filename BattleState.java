@@ -38,6 +38,8 @@ public class BattleState {
     Set<String>     fieldLockedCards    = new HashSet<>();  // posKeys that cannot return to hand/move
     Map<String,Integer> sporedCards      = new HashMap<>(); // posKey -> rounds remaining when spored
     Map<String,Integer> fungalBeastKills = new HashMap<>(); // posKey -> kill count for Fungal Beast
+    Map<String,Integer> decayedCards = new HashMap<>(); // posKey → turns remaining (−1 ATK & HP per turn)
+    Map<String,Integer> sealedSlots  = new HashMap<>(); // posKey → turns remaining (cannot place there)
     int             p1FungalDomain   = 0; // turns remaining for P1's Fungal Domain aura
     int             p2FungalDomain   = 0; // turns remaining for P2's Fungal Domain aura
     int             p1MageDecayRounds = 0; // turns remaining for P1's mage decay (banish kills)
@@ -140,6 +142,16 @@ public class BattleState {
                                                       if (c2 > 0) bs.sporedCards.put(entry.substring(0, c2), parseInt(entry.substring(c2+1)));
                                                   }
                                               } break;
+                    case "decayedCards": if (!val.isEmpty()) {
+                        for (String entry : val.split(",")) {
+                            int c2 = entry.indexOf(':');
+                            if (c2 > 0) bs.decayedCards.put(entry.substring(0, c2), parseInt(entry.substring(c2+1)));
+                        }} break;
+                    case "sealedSlots": if (!val.isEmpty()) {
+                        for (String entry : val.split(",")) {
+                            int c2 = entry.indexOf(':');
+                            if (c2 > 0) bs.sealedSlots.put(entry.substring(0, c2), parseInt(entry.substring(c2+1)));
+                        }} break;
                     case "fungalBeastKills":  if (!val.isEmpty()) {
                                                   for (String entry : val.split(",")) {
                                                       int c2 = entry.lastIndexOf(':');
@@ -223,6 +235,14 @@ public class BattleState {
                 sporedSb.append(e.getKey()).append(':').append(e.getValue());
             }
             w.write("sporedCards=" + sporedSb); w.newLine();
+            StringBuilder decaySb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : decayedCards.entrySet())
+                decaySb.append(e.getKey()).append(":").append(e.getValue()).append(",");
+            w.write("decayedCards=" + decaySb); w.newLine();
+            StringBuilder sealSb = new StringBuilder();
+            for (Map.Entry<String,Integer> e : sealedSlots.entrySet())
+                sealSb.append(e.getKey()).append(":").append(e.getValue()).append(",");
+            w.write("sealedSlots=" + sealSb); w.newLine();
             StringBuilder fbkSb = new StringBuilder();
             for (Map.Entry<String,Integer> e : fungalBeastKills.entrySet()) {
                 if (fbkSb.length() > 0) fbkSb.append(',');
@@ -287,6 +307,7 @@ public class BattleState {
         fieldLockedCards.remove(posKey);
         sporedCards.remove(posKey);
         fungalBeastKills.remove(posKey);
+        decayedCards.remove(posKey);
     }
 
     void migrateCardState(String from, String to) {
@@ -302,6 +323,7 @@ public class BattleState {
         if (abilityUsedThisTurn.remove(from)) abilityUsedThisTurn.add(to);
         Integer sp = sporedCards.remove(from);       if (sp != null) sporedCards.put(to, sp);
         Integer fk = fungalBeastKills.remove(from);  if (fk != null) fungalBeastKills.put(to, fk);
+        Integer dc = decayedCards.remove(from); if (dc != null) decayedCards.put(to, dc);
     }
 
     boolean hasAction(boolean isP1, boolean isFront, int slot) {

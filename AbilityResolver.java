@@ -58,6 +58,8 @@ public class AbilityResolver {
     public static final Map<String, String>     TARGET_SIDE     = new HashMap<>();
     /** cardId → minimum incoming damage required to actually damage this card (threshold check) */
     public static final Map<String, Integer>    DAMAGE_THRESHOLD = new HashMap<>();
+    /** Cards whose targeted ability can target empty slots */
+    public static final Set<String> TARGETS_EMPTY_SLOT = new HashSet<>(Arrays.asList("cdr001"));
     /** cardId → soul cap cost to use this ability */
     public static final Map<String, Integer>    SOUL_CAP_COST    = new HashMap<>();
     /** cardId set: cards that are mage subtype (for Prayerful Deacon discount) */
@@ -155,6 +157,27 @@ public class AbilityResolver {
 
         // ── Target side (enemy vs friendly) ──────────────────────────────
         TARGET_SIDE.put("ics001", "enemy"); // Ice Spirit freezes an enemy card
+
+        // ── Cryptid: no-target actives ────────────────────────────────────────────
+        ACTIVE.put("mth001", (bs, isP1, cm) -> mothmanSteal(bs, isP1));
+        ACTIVE.put("cro001", (bs, isP1, cm) -> crawlerSteal(bs, isP1));
+        ACTIVE.put("soo001", (bs, isP1, cm) -> spiderOfOsirisDecay(bs, isP1));
+
+        // ── Cryptid: targeted actives (AbilityResolver-handled) ───────────────
+        TARGETED_ACTIVE.put("asl001", (bs, isP1, ti, tf, tidx, ch, cm) -> sludgePoison(bs, ti, tf, tidx, cm));
+        TARGETED_ACTIVE.put("glc001", (bs, isP1, ti, tf, tidx, ch, cm) -> glitchWeaken(bs, ti, tf, tidx, cm));
+        TARGETED_ACTIVE.put("cdr001", (bs, isP1, ti, tf, tidx, ch, cm) -> darumaSealsSlot(bs, ti, tf, tidx, cm));
+
+        // ── BattleScreen-intercepted targeted (stubs so abilityType() returns "targeted") ──
+        TARGETED_ACTIVE.put("gwg001", (bs, isP1, ti, tf, tidx, ch, cm) -> "intercepted");
+        TARGETED_ACTIVE.put("rok001", (bs, isP1, ti, tf, tidx, ch, cm) -> "intercepted");
+
+        // ── Target side ───────────────────────────────────────────────────────────
+        TARGET_SIDE.put("asl001", "enemy");
+        TARGET_SIDE.put("glc001", "enemy");
+        TARGET_SIDE.put("cdr001", "enemy");
+        TARGET_SIDE.put("gwg001", "enemy");
+        // rok001: no entry → targets friendly (default)
     }
 
     // ── Public dispatch methods ───────────────────────────────────────────────
@@ -524,6 +547,98 @@ public class AbilityResolver {
         for (String s : front) if ("prd001".equals(BattleState.slotId(s))) return true;
         for (String s : back)  if ("prd001".equals(BattleState.slotId(s))) return true;
         return false;
+    }
+
+    public static boolean hasSoulSipper(BattleState bs, boolean isP1) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        for (String s : front) if ("ssp001".equals(BattleState.slotId(s))) return true;
+        for (String s : back)  if ("ssp001".equals(BattleState.slotId(s))) return true;
+        return false;
+    }
+
+    // Anomalous Sludge (asl001): poison target enemy
+    private static String sludgePoison(BattleState bs, boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                        Map<String, Card> cardMap) {
+        String[] row = tgtFront ? (tgtIsP1 ? bs.p1Front : bs.p2Front)
+                                : (tgtIsP1 ? bs.p1Back  : bs.p2Back);
+        if (row[tgtIdx] == null || row[tgtIdx].isEmpty()) return "Sludge: no card at target.";
+        String pk = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        bs.poisonedCards.add(pk);
+        Card c = cardMap.get(BattleState.slotId(row[tgtIdx]));
+        return "Sludge: " + (c != null ? c.getName() : "target") + " is now Poisoned!";
+    }
+
+    // Glitch (glc001): permanently reduce target enemy ATK by 1
+    private static String glitchWeaken(BattleState bs, boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                        Map<String, Card> cardMap) {
+        String[] row = tgtFront ? (tgtIsP1 ? bs.p1Front : bs.p2Front)
+                                : (tgtIsP1 ? bs.p1Back  : bs.p2Back);
+        if (row[tgtIdx] == null || row[tgtIdx].isEmpty()) return "Glitch: no card at target.";
+        String pk = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        bs.fieldAtkBonus.merge(pk, -1, Integer::sum);
+        Card c = cardMap.get(BattleState.slotId(row[tgtIdx]));
+        return "Glitch: " + (c != null ? c.getName() : "target") + " permanently loses 1 ATK!";
+    }
+
+    // Mothman (mth001): steal 1 soul cap from enemy (enemy min 1)
+    private static String mothmanSteal(BattleState bs, boolean isP1) {
+        int enemyCap = isP1 ? bs.p2SoulCap : bs.p1SoulCap;
+        if (enemyCap <= 1) return "Mothman: enemy soul cap is already at minimum!";
+        if (isP1) { bs.p2SoulCap--; bs.p1SoulCap++; }
+        else      { bs.p1SoulCap--; bs.p2SoulCap++; }
+        int myNewCap = isP1 ? bs.p1SoulCap : bs.p2SoulCap;
+        return "Mothman: stole 1 soul cap! Your cap is now " + myNewCap + "!";
+    }
+
+    // Crawler of Opheria (cro001): steal soul caps equal to enemy champion's stage
+    private static String crawlerSteal(BattleState bs, boolean isP1) {
+        boolean enemyIsP1 = !isP1;
+        String[] enemyBack = enemyIsP1 ? bs.p1Back : bs.p2Back;
+        String champSv = enemyBack[BattleState.CHAMP_SLOT];
+        if (champSv == null || champSv.isEmpty()) return "Crawler: no enemy champion found!";
+        String champId = BattleState.slotId(champSv);
+        int stage = 1;
+        if (champId != null && champId.length() > 1) {
+            char last = champId.charAt(champId.length() - 1);
+            if (Character.isDigit(last)) stage = Character.getNumericValue(last);
+        }
+        int stolen = 0;
+        for (int i = 0; i < stage; i++) {
+            int enemyCap = isP1 ? bs.p2SoulCap : bs.p1SoulCap;
+            if (enemyCap <= 1) break;
+            if (isP1) { bs.p2SoulCap--; bs.p1SoulCap++; }
+            else      { bs.p1SoulCap--; bs.p2SoulCap++; }
+            stolen++;
+        }
+        if (stolen == 0) return "Crawler: enemy soul cap already at minimum!";
+        return "Crawler: stole " + stolen + " soul cap" + (stolen != 1 ? "s" : "") + "!";
+    }
+
+    // Spider of Osiris (soo001): apply Decay (6 turns) to all enemy cards
+    private static String spiderOfOsirisDecay(BattleState bs, boolean isP1) {
+        boolean enemyIsP1 = !isP1;
+        String[] eFront = enemyIsP1 ? bs.p1Front : bs.p2Front;
+        String[] eBack  = enemyIsP1 ? bs.p1Back  : bs.p2Back;
+        int count = 0;
+        for (int i = 0; i < 5; i++) {
+            if (eFront[i] != null && !eFront[i].isEmpty()) {
+                bs.decayedCards.put(BattleState.posKey(enemyIsP1, true,  i), 6); count++;
+            }
+            if (eBack[i] != null && !eBack[i].isEmpty()) {
+                bs.decayedCards.put(BattleState.posKey(enemyIsP1, false, i), 6); count++;
+            }
+        }
+        if (count == 0) return "Spider of Osiris: no enemies to curse!";
+        return "Spider of Osiris: " + count + " enemy card" + (count != 1 ? "s" : "") + " are Decaying!";
+    }
+
+    // Cursed Daruma (cdr001): seal empty enemy slot for 10 turns (5 rounds)
+    private static String darumaSealsSlot(BattleState bs, boolean tgtIsP1, boolean tgtFront, int tgtIdx,
+                                           Map<String, Card> cardMap) {
+        String pk = BattleState.posKey(tgtIsP1, tgtFront, tgtIdx);
+        bs.sealedSlots.put(pk, 10);
+        return "Cursed Daruma: slot sealed for 5 rounds!";
     }
 
     /** Returns effective soul cost for using this card's ability (applies Deacon discount for mages). */
