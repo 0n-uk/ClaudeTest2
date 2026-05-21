@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.Arrays;
 
 /**
  * Unified resolver for all card and champion abilities.
@@ -57,6 +58,11 @@ public class AbilityResolver {
     public static final Map<String, String>     TARGET_SIDE     = new HashMap<>();
     /** cardId → minimum incoming damage required to actually damage this card (threshold check) */
     public static final Map<String, Integer>    DAMAGE_THRESHOLD = new HashMap<>();
+    /** cardId → soul cap cost to use this ability */
+    public static final Map<String, Integer>    SOUL_CAP_COST    = new HashMap<>();
+    /** cardId set: cards that are mage subtype (for Prayerful Deacon discount) */
+    public static final Set<String>             MAGE_IDS         = new HashSet<>(Arrays.asList(
+        "bgm001", "prd001", "frm001", "tmw001", "dod001", "gwz001"));
 
     static {
         // ── On-death: regular cards ───────────────────────────────────────
@@ -90,9 +96,14 @@ public class AbilityResolver {
         ACTIVE.put("shs001", (bs, isP1, cm) -> strawShamanFocus(bs, isP1));
         ACTIVE.put("ers001", (bs, isP1, cm) -> mudWall(bs, isP1));
         ACTIVE.put("psh001", (bs, isP1, cm) -> sprout(bs, isP1));
-        ACTIVE.put("ima001", (bs, isP1, cm) -> iceMageApprenticeCast(bs, isP1));
+        // ima001 is now handled in BattleScreen
         ACTIVE.put("trp001", (bs, isP1, cm) -> trumpeteer(bs, isP1, cm));
         ACTIVE.put("cmf001", (bs, isP1, cm) -> inspiration(bs, isP1, cm));
+
+        // ── Mage cards ────────────────────────────────────────────────────
+        ACTIVE.put("dod001", (bs, isP1, cm) -> deityOfDecayActivate(bs, isP1));
+        ACTIVE.put("ssk001", (bs, isP1, cm) -> soulSeekerDrain(bs, isP1));
+        // bgm001, frm001, tmw001, gwz001 are handled in BattleScreen (complex multi-target)
 
         // ── Active (targeted): new cards ──────────────────────────────────
         TARGETED_ACTIVE.put("ics001", (bs, isP1, ti, tf, tidx, ch, cm) -> iceSpirit(bs, ti, tf, tidx, cm));
@@ -125,6 +136,17 @@ public class AbilityResolver {
         SOUL_COST.put("wsp001", 1);
         SOUL_COST.put("D2",     3);
         SOUL_COST.put("shs001", 2);
+        SOUL_COST.put("bgm001", 1);
+        SOUL_COST.put("frm001", 3);
+        SOUL_COST.put("tmw001", 10);
+        SOUL_COST.put("dod001", 0);   // costs soul cap, not soul
+        SOUL_COST.put("ssk001", 1);
+        SOUL_COST.put("psh001", 3);   // existing card, now costs 3 soul to use ability
+        SOUL_COST.put("ima001", 2);   // existing card, now costs 2 soul
+
+        // ── Soul cap costs ────────────────────────────────────────────────
+        SOUL_CAP_COST.put("tmw001", 10);
+        SOUL_CAP_COST.put("dod001", 1);
 
         // ── Target type restrictions ──────────────────────────────────────
         TARGET_TYPE.put("hd001",  "bug");
@@ -496,6 +518,30 @@ public class AbilityResolver {
         return false;
     }
 
+    public static boolean hasPrayerfulDeacon(BattleState bs, boolean isP1) {
+        String[] front = isP1 ? bs.p1Front : bs.p2Front;
+        String[] back  = isP1 ? bs.p1Back  : bs.p2Back;
+        for (String s : front) if ("prd001".equals(BattleState.slotId(s))) return true;
+        for (String s : back)  if ("prd001".equals(BattleState.slotId(s))) return true;
+        return false;
+    }
+
+    /** Returns effective soul cost for using this card's ability (applies Deacon discount for mages). */
+    public static int getEffectiveSoulCost(String cardId, BattleState bs, boolean isP1) {
+        int base = SOUL_COST.getOrDefault(cardId, 0);
+        if (MAGE_IDS.contains(cardId) && hasPrayerfulDeacon(bs, isP1)) base = Math.max(0, base - 1);
+        return base;
+    }
+
+    /** Returns whether the player can afford to use the card's ability (checks soul AND soul cap cost). */
+    public static boolean canUseAbility(String cardId, BattleState bs, boolean isP1) {
+        int souls       = isP1 ? bs.p1Souls   : bs.p2Souls;
+        int soulCap     = isP1 ? bs.p1SoulCap : bs.p2SoulCap;
+        int soulCost    = getEffectiveSoulCost(cardId, bs, isP1);
+        int soulCapCost = SOUL_CAP_COST.getOrDefault(cardId, 0);
+        return souls >= soulCost && soulCap >= soulCapCost;
+    }
+
     // Wisp (wsp001): spend 1 soul to draw 1 card
     private static String drift(BattleState bs, boolean isP1) {
         int souls = isP1 ? bs.p1Souls : bs.p2Souls;
@@ -771,7 +817,7 @@ public class AbilityResolver {
         String[] front = isP1 ? bs.p1Front : bs.p2Front;
         for (int i = 0; i < 5; i++) {
             if (front[i] == null || front[i].isEmpty()) {
-                front[i] = BattleState.makeSlot(MUD_WALL_ID, 5);
+                front[i] = BattleState.makeSlot(MUD_WALL_ID, 3);
                 return "Mud Wall: summoned a Mud Wall in the frontline!";
             }
         }
@@ -831,8 +877,11 @@ public class AbilityResolver {
         return "Return: " + c.getName() + " returned to hand!";
     }
 
-    // Pod Shooter (psh001): summon 2 Pod tokens to own frontline, starting their transform counters
+    // Pod Shooter (psh001): spend 3 soul to summon 2 Pod tokens to own frontline
     private static String sprout(BattleState bs, boolean isP1) {
+        int souls = isP1 ? bs.p1Souls : bs.p2Souls;
+        if (souls < 3) return "Sprout: need 3 soul (have " + souls + ").";
+        if (isP1) bs.p1Souls -= 3; else bs.p2Souls -= 3;
         String[] front = isP1 ? bs.p1Front : bs.p2Front;
         int placed = 0;
         for (int i = 0; i < 5 && placed < 2; i++) {
@@ -1030,28 +1079,25 @@ public class AbilityResolver {
         return "Overclock: 2 Scrap consumed, gained 2 extra actions!";
     }
 
-    private static String iceMageApprenticeCast(BattleState bs, boolean isP1) {
-        boolean enemyIsP1 = !isP1;
-        List<String> targets = new ArrayList<>();
-        String[] eFront = enemyIsP1 ? bs.p1Front : bs.p2Front;
-        String[] eBack  = enemyIsP1 ? bs.p1Back  : bs.p2Back;
-        for (int i = 0; i < 5; i++) {
-            if (eFront[i] != null && !eFront[i].isEmpty())
-                targets.add(BattleState.posKey(enemyIsP1, true,  i));
-            if (eBack[i]  != null && !eBack[i].isEmpty())
-                targets.add(BattleState.posKey(enemyIsP1, false, i));
+    // Deity of Decay (dod001): for 1 soul cap, enable mage decay for 1 round (2 turns)
+    private static String deityOfDecayActivate(BattleState bs, boolean isP1) {
+        if (isP1) { bs.p1SoulCap--; bs.p1MageDecayRounds = 2; }
+        else       { bs.p2SoulCap--; bs.p2MageDecayRounds = 2; }
+        return "Deity of Decay: for 1 round, mage kills are banished and grant no soul cap!";
+    }
+
+    // Soul Seeker (ssk001): spend 1 soul, reduce enemy soul cap by 1 (min 1)
+    private static String soulSeekerDrain(BattleState bs, boolean isP1) {
+        int souls = isP1 ? bs.p1Souls : bs.p2Souls;
+        if (souls < 1) return "Soul Seeker: need 1 soul.";
+        if (isP1) {
+            bs.p1Souls--;
+            bs.p2SoulCap = Math.max(1, bs.p2SoulCap - 1);
+        } else {
+            bs.p2Souls--;
+            bs.p1SoulCap = Math.max(1, bs.p1SoulCap - 1);
         }
-        if (targets.isEmpty()) return "Ice Mage Apprentice: no enemies to freeze!";
-        int frozen = 0;
-        for (int flip = 0; flip < 3; flip++) {
-            if (coinFlip()) {
-                String pk = targets.get(new Random().nextInt(targets.size()));
-                bs.frozenCards.put(pk, Math.max(bs.frozenCards.getOrDefault(pk, 0), 4));
-                frozen++;
-            }
-        }
-        if (frozen == 0) return "Ice Mage Apprentice: all tails — no enemies frozen!";
-        return "Ice Mage Apprentice: froze " + frozen + " enemy card" + (frozen > 1 ? "s" : "") + " for 2 rounds!";
+        return "Soul Seeker: enemy soul cap reduced to " + (isP1 ? bs.p2SoulCap : bs.p1SoulCap) + "!";
     }
 
     private static String trumpeteer(BattleState bs, boolean isP1, Map<String, Card> cardMap) {

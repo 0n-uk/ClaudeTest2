@@ -40,6 +40,8 @@ public class BattleState {
     Map<String,Integer> fungalBeastKills = new HashMap<>(); // posKey -> kill count for Fungal Beast
     int             p1FungalDomain   = 0; // turns remaining for P1's Fungal Domain aura
     int             p2FungalDomain   = 0; // turns remaining for P2's Fungal Domain aura
+    int             p1MageDecayRounds = 0; // turns remaining for P1's mage decay (banish kills)
+    int             p2MageDecayRounds = 0;
 
     List<String> p1Hand    = new ArrayList<>();
     List<String> p2Hand    = new ArrayList<>();
@@ -146,6 +148,8 @@ public class BattleState {
                                               } break;
                     case "p1FungalDomain":    bs.p1FungalDomain = parseInt(val); break;
                     case "p2FungalDomain":    bs.p2FungalDomain = parseInt(val); break;
+                    case "p1MageDecayRounds": bs.p1MageDecayRounds = parseInt(val); break;
+                    case "p2MageDecayRounds": bs.p2MageDecayRounds = parseInt(val); break;
                     case "p1Hand":              bs.p1Hand    = parseList(val); break;
                     case "p2Hand":              bs.p2Hand    = parseList(val); break;
                     case "p1Deck":              bs.p1Deck    = parseList(val); break;
@@ -227,6 +231,8 @@ public class BattleState {
             w.write("fungalBeastKills=" + fbkSb); w.newLine();
             w.write("p1FungalDomain=" + p1FungalDomain); w.newLine();
             w.write("p2FungalDomain=" + p2FungalDomain); w.newLine();
+            w.write("p1MageDecayRounds=" + p1MageDecayRounds); w.newLine();
+            w.write("p2MageDecayRounds=" + p2MageDecayRounds); w.newLine();
             w.write("p1Hand="    + String.join(",", p1Hand));    w.newLine();
             w.write("p2Hand="    + String.join(",", p2Hand));    w.newLine();
             w.write("p1Deck="    + String.join(",", p1Deck));    w.newLine();
