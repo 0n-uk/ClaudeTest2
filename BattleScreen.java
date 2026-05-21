@@ -525,10 +525,10 @@ public class BattleScreen {
                             hand.add("wka002");
                             msg[0] = "Colony: Worker Ant2 added to your hand!";
                         }
-                        // Water Spirit: all cards on field gain +2 HP when placed
+                        // Water Spirit: all friendly cards on field gain +2 HP when placed
                         if ("wts001".equals(id)) {
-                            waterSpiritBuff(st2);
-                            msg[0] = "Water Spirit: all field cards gained +2 HP!";
+                            waterSpiritBuff(st2, amP1);
+                            msg[0] = "Water Spirit: all friendly cards gained +2 HP!";
                         }
                         // Pod cards: start transform countdown on placement
                         int txDelay = AbilityResolver.transformDelay(id);
@@ -852,6 +852,53 @@ public class BattleScreen {
         }
         selField[0] = null;
 
+        // Grand Wizard of Omerlia: attacks all cards in a row
+        if ("gwz001".equals(atkId)) {
+            // backline attacker → attack enemy frontline; frontline attacker → attack enemy backline
+            boolean gwzTargetFront = !atkFront;
+            String[] gwzRow = gwzTargetFront ? (tgtIsP1 ? st.p1Front : st.p2Front)
+                                             : (tgtIsP1 ? st.p1Back  : st.p2Back);
+            int atkBase = atkC.getAttack() + st.fieldAtkBonus.getOrDefault(atkPosKey, 0);
+            if (st.focusedCards.contains(atkPosKey)) { atkBase *= 2; st.focusedCards.remove(atkPosKey); }
+            StringBuilder gwzSb = new StringBuilder("Grand Wizard attacks "
+                + (gwzTargetFront ? "frontline" : "backline") + ":");
+            for (int gi = 0; gi < 5; gi++) {
+                if (gwzRow[gi] == null || gwzRow[gi].isEmpty()) continue;
+                String gId = BattleState.slotId(gwzRow[gi]);
+                Card gC = cardMap.get(gId);
+                if (gC == null) continue;
+                int gReduc = AbilityResolver.passiveDamageReduction(gId);
+                int gDmg = Math.max(0, atkBase - gReduc);
+                int gNewHp = BattleState.slotHp(gwzRow[gi]) - gDmg;
+                String gPk = BattleState.posKey(tgtIsP1, gwzTargetFront, gi);
+                if (gNewHp <= 0 && !(gC instanceof Champion)) {
+                    String sporedMsg = handleSporedDeath(st, gPk, tgtIsP1, cardMap);
+                    gwzRow[gi] = "";
+                    st.clearCardState(gPk);
+                    boolean decayActive = amP1 ? st.p1MageDecayRounds > 0 : st.p2MageDecayRounds > 0;
+                    if (!decayActive) {
+                        if (!"item".equals(gC.getType())) {
+                            if (tgtIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                        }
+                        if (tgtIsP1) st.p1Discard.add(gId); else st.p2Discard.add(gId);
+                        AbilityResolver.onDeath(st, gId, tgtIsP1, cardMap);
+                    }
+                    gwzSb.append(" ").append(gC.getName()).append(" ✕").append(sporedMsg);
+                } else if (gNewHp > 0) {
+                    gwzRow[gi] = BattleState.makeSlot(gId, gNewHp);
+                    gwzSb.append(" ").append(gC.getName()).append("(-").append(gDmg).append(")");
+                }
+            }
+            msg[0] = gwzSb.toString();
+            if (atkC instanceof Champion) {
+                doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+            } else {
+                st.save(); stRef[0] = st;
+                rebuildRef[0].run();
+            }
+            return;
+        }
+
         if (newTgtHp <= 0) {
             String tgtSporedMsg = handleSporedDeath(st, tgtPosKey, tgtIsP1, cardMap);
             tgtRow[tgtIdx] = "";
@@ -1041,6 +1088,45 @@ public class BattleScreen {
             rebuildRef[0].run();
             return;
         }
+
+        // ── Soul cap cost check ───────────────────────────────────────────
+        int capCost = AbilityResolver.SOUL_CAP_COST.getOrDefault(cardId, 0);
+        int mySoulCap2 = amP1 ? st.p1SoulCap : st.p2SoulCap;
+        if (capCost > 0 && mySoulCap2 < capCost) {
+            msg[0] = "Need " + capCost + " soul cap to use this ability.";
+            rebuildRef[0].run(); return;
+        }
+
+        // ── Prayerful Deacon soul cost check ─────────────────────────────
+        int soulCost2 = AbilityResolver.getEffectiveSoulCost(cardId, st, amP1);
+        int mySouls2  = amP1 ? st.p1Souls : st.p2Souls;
+        if (soulCost2 > 0 && mySouls2 < soulCost2) {
+            msg[0] = "Need " + soulCost2 + " soul to use this ability.";
+            rebuildRef[0].run(); return;
+        }
+
+        // ── BattleScreen-handled abilities ────────────────────────────────
+        if ("bgm001".equals(cardId)) {
+            doBeginnerMageAttack(st, cardMap, posKey, isFront, idx, fieldIsP1, amP1,
+                                 stRef, selHand, selField, msg, rebuildRef);
+            return;
+        }
+        if ("frm001".equals(cardId)) {
+            doFireMageBlast(st, cardMap, posKey, isFront, idx, fieldIsP1, amP1,
+                            stRef, selHand, selField, msg, rebuildRef);
+            return;
+        }
+        if ("ima001".equals(cardId)) {
+            doIceMageApprenticeCast(st, cardMap, posKey, isFront, idx, fieldIsP1, amP1,
+                                    stRef, selHand, selField, msg, rebuildRef);
+            return;
+        }
+        if ("tmw001".equals(cardId)) {
+            doTimeWizardSkip(st, cardMap, posKey, isFront, idx, fieldIsP1, amP1,
+                             stRef, selHand, selField, msg, rebuildRef);
+            return;
+        }
+
         String result = AbilityResolver.executeActive(st, cardId, amP1, cardMap);
         if (result != null) {
             st.useAction(fieldIsP1, isFront, idx);
@@ -1188,153 +1274,7 @@ public class BattleScreen {
         BattleState st = stRef[0];
         selHand[0] = -1; selField[0] = null;
 
-        // ── Apply burn damage (1 dmg per burned card) ──────────────────────
-        for (String posKey : new ArrayList<>(st.burnedCards.keySet())) {
-            boolean posIsP1 = posKey.startsWith("p1");
-            boolean posFront = posKey.charAt(2) == 'f';
-            int posIdx = Character.getNumericValue(posKey.charAt(3));
-            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
-                                    : (posIsP1 ? st.p1Back  : st.p2Back);
-            if (row[posIdx] == null || row[posIdx].isEmpty()) {
-                st.burnedCards.remove(posKey); continue;
-            }
-            String cId = BattleState.slotId(row[posIdx]);
-            int    chp = BattleState.slotHp(row[posIdx]);
-            Card   bc  = cardMap.get(cId);
-            int    newHp = chp - 1;
-            if (newHp <= 0 && !(bc instanceof Champion)) {
-                String burnSporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
-                row[posIdx] = "";
-                st.clearCardState(posKey);
-                if (bc != null && !"item".equals(bc.getType())) {
-                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
-                }
-                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
-                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
-                String burnNotice = (bc != null ? bc.getName() : cId) + " burned to death!";
-                if (!deathMsg.isEmpty()) burnNotice += " " + deathMsg;
-                burnNotice += burnSporedMsg;
-                if ("gen001".equals(cId) && posFront) {
-                    String[] backRow = posIsP1 ? st.p1Back : st.p2Back;
-                    if (backRow[posIdx] != null && !backRow[posIdx].isEmpty()) {
-                        String shPk = BattleState.posKey(posIsP1, false, posIdx);
-                        row[posIdx] = backRow[posIdx]; backRow[posIdx] = "";
-                        st.migrateCardState(shPk, posKey);
-                        burnNotice += " Shielded card advances!";
-                    }
-                }
-                msg[0] = burnNotice;
-            } else {
-                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
-            }
-        }
-
-        // ── Apply poison damage (1 dmg per poisoned card) ─────────────────
-        for (String posKey : new ArrayList<>(st.poisonedCards)) {
-            boolean posIsP1 = posKey.startsWith("p1");
-            boolean posFront = posKey.charAt(2) == 'f';
-            int posIdx = Character.getNumericValue(posKey.charAt(3));
-            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
-                                    : (posIsP1 ? st.p1Back  : st.p2Back);
-            if (row[posIdx] == null || row[posIdx].isEmpty()) {
-                st.poisonedCards.remove(posKey); continue;
-            }
-            String cId = BattleState.slotId(row[posIdx]);
-            int    chp = BattleState.slotHp(row[posIdx]);
-            Card   pc  = cardMap.get(cId);
-            int    newHp = chp - 1;
-            if (newHp <= 0 && !(pc instanceof Champion)) {
-                String poisonSporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
-                row[posIdx] = "";
-                st.clearCardState(posKey);
-                if (pc != null && !"item".equals(pc.getType())) {
-                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
-                }
-                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
-                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
-                String poisonNotice = (pc != null ? pc.getName() : cId) + " died from poison!";
-                if (!deathMsg.isEmpty()) poisonNotice += " " + deathMsg;
-                poisonNotice += poisonSporedMsg;
-                msg[0] = poisonNotice;
-            } else {
-                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
-            }
-        }
-
-        // ── Flame Bloomling: +2 HP per burned card ────────────────────────
-        int burnedCount = st.burnedCards.size();
-        if (burnedCount > 0) {
-            String[][] fblRows = {st.p1Front, st.p1Back, st.p2Front, st.p2Back};
-            boolean[] fblSides = {true, true, false, false};
-            boolean[] fblFronts = {true, false, true, false};
-            for (int ri = 0; ri < 4; ri++) {
-                String[] row = fblRows[ri];
-                for (int i = 0; i < 5; i++) {
-                    if ("fbl001".equals(BattleState.slotId(row[i]))) {
-                        int gain = burnedCount * 2;
-                        row[i] = BattleState.makeSlot("fbl001", BattleState.slotHp(row[i]) + gain);
-                    }
-                }
-            }
-        }
-
-        // ── Decrement spored turns ─────────────────────────────────────────
-        for (String posKey : new ArrayList<>(st.sporedCards.keySet())) {
-            int turns = st.sporedCards.get(posKey) - 1;
-            if (turns <= 0) st.sporedCards.remove(posKey);
-            else st.sporedCards.put(posKey, turns);
-        }
-
-        // ── Fungal Domain aura ─────────────────────────────────────────────
-        boolean domainActive = st.p1FungalDomain > 0 || st.p2FungalDomain > 0;
-        if (st.p1FungalDomain > 0) st.p1FungalDomain--;
-        if (st.p2FungalDomain > 0) st.p2FungalDomain--;
-        if (domainActive) {
-            String domainMsg = AbilityResolver.applyFungalDomainAura(st, cardMap);
-            if (!domainMsg.isEmpty()) {
-                msg[0] = msg[0].isEmpty() ? domainMsg : msg[0] + " | " + domainMsg;
-            }
-        }
-
-        // ── Decrement frozen turns ─────────────────────────────────────────
-        for (String posKey : new ArrayList<>(st.frozenCards.keySet())) {
-            int turns = st.frozenCards.get(posKey) - 1;
-            if (turns <= 0) st.frozenCards.remove(posKey);
-            else st.frozenCards.put(posKey, turns);
-        }
-
-        // ── Transform countdown ────────────────────────────────────────────
-        for (String txKey : new ArrayList<>(st.transformCounters.keySet())) {
-            int turns = st.transformCounters.get(txKey) - 1;
-            if (turns <= 0) {
-                st.transformCounters.remove(txKey);
-                applyTransform(st, txKey, cardMap, msg);
-            } else {
-                st.transformCounters.put(txKey, turns);
-            }
-        }
-
-        // ── Druid aura: all Pod cards +1 ATK & HP each turn ───────────────
-        for (boolean pSide : new boolean[]{true, false}) {
-            String[] frt = pSide ? st.p1Front : st.p2Front;
-            String[] bck = pSide ? st.p1Back  : st.p2Back;
-            boolean hasDruid = false;
-            for (String s : frt) if ("dru001".equals(BattleState.slotId(s))) { hasDruid = true; break; }
-            if (!hasDruid)
-                for (String s : bck) if ("dru001".equals(BattleState.slotId(s))) { hasDruid = true; break; }
-            if (!hasDruid) continue;
-            for (int pass = 0; pass < 2; pass++) {
-                String[] row = pass == 0 ? frt : bck;
-                for (int i = 0; i < 5; i++) {
-                    String cid = BattleState.slotId(row[i]);
-                    Card c = cid != null ? cardMap.get(cid) : null;
-                    if (c == null || !"pod".equals(c.getType())) continue;
-                    String pk = BattleState.posKey(pSide, pass == 0, i);
-                    st.fieldAtkBonus.merge(pk, 1, Integer::sum);
-                    row[i] = BattleState.makeSlot(cid, BattleState.slotHp(row[i]) + 1);
-                }
-            }
-        }
+        applyEndTurnEffects(st, cardMap, msg);
 
         boolean nextIsP1   = !amP1;
         String  nextPlayer = amP1 ? st.player2 : st.player1;
@@ -1540,9 +1480,9 @@ public class BattleScreen {
                         boolean voidBlocked = AbilityResolver.isAbilityNullified(amP1, stRef[0]);
                         boolean ablEnabled = !voidBlocked && (isEcho
                                 ? mySoulCap >= 1
-                                : AbilityResolver.canUseAbility(srcCardId, mySouls));
+                                : AbilityResolver.canUseAbility(srcCardId, stRef[0], amP1));
                         String lblTxt = srcCard.getName() + ": Use Ability"
-                                        + (voidBlocked ? " [Void]" : (ablEnabled ? "" : " (need soul)"));
+                                        + (voidBlocked ? " [Void]" : (ablEnabled ? "" : " (can't afford)"));
                         JButton ablBtn = smallBtn(lblTxt, ablEnabled ? SEL_ABL : new Color(80, 80, 100));
                         ablBtn.setEnabled(ablEnabled);
                         ablBtn.addActionListener(e -> {
@@ -1713,8 +1653,10 @@ public class BattleScreen {
         return (row != null && idx >= 0 && idx < row.length) ? BattleState.slotId(row[idx]) : null;
     }
 
-    private static void waterSpiritBuff(BattleState st) {
-        String[][] rows = { st.p1Front, st.p1Back, st.p2Front, st.p2Back };
+    private static void waterSpiritBuff(BattleState st, boolean ownerIsP1) {
+        String[][] rows = ownerIsP1
+            ? new String[][]{ st.p1Front, st.p1Back }
+            : new String[][]{ st.p2Front, st.p2Back };
         for (String[] row : rows) {
             for (int i = 0; i < 5; i++) {
                 if (row[i] != null && !row[i].isEmpty()) {
@@ -1769,6 +1711,340 @@ public class BattleScreen {
 
     private static String withHarvest(String result, String harvestMsg) {
         return harvestMsg.isEmpty() ? result : result + " " + harvestMsg;
+    }
+
+    // ── Beginner Mage ability ─────────────────────────────────────────────────
+
+    private static void doBeginnerMageAttack(BattleState st, Map<String, Card> cardMap,
+            String posKey, boolean isFront, int idx, boolean fieldIsP1, boolean amP1,
+            BattleState[] stRef, int[] selHand, String[] selField, String[] msg, Runnable[] rebuildRef) {
+        int cost = AbilityResolver.getEffectiveSoulCost("bgm001", st, amP1);
+        if (amP1) st.p1Souls -= cost; else st.p2Souls -= cost;
+
+        boolean enemyIsP1 = !amP1;
+        String[] eFront = enemyIsP1 ? st.p1Front : st.p2Front;
+        StringBuilder sb = new StringBuilder("Beginner Mage: hit");
+        int hits = 0;
+        for (int col = idx - 1; col <= idx + 1; col++) {
+            if (col < 0 || col > 4) continue;
+            if (eFront[col] == null || eFront[col].isEmpty()) continue;
+            String tgtId = BattleState.slotId(eFront[col]);
+            Card tgtC = cardMap.get(tgtId);
+            if (tgtC == null) continue;
+            int reduction = AbilityResolver.passiveDamageReduction(tgtId);
+            int dmg2 = Math.max(0, 1 - reduction);
+            int newHp = BattleState.slotHp(eFront[col]) - dmg2;
+            String tgtPk = BattleState.posKey(enemyIsP1, true, col);
+            if (newHp <= 0 && !(tgtC instanceof Champion)) {
+                String sporedMsg = handleSporedDeath(st, tgtPk, enemyIsP1, cardMap);
+                eFront[col] = "";
+                st.clearCardState(tgtPk);
+                boolean decayActive = amP1 ? st.p1MageDecayRounds > 0 : st.p2MageDecayRounds > 0;
+                if (!decayActive) {
+                    if (!"item".equals(tgtC.getType())) {
+                        if (enemyIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                    }
+                    if (enemyIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
+                    AbilityResolver.onDeath(st, tgtId, enemyIsP1, cardMap);
+                }
+                sb.append(" ").append(tgtC.getName()).append(" ✕").append(sporedMsg);
+            } else if (newHp > 0) {
+                eFront[col] = BattleState.makeSlot(tgtId, newHp);
+                sb.append(" ").append(tgtC.getName()).append("(").append(dmg2).append(")");
+            }
+            hits++;
+        }
+        if (hits == 0) { msg[0] = "Beginner Mage: no adjacent enemies!"; rebuildRef[0].run(); return; }
+        st.useAction(fieldIsP1, isFront, idx);
+        st.abilityUsedThisTurn.add(posKey);
+        msg[0] = withHarvest(sb.toString(), AbilityResolver.onAbilityUsed(st, amP1));
+        selField[0] = null;
+        st.save(); stRef[0] = st;
+        rebuildRef[0].run();
+    }
+
+    // ── Fire Mage ability ─────────────────────────────────────────────────────
+
+    private static void doFireMageBlast(BattleState st, Map<String, Card> cardMap,
+            String posKey, boolean isFront, int idx, boolean fieldIsP1, boolean amP1,
+            BattleState[] stRef, int[] selHand, String[] selField, String[] msg, Runnable[] rebuildRef) {
+        int cost = AbilityResolver.getEffectiveSoulCost("frm001", st, amP1);
+        if (amP1) st.p1Souls -= cost; else st.p2Souls -= cost;
+
+        boolean enemyIsP1 = !amP1;
+        String[] eFront = enemyIsP1 ? st.p1Front : st.p2Front;
+        StringBuilder sb = new StringBuilder("Fire Mage:");
+        int hits = 0;
+        for (int col = 0; col < 5 && hits < 3; col++) {
+            if (eFront[col] == null || eFront[col].isEmpty()) continue;
+            String tgtId = BattleState.slotId(eFront[col]);
+            Card tgtC = cardMap.get(tgtId);
+            if (tgtC == null) continue;
+            int reduction = AbilityResolver.passiveDamageReduction(tgtId);
+            int dmg2 = Math.max(0, 3 - reduction);
+            int newHp = BattleState.slotHp(eFront[col]) - dmg2;
+            String tgtPk = BattleState.posKey(enemyIsP1, true, col);
+            if (newHp <= 0 && !(tgtC instanceof Champion)) {
+                String sporedMsg = handleSporedDeath(st, tgtPk, enemyIsP1, cardMap);
+                eFront[col] = "";
+                st.clearCardState(tgtPk);
+                boolean decayActive = amP1 ? st.p1MageDecayRounds > 0 : st.p2MageDecayRounds > 0;
+                if (!decayActive) {
+                    if (!"item".equals(tgtC.getType())) {
+                        if (enemyIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                    }
+                    if (enemyIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
+                    AbilityResolver.onDeath(st, tgtId, enemyIsP1, cardMap);
+                }
+                sb.append(" ").append(tgtC.getName()).append(" ✕").append(sporedMsg);
+            } else if (newHp > 0) {
+                eFront[col] = BattleState.makeSlot(tgtId, newHp);
+                sb.append(" ").append(tgtC.getName()).append("(-").append(dmg2).append(")");
+            }
+            hits++;
+        }
+        if (hits == 0) { msg[0] = "Fire Mage: no enemies in frontline!"; rebuildRef[0].run(); return; }
+        st.useAction(fieldIsP1, isFront, idx);
+        st.abilityUsedThisTurn.add(posKey);
+        msg[0] = withHarvest(sb.toString(), AbilityResolver.onAbilityUsed(st, amP1));
+        selField[0] = null;
+        st.save(); stRef[0] = st;
+        rebuildRef[0].run();
+    }
+
+    // ── Ice Mage Apprentice ability ───────────────────────────────────────────
+
+    private static void doIceMageApprenticeCast(BattleState st, Map<String, Card> cardMap,
+            String posKey, boolean isFront, int idx, boolean fieldIsP1, boolean amP1,
+            BattleState[] stRef, int[] selHand, String[] selField, String[] msg, Runnable[] rebuildRef) {
+        int cost = AbilityResolver.getEffectiveSoulCost("ima001", st, amP1);
+        if (amP1) st.p1Souls -= cost; else st.p2Souls -= cost;
+
+        boolean enemyIsP1 = !amP1;
+        List<String> targets = new ArrayList<>();
+        String[] eFront = enemyIsP1 ? st.p1Front : st.p2Front;
+        String[] eBack  = enemyIsP1 ? st.p1Back  : st.p2Back;
+        for (int i = 0; i < 5; i++) {
+            if (eFront[i] != null && !eFront[i].isEmpty())
+                targets.add(BattleState.posKey(enemyIsP1, true,  i));
+            if (eBack[i]  != null && !eBack[i].isEmpty())
+                targets.add(BattleState.posKey(enemyIsP1, false, i));
+        }
+        if (targets.isEmpty()) {
+            // Refund if no targets
+            if (amP1) st.p1Souls += cost; else st.p2Souls += cost;
+            msg[0] = "Ice Mage: no enemies to freeze!";
+            rebuildRef[0].run(); return;
+        }
+
+        int frozen = 0;
+        for (int flip = 0; flip < 3; flip++) {
+            if (Math.random() < 0.5) {
+                String pk = targets.get((int)(Math.random() * targets.size()));
+                st.frozenCards.put(pk, Math.max(st.frozenCards.getOrDefault(pk, 0), 4));
+                boolean pkIsP1  = pk.startsWith("p1");
+                boolean pkFront = pk.charAt(2) == 'f';
+                int pkIdx = Character.getNumericValue(pk.charAt(3));
+                String[] row = pkFront ? (pkIsP1 ? st.p1Front : st.p2Front)
+                                       : (pkIsP1 ? st.p1Back  : st.p2Back);
+                if (row[pkIdx] != null && !row[pkIdx].isEmpty()) {
+                    String tgtId = BattleState.slotId(row[pkIdx]);
+                    Card tgtC = cardMap.get(tgtId);
+                    int reduction = tgtC != null ? AbilityResolver.passiveDamageReduction(tgtId) : 0;
+                    int dmg2 = Math.max(0, 3 - reduction);
+                    int newHp = BattleState.slotHp(row[pkIdx]) - dmg2;
+                    if (newHp <= 0 && tgtC != null && !(tgtC instanceof Champion)) {
+                        String sporedMsg = handleSporedDeath(st, pk, pkIsP1, cardMap);
+                        row[pkIdx] = "";
+                        st.clearCardState(pk);
+                        boolean decayActive = amP1 ? st.p1MageDecayRounds > 0 : st.p2MageDecayRounds > 0;
+                        if (!decayActive) {
+                            if (!"item".equals(tgtC.getType())) {
+                                if (pkIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                            }
+                            if (pkIsP1) st.p1Discard.add(tgtId); else st.p2Discard.add(tgtId);
+                            AbilityResolver.onDeath(st, tgtId, pkIsP1, cardMap);
+                        }
+                        targets.remove(pk); // no longer targetable
+                    } else if (newHp > 0) {
+                        row[pkIdx] = BattleState.makeSlot(tgtId, newHp);
+                    }
+                }
+                frozen++;
+            }
+        }
+        st.useAction(fieldIsP1, isFront, idx);
+        st.abilityUsedThisTurn.add(posKey);
+        msg[0] = withHarvest(
+            frozen == 0 ? "Ice Mage: all tails — no enemies frozen!"
+                        : "Ice Mage: froze " + frozen + " enem" + (frozen > 1 ? "ies" : "y") + " and dealt 3 dmg!",
+            AbilityResolver.onAbilityUsed(st, amP1));
+        selField[0] = null;
+        st.save(); stRef[0] = st;
+        rebuildRef[0].run();
+    }
+
+    // ── Time Wizard ability ───────────────────────────────────────────────────
+
+    private static void doTimeWizardSkip(BattleState st, Map<String, Card> cardMap,
+            String posKey, boolean isFront, int idx, boolean fieldIsP1, boolean amP1,
+            BattleState[] stRef, int[] selHand, String[] selField, String[] msg, Runnable[] rebuildRef) {
+        if (amP1) { st.p1Souls -= 10; st.p1SoulCap -= 10; }
+        else       { st.p2Souls -= 10; st.p2SoulCap -= 10; }
+
+        // Apply 6 end-of-turn ticks (3 rounds × 2 turns each)
+        String[] tickMsg = { "" };
+        for (int round = 0; round < 6; round++) {
+            applyEndTurnEffects(st, cardMap, tickMsg);
+        }
+
+        // Opponent draws 3 cards
+        boolean nextIsP1 = !amP1;
+        List<String> nextDeck = nextIsP1 ? st.p1Deck : st.p2Deck;
+        List<String> nextHand = nextIsP1 ? st.p1Hand : st.p2Hand;
+        for (int d = 0; d < 3 && !nextDeck.isEmpty(); d++) nextHand.add(nextDeck.remove(0));
+
+        st.useAction(fieldIsP1, isFront, idx);
+        st.abilityUsedThisTurn.add(posKey);
+        String baseMsg = "Time Wizard: skipped 3 rounds!";
+        if (!tickMsg[0].isEmpty()) baseMsg += " " + tickMsg[0];
+        msg[0] = withHarvest(baseMsg, AbilityResolver.onAbilityUsed(st, amP1));
+        selField[0] = null;
+        // End turn normally
+        doEndTurn(amP1, stRef, selHand, selField, msg, rebuildRef, cardMap);
+    }
+
+    // ── End-turn effects helper (extracted for Time Wizard) ───────────────────
+
+    private static void applyEndTurnEffects(BattleState st, Map<String, Card> cardMap, String[] msg) {
+        // ── Apply burn damage ──────────────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.burnedCards.keySet())) {
+            boolean posIsP1 = posKey.startsWith("p1");
+            boolean posFront = posKey.charAt(2) == 'f';
+            int posIdx = Character.getNumericValue(posKey.charAt(3));
+            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                    : (posIsP1 ? st.p1Back  : st.p2Back);
+            if (row[posIdx] == null || row[posIdx].isEmpty()) { st.burnedCards.remove(posKey); continue; }
+            String cId = BattleState.slotId(row[posIdx]);
+            int    chp = BattleState.slotHp(row[posIdx]);
+            Card   bc  = cardMap.get(cId);
+            int    newHp = chp - 1;
+            if (newHp <= 0 && !(bc instanceof Champion)) {
+                String burnSporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
+                row[posIdx] = "";
+                st.clearCardState(posKey);
+                if (bc != null && !"item".equals(bc.getType())) {
+                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
+                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
+                String burnNotice = (bc != null ? bc.getName() : cId) + " burned to death!";
+                if (!deathMsg.isEmpty()) burnNotice += " " + deathMsg;
+                burnNotice += burnSporedMsg;
+                msg[0] = burnNotice;
+            } else {
+                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+        // ── Apply poison damage ────────────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.poisonedCards)) {
+            boolean posIsP1 = posKey.startsWith("p1");
+            boolean posFront = posKey.charAt(2) == 'f';
+            int posIdx = Character.getNumericValue(posKey.charAt(3));
+            String[] row = posFront ? (posIsP1 ? st.p1Front : st.p2Front)
+                                    : (posIsP1 ? st.p1Back  : st.p2Back);
+            if (row[posIdx] == null || row[posIdx].isEmpty()) { st.poisonedCards.remove(posKey); continue; }
+            String cId = BattleState.slotId(row[posIdx]);
+            int    chp = BattleState.slotHp(row[posIdx]);
+            Card   pc  = cardMap.get(cId);
+            int    newHp = chp - 1;
+            if (newHp <= 0 && !(pc instanceof Champion)) {
+                String poisonSporedMsg = handleSporedDeath(st, posKey, posIsP1, cardMap);
+                row[posIdx] = "";
+                st.clearCardState(posKey);
+                if (pc != null && !"item".equals(pc.getType())) {
+                    if (posIsP1) st.p1SoulCap++; else st.p2SoulCap++;
+                }
+                String deathMsg = AbilityResolver.onDeath(st, cId, posIsP1, cardMap);
+                if (posIsP1) st.p1Discard.add(cId); else st.p2Discard.add(cId);
+                String poisonNotice = (pc != null ? pc.getName() : cId) + " died from poison!";
+                if (!deathMsg.isEmpty()) poisonNotice += " " + deathMsg;
+                poisonNotice += poisonSporedMsg;
+                msg[0] = poisonNotice;
+            } else {
+                row[posIdx] = BattleState.makeSlot(cId, Math.max(1, newHp));
+            }
+        }
+        // ── Flame Bloomling: +2 HP per burned card ─────────────────────────
+        int burnedCount = st.burnedCards.size();
+        if (burnedCount > 0) {
+            String[][] fblRows = {st.p1Front, st.p1Back, st.p2Front, st.p2Back};
+            for (int ri = 0; ri < 4; ri++) {
+                String[] row = fblRows[ri];
+                for (int i = 0; i < 5; i++) {
+                    if ("fbl001".equals(BattleState.slotId(row[i]))) {
+                        int gain = burnedCount * 2;
+                        row[i] = BattleState.makeSlot("fbl001", BattleState.slotHp(row[i]) + gain);
+                    }
+                }
+            }
+        }
+        // ── Decrement spored turns ─────────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.sporedCards.keySet())) {
+            int turns = st.sporedCards.get(posKey) - 1;
+            if (turns <= 0) st.sporedCards.remove(posKey);
+            else st.sporedCards.put(posKey, turns);
+        }
+        // ── Fungal Domain aura ─────────────────────────────────────────────
+        boolean domainActive = st.p1FungalDomain > 0 || st.p2FungalDomain > 0;
+        if (st.p1FungalDomain > 0) st.p1FungalDomain--;
+        if (st.p2FungalDomain > 0) st.p2FungalDomain--;
+        if (domainActive) {
+            String domainMsg = AbilityResolver.applyFungalDomainAura(st, cardMap);
+            if (!domainMsg.isEmpty()) {
+                msg[0] = msg[0].isEmpty() ? domainMsg : msg[0] + " | " + domainMsg;
+            }
+        }
+        // ── Decrement frozen turns ─────────────────────────────────────────
+        for (String posKey : new ArrayList<>(st.frozenCards.keySet())) {
+            int turns = st.frozenCards.get(posKey) - 1;
+            if (turns <= 0) st.frozenCards.remove(posKey);
+            else st.frozenCards.put(posKey, turns);
+        }
+        // ── Decrement mage decay rounds ────────────────────────────────────
+        if (st.p1MageDecayRounds > 0) st.p1MageDecayRounds--;
+        if (st.p2MageDecayRounds > 0) st.p2MageDecayRounds--;
+        // ── Transform countdown ────────────────────────────────────────────
+        for (String txKey : new ArrayList<>(st.transformCounters.keySet())) {
+            int turns = st.transformCounters.get(txKey) - 1;
+            if (turns <= 0) {
+                st.transformCounters.remove(txKey);
+                applyTransform(st, txKey, cardMap, msg);
+            } else {
+                st.transformCounters.put(txKey, turns);
+            }
+        }
+        // ── Druid aura ─────────────────────────────────────────────────────
+        for (boolean pSide : new boolean[]{true, false}) {
+            String[] frt = pSide ? st.p1Front : st.p2Front;
+            String[] bck = pSide ? st.p1Back  : st.p2Back;
+            boolean hasDruid = false;
+            for (String s : frt) if ("dru001".equals(BattleState.slotId(s))) { hasDruid = true; break; }
+            if (!hasDruid)
+                for (String s : bck) if ("dru001".equals(BattleState.slotId(s))) { hasDruid = true; break; }
+            if (!hasDruid) continue;
+            for (int pass = 0; pass < 2; pass++) {
+                String[] row = pass == 0 ? frt : bck;
+                for (int i = 0; i < 5; i++) {
+                    String cid = BattleState.slotId(row[i]);
+                    Card c = cid != null ? cardMap.get(cid) : null;
+                    if (c == null || !"pod".equals(c.getType())) continue;
+                    String pk = BattleState.posKey(pSide, pass == 0, i);
+                    st.fieldAtkBonus.merge(pk, 1, Integer::sum);
+                    row[i] = BattleState.makeSlot(cid, BattleState.slotHp(row[i]) + 1);
+                }
+            }
+        }
     }
 
     private static String handleSporedDeath(BattleState st, String posKey, boolean deadOwnerIsP1,
