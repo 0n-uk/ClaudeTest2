@@ -554,6 +554,11 @@ public class BattleScreen {
                             waterSpiritBuff(st2, amP1);
                             msg[0] = "Water Spirit: all friendly cards gained +2 HP!";
                         }
+                        // Torch: all friendly cards gain +2 ATK and +2 HP when placed
+                        if ("trc001".equals(id)) {
+                            torchBuff(st2, amP1);
+                            msg[0] = "Torch: all friendly cards gained +2 ATK and +2 HP!";
+                        }
                         // Pod cards: start transform countdown on placement
                         int txDelay = AbilityResolver.transformDelay(id);
                         if (txDelay > 0) st2.transformCounters.put(newPosKey, txDelay);
@@ -1854,6 +1859,24 @@ public class BattleScreen {
                 if (row[i] != null && !row[i].isEmpty()) {
                     row[i] = BattleState.makeSlot(BattleState.slotId(row[i]),
                                                    BattleState.slotHp(row[i]) + 2);
+                }
+            }
+        }
+    }
+
+    private static void torchBuff(BattleState st, boolean ownerIsP1) {
+        String[][] rows = ownerIsP1
+            ? new String[][]{ st.p1Front, st.p1Back }
+            : new String[][]{ st.p2Front, st.p2Back };
+        for (boolean isFront : new boolean[]{true, false}) {
+            String[] row = isFront ? (ownerIsP1 ? st.p1Front : st.p2Front)
+                                   : (ownerIsP1 ? st.p1Back  : st.p2Back);
+            for (int i = 0; i < 5; i++) {
+                if (row[i] != null && !row[i].isEmpty()) {
+                    String pk = BattleState.posKey(ownerIsP1, isFront, i);
+                    row[i] = BattleState.makeSlot(BattleState.slotId(row[i]),
+                                                   BattleState.slotHp(row[i]) + 2);
+                    st.fieldAtkBonus.merge(pk, 2, Integer::sum);
                 }
             }
         }

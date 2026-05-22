@@ -56,7 +56,7 @@ public class PackScreen {
             "bgm001", "prd001", "frm001", "tmw001", "dod001", "gwz001", "ssk001",
             // Cryptid, Beast, Knight, Spirit new cards
             "asl001", "glc001", "mth001", "cro001", "soo001", "cdr001", "gwg001",
-            "slb001", "lcr001", "rok001", "cat001", "ssp001"));
+            "slb001", "lcr001", "rok001", "cat001", "ssp001", "trc001"));
 
         Set<String> scrapIds = new HashSet<>(Arrays.asList(
             "sb001", "bb001", "shb001",
@@ -69,19 +69,35 @@ public class PackScreen {
             "ima001", "trp001", "cmf001", "blw001",
             // Flame and Fungal pod lines
             "ffp001", "fbl001",
-            "fgp001", "fgs001", "fgb001", "fhm001", "fgc001"));
+            "fgp001", "fgs001", "fgb001", "fhm001", "fgc001",
+            // Knight cards
+            "bgm001", "prd001", "frm001", "tmw001", "dod001", "gwz001",
+            "lcr001", "rok001", "cat001"));
 
-        List<Card> starter = new ArrayList<>();
-        List<Card> scrap   = new ArrayList<>();
-        List<Card> endora  = new ArrayList<>();
+        Set<String> pinewoodsIds = new HashSet<>(Arrays.asList(
+            // Spirit cards
+            "wsp001", "shs001", "drw001", "glm001", "frs001", "ics001",
+            "wts001", "nts001", "ers001", "wns001", "cld001", "ecs001",
+            "cng001", "ssk001", "ssp001",
+            // Cryptid cards
+            "asl001", "glc001", "mth001", "cro001", "soo001", "cdr001",
+            "gwg001", "trc001",
+            // High-cost beasts
+            "blw001", "slb001"));
+
+        List<Card> starter    = new ArrayList<>();
+        List<Card> scrap      = new ArrayList<>();
+        List<Card> endora     = new ArrayList<>();
+        List<Card> pinewoods  = new ArrayList<>();
         for (Card c : all) {
-            if (starterIds.contains(c.getId()))  starter.add(c);
-            else if (scrapIds.contains(c.getId())) scrap.add(c);
-            else if (endoraIds.contains(c.getId())) endora.add(c);
+            if (starterIds.contains(c.getId()))       starter.add(c);
+            else if (scrapIds.contains(c.getId()))    scrap.add(c);
+            else if (endoraIds.contains(c.getId()))   endora.add(c);
+            else if (pinewoodsIds.contains(c.getId())) pinewoods.add(c);
         }
 
         JPanel header     = buildHeader("Open Packs", onBack);
-        JPanel packsPanel = new JPanel(new GridLayout(1, 3, 18, 0));
+        JPanel packsPanel = new JPanel(new GridLayout(1, 4, 18, 0));
         packsPanel.setBackground(BG);
         packsPanel.setBorder(new EmptyBorder(30, 40, 60, 40));
 
@@ -96,6 +112,10 @@ public class PackScreen {
         packsPanel.add(packCard("ENDORA", "Endora Pack",
             "Ancient pod creatures that transform and evolve over time.",
             new Color(120, 80, 200), endora, user, wrapper, onBack, timers));
+
+        packsPanel.add(packCard("PINEWOODS", "The Pinewoods",
+            "Beware the pines...",
+            new Color(60, 130, 80), pinewoods, user, wrapper, onBack, timers));
 
         wrapper.add(header,     BorderLayout.NORTH);
         wrapper.add(packsPanel, BorderLayout.CENTER);
