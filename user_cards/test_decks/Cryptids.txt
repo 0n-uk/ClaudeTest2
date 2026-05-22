@@ -1,0 +1,20 @@
+Card{id=asl001, name='Anomalous Sludge', type='cryptid', attack=0, hp=1, cost=1, ability='(A) Poison 1 enemy'}
+Card{id=asl001, name='Anomalous Sludge', type='cryptid', attack=0, hp=1, cost=1, ability='(A) Poison 1 enemy'}
+Card{id=cdr001, name='Cursed Daruma', type='cryptid', attack=2, hp=3, cost=4, ability='(A) Seal an empty enemy slot for 10 turns'}
+Card{id=cdr001, name='Cursed Daruma', type='cryptid', attack=2, hp=3, cost=4, ability='(A) Seal an empty enemy slot for 10 turns'}
+Card{id=glc001, name='Glitch', type='cryptid', attack=0, hp=1, cost=1, ability='(A) An enemy loses 1 ATK permanently'}
+Card{id=glc001, name='Glitch', type='cryptid', attack=0, hp=1, cost=1, ability='(A) An enemy loses 1 ATK permanently'}
+Card{id=gwg001, name='GreatWing', type='cryptid', attack=7, hp=8, cost=9, ability='(A) Return an enemy card to the opponent hand'}
+Card{id=gwg001, name='GreatWing', type='cryptid', attack=7, hp=8, cost=9, ability='(A) Return an enemy card to the opponent hand'}
+Card{id=mth001, name='Mothman', type='cryptid', attack=3, hp=3, cost=3, ability='(A) Steal 1 enemy soul cap'}
+Card{id=mth001, name='Mothman', type='cryptid', attack=3, hp=3, cost=3, ability='(A) Steal 1 enemy soul cap'}
+Card{id=cro001, name='The Crawler of Opheria', type='cryptid', attack=5, hp=6, cost=8, ability='(A) Steal soul caps equal to the enemy champion stage'}
+Card{id=cro001, name='The Crawler of Opheria', type='cryptid', attack=5, hp=6, cost=8, ability='(A) Steal soul caps equal to the enemy champion stage'}
+Card{id=soo001, name='Spider of Osiris', type='cryptid', attack=3, hp=4, cost=5, ability='(A) All enemy cards lose 1 ATK and 1 HP each turn for 6 turns'}
+Card{id=soo001, name='Spider of Osiris', type='cryptid', attack=3, hp=4, cost=5, ability='(A) All enemy cards lose 1 ATK and 1 HP each turn for 6 turns'}
+Card{id=slb001, name='Sloth Bear', type='beast', attack=21, hp=21, cost=10, ability='(P) After attacking, cannot attack next round'}
+Card{id=frm001, name='Fire Mage', type='knight', attack=3, hp=3, cost=3, ability='(A) Spend 3 soul. Deal 3 dmg to up to 3 enemy frontline cards'}
+Card{id=gwz001, name='Grand Wizard of Omerlia', type='knight', attack=7, hp=11, cost=10, ability='(P) If in backline, attacks all enemy frontline cards. If in frontline, attacks all enemy backline cards'}
+Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+Card{id=rod001, name='Rodent', type='creature', attack=1, hp=1, cost=1, ability='(On Death) Scurry- Draw 1 card'}
+Card{id=fgp001, name='Fungal Pod', type='pod', attack=2, hp=2, cost=2, ability='(P) Spore- Attacks inflict Spored (2 rounds). After 1 round, transforms into Fungal Spire or Fungal Beast'}
