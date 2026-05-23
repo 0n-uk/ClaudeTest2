@@ -36,14 +36,11 @@ public class MenuScreen {
         JButton packsBtn    = menuButton("Open Packs",   new Color(180, 100, 220));
         JButton deckBtn     = menuButton("Build Deck",   new Color(80, 210, 200));
         JButton battleBtn   = menuButton("Battle",       new Color(220, 80,  80));
-        JButton createBtn   = menuButton("Create Card",  new Color(100, 220, 130));
-
         applyButtonImage(viewAllBtn, "images/Buttons & Menus/ViewCardsButton.png",  300);
         applyButtonImage(viewOwnBtn, "images/Buttons & Menus/ViewOwnedButton.png",  300);
         applyButtonImage(packsBtn,   "images/Buttons & Menus/OpenPacksButton.png",  300);
         applyButtonImage(deckBtn,    "images/Buttons & Menus/BuildDeckButton.png",  300);
         applyButtonImage(battleBtn,  "images/Buttons & Menus/BattleButton.png",     300);
-        applyButtonImage(createBtn,  "images/Buttons & Menus/CreateCardsButton.png",300);
 
         viewAllBtn.addActionListener(e -> {
             List<Card> cards = CardViewer.loadCards("cards.txt");
@@ -116,22 +113,6 @@ public class MenuScreen {
             frame.revalidate();
         });
 
-        createBtn.addActionListener(e -> {
-            JPanel creatorPanel = CardCreatorScreen.buildPanel(
-                () -> layout.show(root, "menu"),
-                () -> {
-                    List<Card> cards = CardViewer.loadCards("cards.txt");
-                    JPanel viewerPanel = CardViewer.buildPanel(cards, "Card Collection", () -> layout.show(root, "menu"), root, layout);
-                    root.add(viewerPanel, "viewer");
-                    layout.show(root, "viewer");
-                    frame.revalidate();
-                }
-            );
-            root.add(creatorPanel, "creator");
-            layout.show(root, "creator");
-            frame.revalidate();
-        });
-
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
 
@@ -142,7 +123,6 @@ public class MenuScreen {
         gbc.gridy = 4; gbc.insets = new Insets(0,  0, 12, 0); panel.add(packsBtn,   gbc);
         gbc.gridy = 5; gbc.insets = new Insets(0,  0, 12, 0); panel.add(deckBtn,    gbc);
         gbc.gridy = 6; gbc.insets = new Insets(0,  0, 12, 0); panel.add(battleBtn,  gbc);
-        gbc.gridy = 7; gbc.insets = new Insets(0,  0, 12, 0); panel.add(createBtn,  gbc);
 
         return panel;
     }
