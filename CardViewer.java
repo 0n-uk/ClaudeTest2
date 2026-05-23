@@ -55,10 +55,10 @@ public class CardViewer {
             empty.add(msg);
             panel.add(empty, BorderLayout.CENTER);
         } else {
-            JPanel grid = new JPanel(new GridLayout(0, 3, 12, 12));
-            grid.setBorder(new EmptyBorder(8, 14, 14, 14));
+            JPanel grid = new JPanel(new GridLayout(0, 4, 10, 10));
+            grid.setBorder(new EmptyBorder(12, 14, 14, 14));
             grid.setBackground(new Color(30, 30, 40));
-            for (Card card : cards) grid.add(buildCardPanel(card));
+            for (Card card : cards) grid.add(CardRenderer.buildCard(card));
 
             JScrollPane scroll = new JScrollPane(grid);
             scroll.getVerticalScrollBar().setUnitIncrement(20);
@@ -108,104 +108,10 @@ public class CardViewer {
     }
 
     static JPanel buildCardPanel(Card card) {
-        return buildCardPanel(card, 230, 300);
-    }
-
-    static JPanel buildCardPanel(Card card, int w, int h) {
-        int symSize  = Math.max(32, w / 10);
-        int topFont  = Math.max(12, w / 15);
-        int imgSize  = Math.max(60, (int)(h * 0.55));
-        int statFont = Math.max(12, w / 15);
-
-        JPanel panel = new JPanel(new BorderLayout(0, 4));
-        panel.setBackground(new Color(50, 50, 70));
-        panel.setPreferredSize(new Dimension(w, h));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(typeColor(card.getType()), 2, true),
-                new EmptyBorder(6, 8, 6, 8)));
-
-        // Top row: type symbol + name + cost
-        JPanel top = new JPanel(new BorderLayout(4, 0));
-        top.setOpaque(false);
-        JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), symSize, symSize));
-        JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
-        nameL.setFont(new Font("SansSerif", Font.BOLD, topFont));
-        nameL.setForeground(Color.WHITE);
-        JLabel costL = new JLabel(String.valueOf(card.getCost()), SwingConstants.CENTER);
-        costL.setFont(new Font("SansSerif", Font.BOLD, topFont));
-        costL.setForeground(new Color(100, 160, 220));
-        top.add(symL,  BorderLayout.WEST);
-        top.add(nameL, BorderLayout.CENTER);
-        top.add(costL, BorderLayout.EAST);
-        panel.add(top, BorderLayout.NORTH);
-
-        // Center: card image
-        JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), imgSize, imgSize));
-        imgL.setHorizontalAlignment(SwingConstants.CENTER);
-        panel.add(imgL, BorderLayout.CENTER);
-
-        // Bottom row: ATK + info button + HP
-        JPanel bot = new JPanel(new BorderLayout(4, 0));
-        bot.setOpaque(false);
-        JLabel atkL = new JLabel("⚔ " + card.getAttack());
-        atkL.setFont(new Font("SansSerif", Font.BOLD, statFont));
-        atkL.setForeground(new Color(220, 80, 80));
-        JLabel hpL = new JLabel(card.getHp() + " ♥", SwingConstants.RIGHT);
-        hpL.setFont(new Font("SansSerif", Font.BOLD, statFont));
-        hpL.setForeground(new Color(80, 200, 100));
-        JButton infoBtn = new JButton("ℹ");
-        infoBtn.setFont(new Font("SansSerif", Font.BOLD, statFont));
-        infoBtn.setForeground(new Color(220, 200, 120));
-        infoBtn.setBackground(new Color(50, 50, 70));
-        infoBtn.setBorder(BorderFactory.createEmptyBorder(1, 6, 1, 6));
-        infoBtn.setContentAreaFilled(false);
-        infoBtn.setFocusPainted(false);
-        infoBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        final String abilText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
-        final String cardNameStr = card.getName();
-        infoBtn.addActionListener(e -> JOptionPane.showMessageDialog(
-                infoBtn,
-                "<html><b>" + cardNameStr + "</b><br><br>" + abilText + "</html>",
-                "Ability", JOptionPane.INFORMATION_MESSAGE));
-        bot.add(atkL,    BorderLayout.WEST);
-        bot.add(infoBtn, BorderLayout.CENTER);
-        bot.add(hpL,     BorderLayout.EAST);
-        panel.add(bot, BorderLayout.SOUTH);
-
-        return panel;
-    }
-
-    static JLabel label(String text, int style, int size, Color color) {
-        JLabel l = new JLabel(text);
-        l.setFont(new Font("SansSerif", style, size));
-        l.setForeground(color);
-        return l;
+        return CardRenderer.buildCard(card);
     }
 
     static Color typeColor(String type) {
-        switch (type.toLowerCase()) {
-            case "dragon":    return new Color(220, 80,  60);
-            case "elemental": return new Color(80,  180, 220);
-            case "undead":    return new Color(160, 80,  200);
-            case "holy":      return new Color(255, 220, 80);
-            case "nature":    return new Color(80,  200, 80);
-            case "mage":      return new Color(100, 140, 255);
-            case "assassin":  return new Color(180, 60,  60);
-            case "demon":     return new Color(200, 40,  40);
-            case "aquatic":   return new Color(60,  160, 220);
-            case "beast":     return new Color(180, 140, 60);
-            case "ranger":    return new Color(120, 200, 100);
-            case "warrior":   return new Color(220, 120, 40);
-            case "spirit":    return new Color(180, 160, 220);
-            case "construct": return new Color(160, 160, 160);
-            case "fae":       return new Color(220, 160, 220);
-            case "bug":       return new Color(140, 200,  60);
-            case "moon":      return new Color(100,  80, 200);
-            case "bot":       return new Color(120, 160, 180);
-            case "champion":  return new Color(220, 180,  60);
-            case "item":      return new Color(190, 160, 100);
-            case "creature":  return new Color(160, 120,  80);
-            default:          return new Color(140, 140, 160);
-        }
+        return CardRenderer.typeColor(type);
     }
 }
