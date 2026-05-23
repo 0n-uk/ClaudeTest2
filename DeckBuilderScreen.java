@@ -39,7 +39,7 @@ public class DeckBuilderScreen {
         leftGrid.setBackground(LEFT_BG);
         leftGrid.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-        JPanel rightGrid = new JPanel(new GridLayout(0, 4, 5, 5));
+        JPanel rightGrid = new JPanel(new GridLayout(0, 5, 5, 5));
         rightGrid.setBackground(RIGHT_BG);
         rightGrid.setBorder(new EmptyBorder(8, 8, 8, 8));
 
@@ -109,7 +109,7 @@ public class DeckBuilderScreen {
                 msg.setForeground(new Color(140, 140, 165));
                 leftGrid.add(msg);
             } else {
-                leftGrid.setLayout(new GridLayout(0, 2, 8, 8));
+                leftGrid.setLayout(new GridLayout(0, 2, 6, 6));
                 for (Card c : visible) {
                     int cnt = leftCounts.getOrDefault(c.getId(), 0);
                     if (cnt <= 0) continue;
@@ -296,57 +296,47 @@ public class DeckBuilderScreen {
         return wrapper;
     }
 
+    private static final int DECK_CARD_SIZE  = 150; // available cards
+    private static final int DECK_SLOT_SIZE  = 120; // cards in deck
+
     // ── Left card panel (click → move to deck) ────────────────────────────────
 
     private static JPanel leftCardPanel(Card card, int count, boolean canAdd,
                                          Map<String, Integer> leftCounts,
                                          Map<String, Integer> rightCounts,
                                          Runnable[] ref) {
-        Color accent = CardViewer.typeColor(card.getType());
-        Color bg     = canAdd ? new Color(45, 45, 65) : new Color(35, 35, 52);
+        JPanel base = CardRenderer.buildCard(card, DECK_CARD_SIZE);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(bg);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(canAdd ? accent : new Color(55, 55, 75), canAdd ? 2 : 1, true),
-            new EmptyBorder(6, 8, 6, 8)));
-        if (canAdd) panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        Color nameClr = canAdd ? Color.WHITE          : new Color(105, 105, 128);
-        Color typeClr = canAdd ? accent               : new Color(65, 65, 85);
-
-        JLabel imgL = new JLabel(CardImageLoader.get(card.getId(), 80, 80));
-        imgL.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(imgL);
-        panel.add(Box.createVerticalStrut(4));
-
-        panel.add(lbl(card.getName(), Font.BOLD, 13, nameClr));
-        panel.add(Box.createVerticalStrut(2));
-        panel.add(lbl(card.getType(), Font.ITALIC, 10, typeClr));
-        panel.add(Box.createVerticalStrut(5));
-
-        JPanel stats = new JPanel(new GridLayout(1, 3, 2, 0));
-        stats.setOpaque(false);
-        stats.add(miniStat("ATK", card.getAttack(), canAdd ? new Color(220, 80, 80)   : new Color(120, 60, 60)));
-        stats.add(miniStat("HP",  card.getHp(),     canAdd ? new Color(80, 200, 100)  : new Color(60, 110, 70)));
-        stats.add(miniStat("CST", card.getCost(),   canAdd ? new Color(100, 160, 220) : new Color(60, 90, 130)));
-        panel.add(stats);
+        // Wrapper handles dim overlay + border highlight + click
+        JPanel wrapper = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintChildren(Graphics g) {
+                super.paintChildren(g);
+                if (!canAdd) {
+                    g.setColor(new Color(0, 0, 0, 130));
+                    g.fillRect(0, 0, getWidth(), getHeight());
+                }
+            }
+        };
+        wrapper.setOpaque(false);
+        Color accent = CardRenderer.typeColor(card.getType());
+        wrapper.setBorder(BorderFactory.createLineBorder(
+                canAdd ? accent : new Color(55, 55, 75), canAdd ? 2 : 1, true));
+        wrapper.add(base, BorderLayout.CENTER);
 
         if (count > 1) {
-            panel.add(Box.createVerticalStrut(3));
-            panel.add(lbl("×" + count + " available", Font.PLAIN, 10,
-                canAdd ? new Color(180, 180, 100) : new Color(90, 90, 60)));
-        }
-        if (!canAdd) {
-            panel.add(Box.createVerticalStrut(3));
-            panel.add(lbl("DECK FULL", Font.BOLD, 9, new Color(195, 85, 65)));
+            JLabel badge = new JLabel("×" + count, SwingConstants.CENTER);
+            badge.setFont(CardRenderer.handFont.deriveFont(Font.BOLD, 11f));
+            badge.setForeground(new Color(230, 210, 130));
+            badge.setOpaque(true);
+            badge.setBackground(new Color(25, 25, 40));
+            badge.setBorder(BorderFactory.createEmptyBorder(1, 4, 1, 4));
+            wrapper.add(badge, BorderLayout.SOUTH);
         }
 
         if (canAdd) {
-            panel.addMouseListener(new java.awt.event.MouseAdapter() {
-                public void mouseEntered(java.awt.event.MouseEvent e) { panel.setBackground(new Color(58, 58, 85)); }
-                public void mouseExited(java.awt.event.MouseEvent e)  { panel.setBackground(bg); }
+            wrapper.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            wrapper.addMouseListener(new java.awt.event.MouseAdapter() {
                 public void mouseClicked(java.awt.event.MouseEvent e) {
                     String id = card.getId();
                     int left = leftCounts.getOrDefault(id, 0);
@@ -357,7 +347,7 @@ public class DeckBuilderScreen {
                 }
             });
         }
-        return panel;
+        return wrapper;
     }
 
     // ── Right card panel (click → return to available) ────────────────────────
@@ -366,37 +356,16 @@ public class DeckBuilderScreen {
                                           Map<String, Integer> leftCounts,
                                           Map<String, Integer> rightCounts,
                                           Runnable[] ref) {
-        Color accent = CardViewer.typeColor(card.getType());
-        Color bg     = new Color(42, 42, 62);
+        JPanel base = CardRenderer.buildCard(card, DECK_SLOT_SIZE);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(bg);
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(accent, 2, true),
-            new EmptyBorder(5, 7, 5, 7)));
-        panel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(BorderFactory.createLineBorder(
+                CardRenderer.typeColor(card.getType()), 2, true));
+        wrapper.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        wrapper.add(base, BorderLayout.CENTER);
 
-        JLabel imgR = new JLabel(CardImageLoader.get(card.getId(), 60, 60));
-        imgR.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(imgR);
-        panel.add(Box.createVerticalStrut(3));
-
-        panel.add(lbl(card.getName(), Font.BOLD, 12, Color.WHITE));
-        panel.add(Box.createVerticalStrut(2));
-        panel.add(lbl(card.getType(), Font.ITALIC, 9, accent));
-        panel.add(Box.createVerticalStrut(3));
-
-        JPanel stats = new JPanel(new GridLayout(1, 3, 2, 0));
-        stats.setOpaque(false);
-        stats.add(miniStat("ATK", card.getAttack(), new Color(220, 80, 80)));
-        stats.add(miniStat("HP",  card.getHp(),     new Color(80, 200, 100)));
-        stats.add(miniStat("CST", card.getCost(),   new Color(100, 160, 220)));
-        panel.add(stats);
-
-        panel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { panel.setBackground(new Color(55, 55, 80)); }
-            public void mouseExited(java.awt.event.MouseEvent e)  { panel.setBackground(bg); }
+        wrapper.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 String id = card.getId();
                 int right = rightCounts.getOrDefault(id, 0);
@@ -406,7 +375,7 @@ public class DeckBuilderScreen {
                 ref[0].run();
             }
         });
-        return panel;
+        return wrapper;
     }
 
     // ── Empty deck slot ───────────────────────────────────────────────────────

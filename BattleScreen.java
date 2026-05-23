@@ -407,45 +407,15 @@ public class BattleScreen {
                 p.add(sealL, BorderLayout.SOUTH);
             }
         } else if (card != null) {
-            // NORTH: type symbol + name + current/max HP
-            JPanel topRow = new JPanel(new BorderLayout(2, 0));
-            topRow.setOpaque(false);
-            JLabel symL = new JLabel(TypeSymbolLoader.get(card.getType(), 32, 32));
-            JLabel nameL = new JLabel(card.getName(), SwingConstants.CENTER);
-            nameL.setFont(FONT_BOLD_11);
-            nameL.setForeground(isChamp ? CHAMP_CLR : Color.WHITE);
-            Color hpClr = hp <= card.getHp() / 3 + 1 ? new Color(220, 80, 80) : new Color(80, 200, 100);
-            JLabel hpTopL = new JLabel(hp + "/" + card.getHp(), SwingConstants.RIGHT);
-            hpTopL.setFont(FONT_BOLD_11);
-            hpTopL.setForeground(hpClr);
-            topRow.add(symL,   BorderLayout.WEST);
-            topRow.add(nameL,  BorderLayout.CENTER);
-            topRow.add(hpTopL, BorderLayout.EAST);
-            p.add(topRow, BorderLayout.NORTH);
+            // CENTER: unified card renderer (name, type, ATK, HP, cost, info button)
+            String stageStr = isChamp ? "S" + ((Champion) card).getStage() : "";
+            p.add(CardRenderer.buildBattleCard(card, 110, hp, displayAtk, atkBonus, isChamp, stageStr),
+                  BorderLayout.CENTER);
 
-            // CENTER: card image — scales to fill all available space
-            p.add(new ScaledImagePanel(CardImageLoader.getRaw(card.getId()), bgColor), BorderLayout.CENTER);
-
-            // SOUTH: ATK + info button + stage, then status badges
+            // SOUTH: status badges only
             JPanel southPanel = new JPanel();
             southPanel.setLayout(new BoxLayout(southPanel, BoxLayout.Y_AXIS));
             southPanel.setOpaque(false);
-
-            JPanel botRow = new JPanel(new BorderLayout(2, 0));
-            botRow.setOpaque(false);
-            String atkText = atkBonus > 0 ? "⚔" + displayAtk + "(+" + atkBonus + ")" : "⚔" + displayAtk;
-            JLabel atkBotL = new JLabel(atkText);
-            atkBotL.setFont(FONT_BOLD_11);
-            atkBotL.setForeground(atkBonus > 0 ? new Color(140, 220, 140) : new Color(220, 120, 80));
-            JButton infoBtn = infoButton(bgColor, card.getName(), card.getAbility());
-            String stageStr = isChamp ? "S" + ((Champion) card).getStage() : "";
-            JLabel stageR = new JLabel(stageStr, SwingConstants.RIGHT);
-            stageR.setFont(FONT_ITALIC_10);
-            stageR.setForeground(CHAMP_CLR);
-            botRow.add(atkBotL, BorderLayout.WEST);
-            botRow.add(infoBtn, BorderLayout.CENTER);
-            botRow.add(stageR,  BorderLayout.EAST);
-            southPanel.add(botRow);
 
             if (isFrozenCard) {
                 JLabel frozenL = lbl("Frozen(" + st.frozenCards.get(posKey) + ")", FONT_ITALIC_8, new Color(100, 200, 255));
