@@ -1,8 +1,8 @@
-import javax.swing.*;
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
 public class CardRenderer {
 
@@ -15,6 +15,8 @@ public class CardRenderer {
     static final int NAME_H   = 20;
     static final int INFO_W   = 36;
     static final int INFO_H   = 18;
+    static final int INFO_X   = (CARD_W - INFO_W) / 2;
+    static final int INFO_Y   = CARD_H - INFO_H - 2;
 
     static Font handFont;
     private static BufferedImage cardBg;
