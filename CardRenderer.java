@@ -24,6 +24,7 @@ public class CardRenderer {
 
     private static Font handFont;
     private static BufferedImage cardBg;
+    private static BufferedImage cardFg;
 
     static {
         // Try PatrickHand.ttf in project root first, fall back to FreeSerif Italic
@@ -47,6 +48,9 @@ public class CardRenderer {
 
         try {
             cardBg = ImageIO.read(new File("images/cardbackground.png"));
+        } catch (Exception ignored) {}
+        try {
+            cardFg = ImageIO.read(new File("images/cardforeground.png"));
         } catch (Exception ignored) {}
     }
 
@@ -85,11 +89,18 @@ public class CardRenderer {
                                         RenderingHints.VALUE_INTERPOLATION_BILINEAR);
                 }
 
-                // 3. Type symbol in top-left box (32×32)
+                // 3. Foreground overlay (sits above sprite, below stats)
+                if (cardFg != null) {
+                    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                                        RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g2.drawImage(cardFg, 0, 0, CARD_W, CARD_H, null);
+                }
+
+                // 4. Type symbol in top-left box (32×32)
                 ImageIcon sym = TypeSymbolLoader.get(card.getType(), BOX, BOX);
                 if (sym != null) g2.drawImage(sym.getImage(), 0, 0, BOX, BOX, null);
 
-                // 4. Name — top center, fitted to width between corner boxes
+                // 5. Name — top center, fitted to width between corner boxes
                 Color nameColor = typeColor(card.getType());
                 Font nameFont = fitFont(g2, card.getName(), CARD_W - BOX * 2 - 6, Font.BOLD, 13f, 6f);
                 g2.setFont(nameFont);
@@ -103,15 +114,15 @@ public class CardRenderer {
                 g2.setColor(nameColor);
                 g2.drawString(card.getName(), nameX, nameY);
 
-                // 5. Cost — top-right box (blue)
+                // 6. Cost — top-right box (blue)
                 drawStat(g2, String.valueOf(card.getCost()),
                          CARD_W - BOX, 0, new Color(80, 140, 220));
 
-                // 6. ATK — bottom-left box (red)
+                // 7. ATK — bottom-left box (red)
                 drawStat(g2, String.valueOf(card.getAttack()),
                          0, CARD_H - BOX, new Color(210, 60, 60));
 
-                // 7. HP — bottom-right box (green)
+                // 8. HP — bottom-right box (green)
                 drawStat(g2, String.valueOf(card.getHp()),
                          CARD_W - BOX, CARD_H - BOX, new Color(60, 185, 80));
 
