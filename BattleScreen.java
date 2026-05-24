@@ -245,14 +245,18 @@ public class BattleScreen {
                                     Map<String, ChampionLine> champLines,
                                     String[] multiStepPhase, String[] multiStepCard,
                                     List<String>[] scrapSelected, String[] echoCopiedCard, Color bg) {
-        JPanel row = new JPanel(new GridLayout(1, 5, 4, 0));
+        JPanel row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
         row.setBackground(bg);
         row.setBorder(new EmptyBorder(3, 0, 3, 0));
-        for (int i = 0; i < 5; i++)
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 176)); // 170 card + 3+3 border
+        for (int i = 0; i < 5; i++) {
+            if (i > 0) row.add(Box.createHorizontalStrut(4));
             row.add(slot(st, cardMap, fieldIsP1, isFront, i, amP1, myTurn,
                          selHand, selField, abilitySource, abilityTgtType, abilityChoice, msg,
                          stRef, user, wrapper, battleId, onComplete, rebuildRef, bypass, champLines,
                          multiStepPhase, multiStepCard, scrapSelected, echoCopiedCard));
+        }
         return row;
     }
 
@@ -384,6 +388,7 @@ public class BattleScreen {
         JPanel p = new JPanel(new BorderLayout(0, 0));
         p.setBackground(bgColor);
         p.setPreferredSize(new Dimension(170, 170));
+        p.setMaximumSize(new Dimension(170, 170));
         boolean anyClickable = canPlace || canSelect || canTarget || canAbilityTarget
                                || canSelectScrap || isSelectedScrap || canBotTarget
                                || canEchoCopy || canMimicTarget || canCopyTarget;
