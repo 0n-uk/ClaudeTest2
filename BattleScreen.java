@@ -383,7 +383,7 @@ public class BattleScreen {
 
         JPanel p = new JPanel(new BorderLayout(0, 0));
         p.setBackground(bgColor);
-        p.setPreferredSize(new Dimension(120, 148));
+        p.setPreferredSize(new Dimension(170, 170));
         boolean anyClickable = canPlace || canSelect || canTarget || canAbilityTarget
                                || canSelectScrap || isSelectedScrap || canBotTarget
                                || canEchoCopy || canMimicTarget || canCopyTarget;
@@ -391,7 +391,7 @@ public class BattleScreen {
             new LineBorder(border, (isSel || canTarget || canPlace || canAbilityTarget
                                     || isSelectedScrap || canSelectScrap || canBotTarget
                                     || canEchoCopy || canMimicTarget || canCopyTarget) ? 2 : 1, true),
-            new EmptyBorder(4, 5, 4, 5)));
+            new EmptyBorder(0, 0, 0, 0)));
         if (anyClickable)
             p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
@@ -409,7 +409,7 @@ public class BattleScreen {
         } else if (card != null) {
             // CENTER: unified card renderer (name, type, ATK, HP, cost, info button)
             String stageStr = isChamp ? "S" + ((Champion) card).getStage() : "";
-            p.add(CardRenderer.buildBattleCard(card, 110, hp, displayAtk, atkBonus, isChamp, stageStr),
+            p.add(CardRenderer.buildBattleCard(card, 170, hp, displayAtk, atkBonus, isChamp, stageStr),
                   BorderLayout.CENTER);
 
             // SOUTH: status badges only
