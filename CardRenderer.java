@@ -15,8 +15,6 @@ public class CardRenderer {
     static final int NAME_H   = 20;
     static final int INFO_W   = 36;
     static final int INFO_H   = 18;
-    static final int INFO_X   = (CARD_W - INFO_W) / 2;
-    static final int INFO_Y   = CARD_H - INFO_H - 2;
 
     static Font handFont;
     private static BufferedImage cardBg;
@@ -79,7 +77,7 @@ public class CardRenderer {
         int   infoW  = Math.round(INFO_W * sc);
         int   infoH  = Math.round(INFO_H * sc);
         int   infoX  = (size - infoW) / 2;
-        int   infoY  = size - box - infoH - Math.round(2 * sc);
+        int   infoY  = size - infoH - Math.round(2 * sc);
 
         BufferedImage sprite = CardImageLoader.getRaw(card.getId());
         String abilityText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
