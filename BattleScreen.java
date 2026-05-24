@@ -391,7 +391,7 @@ public class BattleScreen {
             new LineBorder(border, (isSel || canTarget || canPlace || canAbilityTarget
                                     || isSelectedScrap || canSelectScrap || canBotTarget
                                     || canEchoCopy || canMimicTarget || canCopyTarget) ? 2 : 1, true),
-            new EmptyBorder(4, 5, 4, 5)));
+            new EmptyBorder(0, 0, 0, 0)));
         if (anyClickable)
             p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
