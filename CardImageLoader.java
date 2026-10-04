@@ -8,7 +8,8 @@ import javax.swing.*;
 
 public class CardImageLoader {
 
-private static final String IMG_DIR = System.getProperty("user.dir") + File.separator + "images" + File.separator + "cards" + File.separator;    private static final Map<String, ImageIcon> cache = new HashMap<>();
+    private static final String IMG_DIR = GamePaths.CARD_IMAGES_DIR;
+    private static final Map<String, ImageIcon> cache = new HashMap<>();
     private static final Map<String, BufferedImage> rawCache = new HashMap<>();
 
     public static ImageIcon get(String cardId, int width, int height) {

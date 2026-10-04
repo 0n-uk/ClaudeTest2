@@ -3,8 +3,8 @@ import java.util.*;
 
 public class BattleManager {
 
-    private static final String QUEUE_FILE    = "battles/queue.txt";
-    private static final String HEARTBEAT_DIR = "battles/heartbeat";
+    private static final String QUEUE_FILE    = GamePaths.QUEUE_FILE;
+    private static final String HEARTBEAT_DIR = GamePaths.HEARTBEAT_DIR;
     private static final long   HEARTBEAT_TTL = 30_000; // ms before a player is considered disconnected
 
     // ── Queue / matchmaking ───────────────────────────────────────────────────
@@ -117,7 +117,7 @@ public class BattleManager {
     public static Map<String, Card> buildCardMap() {
         Map<String, Card> map = new HashMap<>();
         try {
-            List<Card> cards = CardViewer.loadCards("cards.txt");
+            List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
             for (Card c : cards) map.put(c.getId(), c);
         } catch (Exception ignored) {}
         Map<String, ChampionLine> lines = ChampionLine.loadAll();

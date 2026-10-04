@@ -3,8 +3,8 @@ import java.util.*;
 
 public class BattleState {
 
-    static final String BATTLES_DIR = "battles";
-    static final String ACTIVE_DIR  = "battles/active";
+    static final String BATTLES_DIR = GamePaths.BATTLES_DIR;
+    static final String ACTIVE_DIR  = GamePaths.ACTIVE_DIR;
     static final int    CHAMP_SLOT  = 2;
 
     String battleId, player1, player2, currentTurn;

@@ -36,8 +36,8 @@ public class CardRenderer {
             } catch (Exception ignored) {}
         }
         handFont = (loaded != null) ? loaded : new Font("Serif", Font.PLAIN, 12);
-        try { cardBg = ImageIO.read(new File("images/cardbackground.png")); } catch (Exception ignored) {}
-        try { cardFg = ImageIO.read(new File("images/cardforeground.png")); } catch (Exception ignored) {}
+        try { cardBg = ImageIO.read(new File(GamePaths.CARD_BACKGROUND)); } catch (Exception ignored) {}
+        try { cardFg = ImageIO.read(new File(GamePaths.CARD_FOREGROUND)); } catch (Exception ignored) {}
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

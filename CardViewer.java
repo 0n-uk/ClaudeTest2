@@ -9,7 +9,7 @@ public class CardViewer {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            List<Card> cards = loadCards("cards.txt");
+            List<Card> cards = loadCards(GamePaths.CARDS_FILE);
             JFrame frame = new JFrame("Card Viewer");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(900, 650);

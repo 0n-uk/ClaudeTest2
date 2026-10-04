@@ -18,7 +18,7 @@ public class MenuScreen {
         panel.setBackground(BG);
 
         JLabel title;
-        ImageIcon titleIcon = loadScaledIcon("images/Buttons & Menus/GameTitle.png", 400);
+        ImageIcon titleIcon = loadScaledIcon(GamePaths.BUTTONS_DIR + "GameTitle.png", 400);
         if (titleIcon != null) {
             title = new JLabel(titleIcon);
         } else {
@@ -36,14 +36,14 @@ public class MenuScreen {
         JButton packsBtn    = menuButton("Open Packs",   new Color(180, 100, 220));
         JButton deckBtn     = menuButton("Build Deck",   new Color(80, 210, 200));
         JButton battleBtn   = menuButton("Battle",       new Color(220, 80,  80));
-        applyButtonImage(viewAllBtn, "images/Buttons & Menus/ViewCardsButton.png",  300);
-        applyButtonImage(viewOwnBtn, "images/Buttons & Menus/ViewOwnedButton.png",  300);
-        applyButtonImage(packsBtn,   "images/Buttons & Menus/OpenPacksButton.png",  300);
-        applyButtonImage(deckBtn,    "images/Buttons & Menus/BuildDeckButton.png",  300);
-        applyButtonImage(battleBtn,  "images/Buttons & Menus/BattleButton.png",     300);
+        applyButtonImage(viewAllBtn, GamePaths.BUTTONS_DIR + "ViewCardsButton.png",  300);
+        applyButtonImage(viewOwnBtn, GamePaths.BUTTONS_DIR + "ViewOwnedButton.png",  300);
+        applyButtonImage(packsBtn,   GamePaths.BUTTONS_DIR + "OpenPacksButton.png",  300);
+        applyButtonImage(deckBtn,    GamePaths.BUTTONS_DIR + "BuildDeckButton.png",  300);
+        applyButtonImage(battleBtn,  GamePaths.BUTTONS_DIR + "BattleButton.png",     300);
 
         viewAllBtn.addActionListener(e -> {
-            List<Card> cards = CardViewer.loadCards("cards.txt");
+            List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
             JPanel viewerPanel = CardViewer.buildPanel(cards, "Card Collection", () -> layout.show(root, "menu"), root, layout);
             root.add(viewerPanel, "viewer");
             layout.show(root, "viewer");
