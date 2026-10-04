@@ -40,7 +40,7 @@ public class ChampionSelectScreen {
         if (lines.isEmpty()) {
             JPanel empty = new JPanel(new GridBagLayout());
             empty.setBackground(BG);
-            JLabel msg = new JLabel("No champions found. Check champions.txt.", SwingConstants.CENTER);
+            JLabel msg = new JLabel("No champions found. Check resources/champions.txt.", SwingConstants.CENTER);
             msg.setFont(new Font("SansSerif", Font.ITALIC, 15));
             msg.setForeground(new Color(180, 80, 80));
             empty.add(msg);

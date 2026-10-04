@@ -33,7 +33,7 @@ public class ChampionLine {
     // ── Static loading ────────────────────────────────────────────────────────
 
     public static Map<String, ChampionLine> loadAll() {
-        return loadAll("champions.txt");
+        return loadAll(GamePaths.CHAMPIONS_FILE);
     }
 
     public static Map<String, ChampionLine> loadAll(String filename) {

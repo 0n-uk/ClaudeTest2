@@ -8,8 +8,7 @@ import javax.swing.*;
 
 public class TypeSymbolLoader {
 
-    private static final String SYM_DIR = System.getProperty("user.dir") + File.separator
-            + "images" + File.separator + "TypeSymbols" + File.separator;
+    private static final String SYM_DIR = GamePaths.TYPE_SYMBOLS_DIR;
     private static final Map<String, ImageIcon> cache = new HashMap<>();
 
     public static ImageIcon get(String type, int width, int height) {

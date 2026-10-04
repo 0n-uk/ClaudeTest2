@@ -3,7 +3,7 @@ import java.util.*;
 
 public class User {
 
-    private static final String CARDS_DIR    = "user_cards";
+    private static final String CARDS_DIR    = GamePaths.USER_CARDS_DIR;
     static final long           COOLDOWN_MS  = 12L * 60 * 60 * 1000;
 
     private final String username;

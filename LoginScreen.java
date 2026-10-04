@@ -172,7 +172,7 @@ public class LoginScreen {
 
     // ── Credential storage ───────────────────────────────────────────────────
 
-    private static final String ACCOUNTS_FILE = "accounts.txt";
+    private static final String ACCOUNTS_FILE = GamePaths.ACCOUNTS_FILE;
 
     static boolean userExists(String username) {
         try (BufferedReader r = new BufferedReader(new FileReader(ACCOUNTS_FILE))) {

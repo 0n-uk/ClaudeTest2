@@ -11,7 +11,7 @@ public class MusicPlayer {
             return;
         }
         try {
-            AudioInputStream audio = AudioSystem.getAudioInputStream(new File("Simple Scales.wav"));
+            AudioInputStream audio = AudioSystem.getAudioInputStream(new File(GamePaths.MENU_MUSIC));
             clip = AudioSystem.getClip();
             clip.open(audio);
             clip.loop(Clip.LOOP_CONTINUOUSLY);
