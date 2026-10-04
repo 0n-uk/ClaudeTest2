@@ -22,7 +22,7 @@ public class ChampionSelectScreen {
         header.setBackground(HDR_BG);
         header.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        JButton backBtn = MenuScreen.menuButton("Back", new Color(180, 180, 200));
+        JButton backBtn = MenuScreen.backButton();
         backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         backBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(180, 180, 200), 2, true),

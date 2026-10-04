@@ -164,10 +164,7 @@ public class LoginScreen {
 
     private static void navigateToMenu(JPanel root, CardLayout layout, JFrame frame, User user) {
         currentUser = user;
-        JPanel menuPanel = MenuScreen.buildMenuPanel(root, layout, frame, user);
-        root.add(menuPanel, "menu");
-        layout.show(root, "menu");
-        frame.revalidate();
+        MenuScreen.showScreen(root, layout, frame, "menu", MenuScreen.buildMenuPanel(root, layout, frame, user));
     }
 
     // ── Credential storage ───────────────────────────────────────────────────

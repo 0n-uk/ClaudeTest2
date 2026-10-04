@@ -249,7 +249,7 @@ public class PackScreen {
         header.setBackground(new Color(20, 20, 30));
         header.setBorder(new EmptyBorder(14, 14, 8, 14));
 
-        JButton backBtn = MenuScreen.menuButton("Back", new Color(180, 180, 200));
+        JButton backBtn = MenuScreen.backButton();
         backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         backBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(180, 180, 200), 2, true),
