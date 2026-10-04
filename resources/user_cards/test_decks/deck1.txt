@@ -1,0 +1,20 @@
+Card{id=bb001, name='Battle Bot', type='bot', attack=5, hp=3, cost=3, ability=''}
+Card{id=bb001, name='Battle Bot', type='bot', attack=5, hp=3, cost=3, ability=''}
+Card{id=cnb001, name='Constructor Bot', type='bot', attack=2, hp=4, cost=3, ability='(A) Construct- Use 2 Scrap to summon any bot from hand that costs 3 or less soul'}
+Card{id=fnb001, name='Furnace Bot', type='bot', attack=5, hp=7, cost=7, ability='(A) Smelt- Select Scraps to use. For each Scrap used, give a bot +2 ATK & HP'}
+Card{id=itb001, name='Iron Tusks Bot', type='bot', attack=4, hp=16, cost=9, ability='(A) Fortify- Select Scraps to use. For each Scrap used, gain +4 HP'}
+Card{id=mtb001, name='Mantis Bot', type='bot', attack=5, hp=3, cost=6, ability='(P) Dual Strike- Can attack twice per turn'}
+Card{id=mwb001, name='Metal Wings Bot', type='bot', attack=12, hp=7, cost=9, ability='(On Attack) Evade- When attacked, flip a coin. On heads, dodge the attack and return to hand'}
+Card{id=mnb001, name='Miner Bot', type='bot', attack=2, hp=2, cost=2, ability='(A) Mine- Flip a coin. On heads, summon 2 Scrap'}
+Card{id=rcb001, name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
+Card{id=rcb001, name='Recycle Bot', type='bot', attack=4, hp=7, cost=6, ability='(A) Recycle- Convert up to 2 Bots in discard pile into Scrap tokens on field'}
+Card{id=sb001, name='Scrap Bot', type='bot', attack=1, hp=1, cost=1, ability='(A) Fabricate- Summon 1 Scrap token to your frontline'}
+Card{id=sb001, name='Scrap Bot', type='bot', attack=1, hp=1, cost=1, ability='(A) Fabricate- Summon 1 Scrap token to your frontline'}
+Card{id=shb001, name='Shield Bot', type='bot', attack=3, hp=5, cost=3, ability=''}
+Card{id=shb001, name='Shield Bot', type='bot', attack=3, hp=5, cost=3, ability=''}
+Card{id=svb001, name='Survey Bot', type='bot', attack=4, hp=2, cost=3, ability='(P) Survey- All Scrap Bots summon an additional Scrap when using their ability'}
+Card{id=ttb001, name='Turret Bot', type='bot', attack=2, hp=2, cost=2, ability='(P) Autofire- Attacks an enemy automatically when placed in frontline'}
+Card{id=ttb001, name='Turret Bot', type='bot', attack=2, hp=2, cost=2, ability='(P) Autofire- Attacks an enemy automatically when placed in frontline'}
+Card{id=upb001, name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
+Card{id=upb001, name='Upgrade Bot', type='bot', attack=0, hp=1, cost=1, ability='(A) Upgrade- Give a friendly bot +2 ATK or +2 HP'}
+Card{id=trb001, name='Transport Bot', type='bot', attack=3, hp=3, cost=3, ability='(A) Haul- Use 1 Scrap to return a bot and this card to hand'}
