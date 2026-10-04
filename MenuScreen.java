@@ -1,13 +1,20 @@
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
+import java.awt.event.*;
 import java.util.List;
 
 public class MenuScreen {
 
-    private static final Color BG        = Color.WHITE;
-    private static final Color BTN_BG    = new Color(50, 50, 75);
-    private static final Color BTN_HOVER = new Color(70, 70, 105);
+    private static final Color BG          = Color.WHITE;
+    private static final Color BTN_BG      = new Color(50, 50, 75);
+    private static final Color BTN_HOVER   = new Color(70, 70, 105);
+    private static final Color BACK_ACCENT = new Color(180, 180, 200);
+    private static final Color TITLE_FG    = new Color(30, 30, 60);
+    private static final Color WELCOME_FG  = new Color(80, 80, 100);
+
+    private static final int TITLE_WIDTH  = 400;
+    private static final int BUTTON_WIDTH = 300;
 
     public static void main(String[] args) {
         LoginScreen.main(args);
@@ -18,113 +25,112 @@ public class MenuScreen {
         panel.setBackground(BG);
 
         JLabel title;
-        ImageIcon titleIcon = loadScaledIcon(GamePaths.BUTTONS_DIR + "GameTitle.png", 400);
+        ImageIcon titleIcon = loadScaledIcon(GamePaths.BUTTONS_DIR + "GameTitle.png", TITLE_WIDTH);
         if (titleIcon != null) {
             title = new JLabel(titleIcon);
         } else {
             title = new JLabel("Card Game", SwingConstants.CENTER);
             title.setFont(new Font("SansSerif", Font.BOLD, 42));
-            title.setForeground(new Color(30, 30, 60));
+            title.setForeground(TITLE_FG);
         }
 
         JLabel welcome = new JLabel("Welcome, " + user.getUsername() + "!", SwingConstants.CENTER);
         welcome.setFont(new Font("SansSerif", Font.ITALIC, 16));
-        welcome.setForeground(new Color(80, 80, 100));
+        welcome.setForeground(WELCOME_FG);
 
-        JButton viewAllBtn  = menuButton("View Cards",   new Color(80, 180, 220));
-        JButton viewOwnBtn  = menuButton("View Owned",   new Color(220, 160, 80));
-        JButton packsBtn    = menuButton("Open Packs",   new Color(180, 100, 220));
-        JButton deckBtn     = menuButton("Build Deck",   new Color(80, 210, 200));
-        JButton battleBtn   = menuButton("Battle",       new Color(220, 80,  80));
-        applyButtonImage(viewAllBtn, GamePaths.BUTTONS_DIR + "ViewCardsButton.png",  300);
-        applyButtonImage(viewOwnBtn, GamePaths.BUTTONS_DIR + "ViewOwnedButton.png",  300);
-        applyButtonImage(packsBtn,   GamePaths.BUTTONS_DIR + "OpenPacksButton.png",  300);
-        applyButtonImage(deckBtn,    GamePaths.BUTTONS_DIR + "BuildDeckButton.png",  300);
-        applyButtonImage(battleBtn,  GamePaths.BUTTONS_DIR + "BattleButton.png",     300);
+        Runnable backToMenu = () -> layout.show(root, "menu");
+
+        JButton viewAllBtn = imageMenuButton("View Cards", new Color(80, 180, 220),  "ViewCardsButton.png");
+        JButton viewOwnBtn = imageMenuButton("View Owned", new Color(220, 160, 80),  "ViewOwnedButton.png");
+        JButton packsBtn   = imageMenuButton("Open Packs", new Color(180, 100, 220), "OpenPacksButton.png");
+        JButton deckBtn    = imageMenuButton("Build Deck", new Color(80, 210, 200),  "BuildDeckButton.png");
+        JButton battleBtn  = imageMenuButton("Battle",     new Color(220, 80,  80),  "BattleButton.png");
 
         viewAllBtn.addActionListener(e -> {
             List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
-            JPanel viewerPanel = CardViewer.buildPanel(cards, "Card Collection", () -> layout.show(root, "menu"), root, layout);
-            root.add(viewerPanel, "viewer");
-            layout.show(root, "viewer");
-            frame.revalidate();
+            showScreen(root, layout, frame, "viewer",
+                CardViewer.buildPanel(cards, "Card Collection", backToMenu, root, layout));
         });
 
         viewOwnBtn.addActionListener(e -> {
             List<Card> owned = user.getOwnedCards();
-            JPanel viewerPanel = CardViewer.buildPanel(
-                owned,
-                owned.isEmpty() ? null : "My Collection",
-                () -> layout.show(root, "menu"),
-                root, layout
-            );
-            root.add(viewerPanel, "owned");
-            layout.show(root, "owned");
-            frame.revalidate();
+            showScreen(root, layout, frame, "owned",
+                CardViewer.buildPanel(owned, owned.isEmpty() ? null : "My Collection", backToMenu, root, layout));
         });
 
-        packsBtn.addActionListener(e -> {
-            JPanel packPanel = PackScreen.buildPanel(user, () -> layout.show(root, "menu"));
-            root.add(packPanel, "packs");
-            layout.show(root, "packs");
-            frame.revalidate();
-        });
+        packsBtn.addActionListener(e ->
+            showScreen(root, layout, frame, "packs", PackScreen.buildPanel(user, backToMenu)));
 
-        deckBtn.addActionListener(e -> {
-            JPanel deckPanel = DeckBuilderScreen.buildPanel(user, () -> layout.show(root, "menu"));
-            root.add(deckPanel, "deck");
-            layout.show(root, "deck");
-            frame.revalidate();
-        });
+        deckBtn.addActionListener(e ->
+            showScreen(root, layout, frame, "deck", DeckBuilderScreen.buildPanel(user, backToMenu)));
 
-        battleBtn.addActionListener(e -> {
-            JPanel deckSelect = BattleDeckSelectScreen.buildPanel(
-                user,
-                () -> layout.show(root, "menu"),
-                deckName -> {
-                    JPanel champSelect = ChampionSelectScreen.buildPanel(
-                        () -> layout.show(root, "deckselect"),
-                        champLine -> {
-                            JPanel matchmaking = MatchmakingScreen.buildPanel(
-                                user, deckName, champLine,
-                                () -> { MusicPlayer.play(); layout.show(root, "menu"); },
-                                battleId -> {
-                                    JPanel battle = BattleScreen.buildPanel(
-                                        user, battleId,
-                                        () -> { MusicPlayer.play(); layout.show(root, "menu"); });
-                                    root.add(battle, "battle");
-                                    layout.show(root, "battle");
-                                    frame.revalidate();
-                                }
-                            );
-                            root.add(matchmaking, "matchmaking");
-                            layout.show(root, "matchmaking");
-                            MusicPlayer.stop();
-                            frame.revalidate();
-                        }
-                    );
-                    root.add(champSelect, "champselect");
-                    layout.show(root, "champselect");
-                    frame.revalidate();
-                }
-            );
-            root.add(deckSelect, "deckselect");
-            layout.show(root, "deckselect");
-            frame.revalidate();
-        });
+        battleBtn.addActionListener(e -> openDeckSelect(root, layout, frame, user));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
 
-        gbc.gridy = 0; gbc.insets = new Insets(12, 0, 4,  0); panel.add(title,      gbc);
-        gbc.gridy = 1; gbc.insets = new Insets(0,  0, 30, 0); panel.add(welcome,    gbc);
-        gbc.gridy = 2; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewAllBtn, gbc);
-        gbc.gridy = 3; gbc.insets = new Insets(0,  0, 12, 0); panel.add(viewOwnBtn, gbc);
-        gbc.gridy = 4; gbc.insets = new Insets(0,  0, 12, 0); panel.add(packsBtn,   gbc);
-        gbc.gridy = 5; gbc.insets = new Insets(0,  0, 12, 0); panel.add(deckBtn,    gbc);
-        gbc.gridy = 6; gbc.insets = new Insets(0,  0, 12, 0); panel.add(battleBtn,  gbc);
+        gbc.gridy = 0; gbc.insets = new Insets(12, 0, 4,  0); panel.add(title,   gbc);
+        gbc.gridy = 1; gbc.insets = new Insets(0,  0, 30, 0); panel.add(welcome, gbc);
+
+        JButton[] buttons = { viewAllBtn, viewOwnBtn, packsBtn, deckBtn, battleBtn };
+        gbc.insets = new Insets(0, 0, 12, 0);
+        for (int i = 0; i < buttons.length; i++) {
+            gbc.gridy = 2 + i;
+            panel.add(buttons[i], gbc);
+        }
 
         return panel;
+    }
+
+    // ── Battle flow: deck select → champion select → matchmaking → battle ──
+
+    private static void openDeckSelect(JPanel root, CardLayout layout, JFrame frame, User user) {
+        showScreen(root, layout, frame, "deckselect", BattleDeckSelectScreen.buildPanel(
+            user,
+            () -> layout.show(root, "menu"),
+            deckName -> openChampSelect(root, layout, frame, user, deckName)));
+    }
+
+    private static void openChampSelect(JPanel root, CardLayout layout, JFrame frame, User user, String deckName) {
+        showScreen(root, layout, frame, "champselect", ChampionSelectScreen.buildPanel(
+            () -> layout.show(root, "deckselect"),
+            champLine -> openMatchmaking(root, layout, frame, user, deckName, champLine)));
+    }
+
+    private static void openMatchmaking(JPanel root, CardLayout layout, JFrame frame, User user,
+                                        String deckName, String champLine) {
+        JPanel matchmaking = MatchmakingScreen.buildPanel(
+            user, deckName, champLine,
+            backToMenuWithMusic(root, layout),
+            battleId -> openBattle(root, layout, frame, user, battleId));
+        MusicPlayer.stop();
+        showScreen(root, layout, frame, "matchmaking", matchmaking);
+    }
+
+    private static void openBattle(JPanel root, CardLayout layout, JFrame frame, User user, String battleId) {
+        showScreen(root, layout, frame, "battle",
+            BattleScreen.buildPanel(user, battleId, backToMenuWithMusic(root, layout)));
+    }
+
+    private static Runnable backToMenuWithMusic(JPanel root, CardLayout layout) {
+        return () -> { MusicPlayer.play(); layout.show(root, "menu"); };
+    }
+
+    // ── Shared helpers ──
+
+    /**
+     * Adds a screen to the root panel under the given name and shows it.
+     * Any screen previously added under the same name is removed first, so
+     * re-opening a screen replaces it instead of piling up old copies.
+     */
+    static void showScreen(JPanel root, CardLayout layout, JFrame frame, String name, JPanel screen) {
+        for (Component c : root.getComponents()) {
+            if (name.equals(c.getName())) root.remove(c);
+        }
+        screen.setName(name);
+        root.add(screen, name);
+        layout.show(root, name);
+        frame.revalidate();
     }
 
     static JButton menuButton(String text, Color accent) {
@@ -137,31 +143,35 @@ public class MenuScreen {
                 new LineBorder(accent, 2, true),
                 new EmptyBorder(14, 60, 14, 60)));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(BTN_HOVER); }
-            public void mouseExited(java.awt.event.MouseEvent e)  { btn.setBackground(BTN_BG); }
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { btn.setBackground(BTN_HOVER); }
+            public void mouseExited(MouseEvent e)  { btn.setBackground(BTN_BG); }
         });
         return btn;
     }
 
-    private static void applyButtonImage(JButton btn, String path, int width) {
-        ImageIcon icon = loadScaledIcon(path, width);
+    /** The standard grey "Back" button used across screens. */
+    static JButton backButton() {
+        return menuButton("Back", BACK_ACCENT);
+    }
+
+    /** A menu button that shows an image from the buttons folder, or plain text if the image is missing. */
+    private static JButton imageMenuButton(String text, Color accent, String imageFile) {
+        JButton btn = menuButton(text, accent);
+        ImageIcon icon = loadScaledIcon(GamePaths.BUTTONS_DIR + imageFile, BUTTON_WIDTH);
         if (icon != null) {
             btn.setIcon(icon);
             btn.setText("");
             btn.setContentAreaFilled(false);
             btn.setBorderPainted(false);
         }
+        return btn;
     }
 
     private static ImageIcon loadScaledIcon(String path, int width) {
-        try {
-            ImageIcon raw = new ImageIcon(path);
-            if (raw.getIconWidth() <= 0) return null;
-            int h = (int)((double) raw.getIconHeight() / raw.getIconWidth() * width);
-            return new ImageIcon(raw.getImage().getScaledInstance(width, h, Image.SCALE_SMOOTH));
-        } catch (Exception e) {
-            return null;
-        }
+        ImageIcon raw = new ImageIcon(path);
+        if (raw.getIconWidth() <= 0) return null;
+        int h = (int)((double) raw.getIconHeight() / raw.getIconWidth() * width);
+        return new ImageIcon(raw.getImage().getScaledInstance(width, h, Image.SCALE_SMOOTH));
     }
 }
