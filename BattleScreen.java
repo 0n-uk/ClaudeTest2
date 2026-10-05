@@ -30,8 +30,8 @@ public class BattleScreen {
 
     public static JPanel buildPanel(User user, String battleId, Runnable onComplete) {
 
-        Map<String, Card>         cardMap    = BattleManager.buildCardMap();
-        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
+        Map<String, Card>         cardMap    = GameData.cardMap();
+        Map<String, ChampionLine> champLines = GameData.championLines();
         for (Card c : user.getOwnedCards()) cardMap.putIfAbsent(c.getId(), c);
 
         BattleState[] stRef        = { BattleState.load(battleId) };
@@ -1517,7 +1517,7 @@ public class BattleScreen {
             hTop.setOpaque(false);
             hTop.setAlignmentX(Component.LEFT_ALIGNMENT);
             hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
-            JLabel hSym  = new JLabel(TypeSymbolLoader.get(c.getType(), 15, 15));
+            JLabel hSym  = new JLabel(Images.typeSymbol(c.getType(), 15, 15));
             JLabel hName = new JLabel(c.getName(), SwingConstants.CENTER);
             hName.setFont(FONT_BOLD_10);
             hName.setForeground(nameClr);
@@ -1530,7 +1530,7 @@ public class BattleScreen {
             card.add(hTop, BorderLayout.NORTH);
 
             // CENTER: card image scaled to fill
-            card.add(new ScaledImagePanel(CardImageLoader.getRaw(c.getId()), bgColor), BorderLayout.CENTER);
+            card.add(new ScaledImagePanel(Images.cardArt(c.getId()), bgColor), BorderLayout.CENTER);
 
             // SOUTH: ATK + info button + HP
             JPanel hBot = new JPanel(new BorderLayout(2, 0));

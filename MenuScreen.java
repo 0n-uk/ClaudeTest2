@@ -16,7 +16,7 @@ public class MenuScreen {
         panel.setBackground(BG);
 
         JLabel title;
-        ImageIcon titleIcon = UI.loadScaledIcon(GamePaths.BUTTONS_DIR + "GameTitle.png", TITLE_WIDTH);
+        ImageIcon titleIcon = Images.menuImage("GameTitle.png", TITLE_WIDTH);
         if (titleIcon != null) {
             title = new JLabel(titleIcon);
         } else {
@@ -38,7 +38,7 @@ public class MenuScreen {
         JButton battleBtn  = imageMenuButton("Battle",     new Color(220, 80,  80),  "BattleButton.png");
 
         viewAllBtn.addActionListener(e -> {
-            List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
+            List<Card> cards = GameData.allCards();
             UI.showScreen(root, layout, frame, "viewer",
                 CardViewer.buildPanel(cards, "Card Collection", backToMenu, root, layout));
         });
@@ -110,7 +110,7 @@ public class MenuScreen {
     /** A menu button that shows an image from the buttons folder, or plain text if the image is missing. */
     private static JButton imageMenuButton(String text, Color accent, String imageFile) {
         JButton btn = UI.menuButton(text, accent);
-        UI.applyButtonImage(btn, GamePaths.BUTTONS_DIR + imageFile, BUTTON_WIDTH);
+        UI.applyButtonImage(btn, imageFile, BUTTON_WIDTH);
         return btn;
     }
 }
