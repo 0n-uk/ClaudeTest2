@@ -11,8 +11,8 @@ import java.util.Set;
 
 public class PackScreen {
 
-    private static final Color BG       = new Color(20, 20, 30);
-    private static final Color CARD_BG  = new Color(35, 35, 52);
+    private static final Color BG       = UI.BG;
+    private static final Color CARD_BG  = UI.CARD_BG;
     private static final Color REVEAL_BG = new Color(25, 25, 38);
 
     // ── Entry point ───────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ public class PackScreen {
         JLabel countLabel = centeredLabel("Contains " + pool.size() + " cards  •  Gives 5 per open",
                                           Font.ITALIC, 12, new Color(130, 130, 155));
 
-        JButton openBtn = MenuScreen.menuButton("Open Pack", accent);
+        JButton openBtn = UI.menuButton("Open Pack", accent);
         openBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(accent, 2, true),
                 new EmptyBorder(10, 36, 10, 36)));
@@ -212,7 +212,7 @@ public class PackScreen {
         cardsRow.setBorder(new EmptyBorder(16, 24, 16, 24));
         for (Card c : obtained) cardsRow.add(highlightCard(c, accent));
 
-        JButton returnBtn = MenuScreen.menuButton("Return to Packs", accent);
+        JButton returnBtn = UI.menuButton("Return to Packs", accent);
         returnBtn.addActionListener(e -> goBack.run());
 
         JPanel south = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -246,10 +246,10 @@ public class PackScreen {
 
     private static JPanel buildHeader(String text, Runnable onBack) {
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(20, 20, 30));
+        header.setBackground(UI.BG);
         header.setBorder(new EmptyBorder(14, 14, 8, 14));
 
-        JButton backBtn = MenuScreen.backButton();
+        JButton backBtn = UI.backButton();
         backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         backBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(180, 180, 200), 2, true),

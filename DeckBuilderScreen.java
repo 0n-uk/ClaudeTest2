@@ -8,7 +8,7 @@ import javax.swing.event.*;
 
 public class DeckBuilderScreen {
 
-    private static final Color BG       = new Color(20, 20, 30);
+    private static final Color BG       = UI.BG;
     private static final Color LEFT_BG  = new Color(25, 25, 38);
     private static final Color RIGHT_BG = new Color(30, 30, 45);
     private static final Color HDR_BG   = new Color(20, 20, 32);
@@ -455,7 +455,7 @@ public class DeckBuilderScreen {
         header.setBackground(BG);
         header.setBorder(new EmptyBorder(12, 14, 8, 14));
 
-        JButton backBtn = MenuScreen.backButton();
+        JButton backBtn = UI.backButton();
         backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         backBtn.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(new Color(180, 180, 200), 2, true),

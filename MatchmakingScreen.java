@@ -6,8 +6,8 @@ import java.util.function.Consumer;
 
 public class MatchmakingScreen {
 
-    private static final Color BG      = new Color(20, 20, 30);
-    private static final Color CARD_BG = new Color(35, 35, 52);
+    private static final Color BG      = UI.BG;
+    private static final Color CARD_BG = UI.CARD_BG;
 
     public static JPanel buildPanel(User user, String deckName, String champLine,
                                     Runnable onCancel, Consumer<String> onMatchFound) {
@@ -32,7 +32,7 @@ public class MatchmakingScreen {
         waitLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
         waitLabel.setForeground(new Color(120, 120, 150));
 
-        JButton cancelBtn = MenuScreen.menuButton("Cancel", new Color(200, 80, 80));
+        JButton cancelBtn = UI.menuButton("Cancel", new Color(200, 80, 80));
         cancelBtn.setFont(new Font("SansSerif", Font.BOLD, 14));
         cancelBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(200, 80, 80), 2, true),

@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 
 public class ChampionSelectScreen {
 
-    private static final Color BG      = new Color(20, 20, 30);
+    private static final Color BG      = UI.BG;
     private static final Color HDR_BG  = new Color(15, 15, 25);
     private static final Color CARD_BG = new Color(38, 38, 58);
     private static final Color SEL_BG  = new Color(50, 60, 90);
@@ -22,7 +22,7 @@ public class ChampionSelectScreen {
         header.setBackground(HDR_BG);
         header.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        JButton backBtn = MenuScreen.backButton();
+        JButton backBtn = UI.backButton();
         backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         backBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(180, 180, 200), 2, true),
