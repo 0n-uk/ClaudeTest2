@@ -58,22 +58,14 @@ public class UI {
         return menuButton("Back", BACK_ACCENT);
     }
 
-    /** Replaces a button's text with an image, or leaves it as a text button if the image is missing. */
-    static void applyButtonImage(JButton btn, String path, int width) {
-        ImageIcon icon = loadScaledIcon(path, width);
+    /** Replaces a button's text with a "Buttons & Menus" image, or leaves it as a text button if the image is missing. */
+    static void applyButtonImage(JButton btn, String fileName, int width) {
+        ImageIcon icon = Images.menuImage(fileName, width);
         if (icon != null) {
             btn.setIcon(icon);
             btn.setText("");
             btn.setContentAreaFilled(false);
             btn.setBorderPainted(false);
         }
-    }
-
-    /** Loads an image scaled to the given width, keeping its shape. Returns null if the file is missing. */
-    static ImageIcon loadScaledIcon(String path, int width) {
-        ImageIcon raw = new ImageIcon(path);
-        if (raw.getIconWidth() <= 0) return null;
-        int h = (int)((double) raw.getIconHeight() / raw.getIconWidth() * width);
-        return new ImageIcon(raw.getImage().getScaledInstance(width, h, Image.SCALE_SMOOTH));
     }
 }

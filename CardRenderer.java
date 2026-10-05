@@ -1,7 +1,6 @@
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import javax.imageio.ImageIO;
 import javax.swing.*;
 
 public class CardRenderer {
@@ -36,8 +35,8 @@ public class CardRenderer {
             } catch (Exception ignored) {}
         }
         handFont = (loaded != null) ? loaded : new Font("Serif", Font.PLAIN, 12);
-        try { cardBg = ImageIO.read(new File(GamePaths.CARD_BACKGROUND)); } catch (Exception ignored) {}
-        try { cardFg = ImageIO.read(new File(GamePaths.CARD_FOREGROUND)); } catch (Exception ignored) {}
+        cardBg = Images.cardBackground();
+        cardFg = Images.cardForeground();
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -79,7 +78,7 @@ public class CardRenderer {
         int   infoX  = (size - infoW) / 2;
         int   infoY  = size - infoH - Math.round(2 * sc);
 
-        BufferedImage sprite = CardImageLoader.getRaw(card.getId());
+        BufferedImage sprite = Images.cardArt(card.getId());
         String abilityText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
 
         // ATK color: green when buffed, orange when normal, red when debuffed
@@ -123,7 +122,7 @@ public class CardRenderer {
                 if (cardFg != null) g2.drawImage(cardFg, 0, 0, size, size, null);
 
                 // 4. Type symbol — top-left box
-                ImageIcon sym = TypeSymbolLoader.get(card.getType(), box, box);
+                ImageIcon sym = Images.typeSymbol(card.getType(), box, box);
                 if (sym != null) g2.drawImage(sym.getImage(), 0, 0, box, box, null);
 
                 // 5. Name — top center, fitted between corner boxes

@@ -62,7 +62,7 @@ public class LoginScreen {
         JLabel error = messageLabel(ERROR_RED);
 
         JButton loginBtn = bigButton("Log In", ACCENT);
-        UI.applyButtonImage(loginBtn, GamePaths.BUTTONS_DIR + "LoginButton.png", LOGIN_BTN_WIDTH);
+        UI.applyButtonImage(loginBtn, "LoginButton.png", LOGIN_BTN_WIDTH);
         loginBtn.addActionListener(e -> {
             String user = userField.getText().trim();
             String pass = new String(passField.getPassword());
@@ -86,7 +86,7 @@ public class LoginScreen {
         });
 
         // The drawn "Welcome! Sign in plz" heading replaces both text lines when the image is there
-        ImageIcon headingImg = UI.loadScaledIcon(GamePaths.BUTTONS_DIR + "LoginMenu.png", HEADING_IMG_WIDTH);
+        ImageIcon headingImg = Images.menuImage("LoginMenu.png", HEADING_IMG_WIDTH);
         Component title    = headingImg != null ? new JLabel(headingImg) : heading("Welcome Back");
         Component subtitle = headingImg != null ? spacer(0)              : sub("Sign in to your account");
 
@@ -107,7 +107,7 @@ public class LoginScreen {
         JLabel success = messageLabel(SUCCESS_GREEN);
 
         JButton registerBtn = bigButton("Register", SUCCESS_GREEN);
-        UI.applyButtonImage(registerBtn, GamePaths.BUTTONS_DIR + "RegisterButton.png", REGISTER_BTN_WIDTH);
+        UI.applyButtonImage(registerBtn, "RegisterButton.png", REGISTER_BTN_WIDTH);
         registerBtn.addActionListener(e -> {
             error.setText(" "); success.setText(" ");
             String user  = userField.getText().trim();
