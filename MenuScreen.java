@@ -1,35 +1,26 @@
 import javax.swing.*;
-import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.*;
 import java.util.List;
 
 public class MenuScreen {
 
-    private static final Color BG          = Color.WHITE;
-    private static final Color BTN_BG      = new Color(50, 50, 75);
-    private static final Color BTN_HOVER   = new Color(70, 70, 105);
-    private static final Color BACK_ACCENT = new Color(180, 180, 200);
-    private static final Color TITLE_FG    = new Color(30, 30, 60);
-    private static final Color WELCOME_FG  = new Color(80, 80, 100);
+    private static final Color BG         = Color.WHITE;
+    private static final Color TITLE_FG   = new Color(30, 30, 60);
+    private static final Color WELCOME_FG = new Color(80, 80, 100);
 
     private static final int TITLE_WIDTH  = 400;
     private static final int BUTTON_WIDTH = 300;
-
-    public static void main(String[] args) {
-        LoginScreen.main(args);
-    }
 
     static JPanel buildMenuPanel(JPanel root, CardLayout layout, JFrame frame, User user) {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG);
 
         JLabel title;
-        ImageIcon titleIcon = loadScaledIcon(GamePaths.BUTTONS_DIR + "GameTitle.png", TITLE_WIDTH);
+        ImageIcon titleIcon = UI.loadScaledIcon(GamePaths.BUTTONS_DIR + "GameTitle.png", TITLE_WIDTH);
         if (titleIcon != null) {
             title = new JLabel(titleIcon);
         } else {
-            title = new JLabel("Card Game", SwingConstants.CENTER);
+            title = new JLabel(UI.GAME_TITLE, SwingConstants.CENTER);
             title.setFont(new Font("SansSerif", Font.BOLD, 42));
             title.setForeground(TITLE_FG);
         }
@@ -48,21 +39,21 @@ public class MenuScreen {
 
         viewAllBtn.addActionListener(e -> {
             List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
-            showScreen(root, layout, frame, "viewer",
+            UI.showScreen(root, layout, frame, "viewer",
                 CardViewer.buildPanel(cards, "Card Collection", backToMenu, root, layout));
         });
 
         viewOwnBtn.addActionListener(e -> {
             List<Card> owned = user.getOwnedCards();
-            showScreen(root, layout, frame, "owned",
+            UI.showScreen(root, layout, frame, "owned",
                 CardViewer.buildPanel(owned, owned.isEmpty() ? null : "My Collection", backToMenu, root, layout));
         });
 
         packsBtn.addActionListener(e ->
-            showScreen(root, layout, frame, "packs", PackScreen.buildPanel(user, backToMenu)));
+            UI.showScreen(root, layout, frame, "packs", PackScreen.buildPanel(user, backToMenu)));
 
         deckBtn.addActionListener(e ->
-            showScreen(root, layout, frame, "deck", DeckBuilderScreen.buildPanel(user, backToMenu)));
+            UI.showScreen(root, layout, frame, "deck", DeckBuilderScreen.buildPanel(user, backToMenu)));
 
         battleBtn.addActionListener(e -> openDeckSelect(root, layout, frame, user));
 
@@ -85,14 +76,14 @@ public class MenuScreen {
     // ── Battle flow: deck select → champion select → matchmaking → battle ──
 
     private static void openDeckSelect(JPanel root, CardLayout layout, JFrame frame, User user) {
-        showScreen(root, layout, frame, "deckselect", BattleDeckSelectScreen.buildPanel(
+        UI.showScreen(root, layout, frame, "deckselect", BattleDeckSelectScreen.buildPanel(
             user,
             () -> layout.show(root, "menu"),
             deckName -> openChampSelect(root, layout, frame, user, deckName)));
     }
 
     private static void openChampSelect(JPanel root, CardLayout layout, JFrame frame, User user, String deckName) {
-        showScreen(root, layout, frame, "champselect", ChampionSelectScreen.buildPanel(
+        UI.showScreen(root, layout, frame, "champselect", ChampionSelectScreen.buildPanel(
             () -> layout.show(root, "deckselect"),
             champLine -> openMatchmaking(root, layout, frame, user, deckName, champLine)));
     }
@@ -104,11 +95,11 @@ public class MenuScreen {
             backToMenuWithMusic(root, layout),
             battleId -> openBattle(root, layout, frame, user, battleId));
         MusicPlayer.stop();
-        showScreen(root, layout, frame, "matchmaking", matchmaking);
+        UI.showScreen(root, layout, frame, "matchmaking", matchmaking);
     }
 
     private static void openBattle(JPanel root, CardLayout layout, JFrame frame, User user, String battleId) {
-        showScreen(root, layout, frame, "battle",
+        UI.showScreen(root, layout, frame, "battle",
             BattleScreen.buildPanel(user, battleId, backToMenuWithMusic(root, layout)));
     }
 
@@ -116,62 +107,10 @@ public class MenuScreen {
         return () -> { MusicPlayer.play(); layout.show(root, "menu"); };
     }
 
-    // ── Shared helpers ──
-
-    /**
-     * Adds a screen to the root panel under the given name and shows it.
-     * Any screen previously added under the same name is removed first, so
-     * re-opening a screen replaces it instead of piling up old copies.
-     */
-    static void showScreen(JPanel root, CardLayout layout, JFrame frame, String name, JPanel screen) {
-        for (Component c : root.getComponents()) {
-            if (name.equals(c.getName())) root.remove(c);
-        }
-        screen.setName(name);
-        root.add(screen, name);
-        layout.show(root, name);
-        frame.revalidate();
-    }
-
-    static JButton menuButton(String text, Color accent) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("SansSerif", Font.BOLD, 18));
-        btn.setForeground(Color.DARK_GRAY);
-        btn.setBackground(BTN_BG);
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(accent, 2, true),
-                new EmptyBorder(14, 60, 14, 60)));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) { btn.setBackground(BTN_HOVER); }
-            public void mouseExited(MouseEvent e)  { btn.setBackground(BTN_BG); }
-        });
-        return btn;
-    }
-
-    /** The standard grey "Back" button used across screens. */
-    static JButton backButton() {
-        return menuButton("Back", BACK_ACCENT);
-    }
-
     /** A menu button that shows an image from the buttons folder, or plain text if the image is missing. */
     private static JButton imageMenuButton(String text, Color accent, String imageFile) {
-        JButton btn = menuButton(text, accent);
-        ImageIcon icon = loadScaledIcon(GamePaths.BUTTONS_DIR + imageFile, BUTTON_WIDTH);
-        if (icon != null) {
-            btn.setIcon(icon);
-            btn.setText("");
-            btn.setContentAreaFilled(false);
-            btn.setBorderPainted(false);
-        }
+        JButton btn = UI.menuButton(text, accent);
+        UI.applyButtonImage(btn, GamePaths.BUTTONS_DIR + imageFile, BUTTON_WIDTH);
         return btn;
-    }
-
-    private static ImageIcon loadScaledIcon(String path, int width) {
-        ImageIcon raw = new ImageIcon(path);
-        if (raw.getIconWidth() <= 0) return null;
-        int h = (int)((double) raw.getIconHeight() / raw.getIconWidth() * width);
-        return new ImageIcon(raw.getImage().getScaledInstance(width, h, Image.SCALE_SMOOTH));
     }
 }

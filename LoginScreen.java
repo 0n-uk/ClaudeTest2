@@ -1,27 +1,34 @@
 import java.awt.*;
+import java.awt.event.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import javax.swing.*;
 import javax.swing.border.*;
 
-//this is a test comment to trigger a commit
 public class LoginScreen {
 
-    private static final Color BG      = new Color(20, 20, 30);
-    private static final Color CARD_BG = new Color(35, 35, 52);
-    private static final Color ACCENT  = new Color(100, 140, 255);
+    private static final Color BG            = UI.BG;
+    private static final Color CARD_BG       = UI.CARD_BG;
+    private static final Color ACCENT        = new Color(100, 140, 255);
+    private static final Color SUCCESS_GREEN = new Color(100, 220, 130);
+    private static final Color ERROR_RED     = new Color(220, 80, 80);
+    private static final Color SUB_FG        = new Color(140, 140, 165);
+    private static final Color LABEL_FG      = new Color(180, 180, 200);
+    private static final Color FIELD_BG      = new Color(45, 45, 65);
+    private static final Color FIELD_BORDER  = new Color(80, 80, 110);
+    private static final Color LINK_FG       = new Color(120, 160, 255);
 
     /** Set when user logs in; used by window-close handler to clean up state. */
     static volatile User currentUser = null;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Card Game");
+            JFrame frame = new JFrame(UI.GAME_TITLE);
             frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-            frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            frame.addWindowListener(new WindowAdapter() {
                 @Override
-                public void windowClosing(java.awt.event.WindowEvent e) {
+                public void windowClosing(WindowEvent e) {
                     if (currentUser != null) {
                         BattleManager.cancelQueue(currentUser.getUsername());
                         BattleManager.removeHeartbeat(currentUser.getUsername());
@@ -49,17 +56,9 @@ public class LoginScreen {
     // ── Login panel ──────────────────────────────────────────────────────────
 
     static JPanel buildLoginPanel(JPanel root, CardLayout layout, JFrame frame) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(BG);
-
-        JPanel card = card();
-
-        JLabel title = heading("Welcome Back");
-        JLabel sub   = sub("Sign in to your account");
-
-        JTextField  userField = inputField("Username");
-        JPasswordField passField = passField("Password");
-        JLabel error = errorLabel();
+        JTextField     userField = inputField();
+        JPasswordField passField = passField();
+        JLabel error = messageLabel(ERROR_RED);
 
         JButton loginBtn = bigButton("Log In", ACCENT);
         loginBtn.addActionListener(e -> {
@@ -76,44 +75,31 @@ public class LoginScreen {
                 passField.setText("");
             }
         });
+        submitOnEnter(loginBtn, userField, passField);
 
         JButton toRegister = linkButton("Don't have an account? Register");
         toRegister.addActionListener(e -> {
-            error.setText(" ");
-            userField.setText("");
-            passField.setText("");
+            clearForm(new JLabel[]{ error }, userField, passField);
             layout.show(root, "register");
         });
 
-        addRows(card,
-            title, sub, spacer(10),
+        return centeredForm(
+            heading("Welcome Back"), sub("Sign in to your account"), spacer(10),
             labelFor("Username"), userField,
             labelFor("Password"), passField,
             spacer(4), error, loginBtn, spacer(4), toRegister);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        panel.add(card, gbc);
-        return panel;
     }
 
     // ── Register panel ───────────────────────────────────────────────────────
 
     static JPanel buildRegisterPanel(JPanel root, CardLayout layout, JFrame frame) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(BG);
+        JTextField     userField  = inputField();
+        JPasswordField passField  = passField();
+        JPasswordField pass2Field = passField();
+        JLabel error   = messageLabel(ERROR_RED);
+        JLabel success = messageLabel(SUCCESS_GREEN);
 
-        JPanel card = card();
-
-        JLabel title = heading("Create Account");
-        JLabel sub   = sub("Join the game");
-
-        JTextField   userField    = inputField("Username");
-        JPasswordField passField  = passField("Password");
-        JPasswordField pass2Field = passField("Confirm Password");
-        JLabel error = errorLabel();
-        JLabel success = successLabel();
-
-        JButton registerBtn = bigButton("Register", new Color(100, 220, 130));
+        JButton registerBtn = bigButton("Register", SUCCESS_GREEN);
         registerBtn.addActionListener(e -> {
             error.setText(" "); success.setText(" ");
             String user  = userField.getText().trim();
@@ -126,6 +112,10 @@ public class LoginScreen {
             if (user.length() < 3) {
                 error.setText("Username must be at least 3 characters."); return;
             }
+            // ':' separates the name from the password in the accounts file
+            if (user.contains(":") || user.matches(".*\\s.*")) {
+                error.setText("Username cannot contain spaces or ':'."); return;
+            }
             if (pass.length() < 4) {
                 error.setText("Password must be at least 4 characters."); return;
             }
@@ -135,36 +125,35 @@ public class LoginScreen {
             if (userExists(user)) {
                 error.setText("Username already taken."); return;
             }
-            register(user, pass);
+            if (!register(user, pass)) {
+                error.setText("Could not save your account. Please try again."); return;
+            }
+            registerBtn.setEnabled(false);
             success.setText("Account created! Logging you in...");
             Timer t = new Timer(1000, ev -> navigateToMenu(root, layout, frame, new User(user)));
             t.setRepeats(false); t.start();
         });
+        submitOnEnter(registerBtn, userField, passField, pass2Field);
 
         JButton toLogin = linkButton("Already have an account? Log In");
         toLogin.addActionListener(e -> {
-            error.setText(" "); success.setText(" ");
-            userField.setText(""); passField.setText(""); pass2Field.setText("");
+            clearForm(new JLabel[]{ error, success }, userField, passField, pass2Field);
             layout.show(root, "login");
         });
 
-        addRows(card,
-            title, sub, spacer(10),
+        return centeredForm(
+            heading("Create Account"), sub("Join the game"), spacer(10),
             labelFor("Username"),         userField,
             labelFor("Password"),         passField,
             labelFor("Confirm Password"), pass2Field,
             spacer(4), error, success, registerBtn, spacer(4), toLogin);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        panel.add(card, gbc);
-        return panel;
     }
 
     // ── Navigation ───────────────────────────────────────────────────────────
 
     private static void navigateToMenu(JPanel root, CardLayout layout, JFrame frame, User user) {
         currentUser = user;
-        MenuScreen.showScreen(root, layout, frame, "menu", MenuScreen.buildMenuPanel(root, layout, frame, user));
+        UI.showScreen(root, layout, frame, "menu", MenuScreen.buildMenuPanel(root, layout, frame, user));
     }
 
     // ── Credential storage ───────────────────────────────────────────────────
@@ -172,34 +161,34 @@ public class LoginScreen {
     private static final String ACCOUNTS_FILE = GamePaths.ACCOUNTS_FILE;
 
     static boolean userExists(String username) {
-        try (BufferedReader r = new BufferedReader(new FileReader(ACCOUNTS_FILE))) {
-            String line;
-            while ((line = r.readLine()) != null) {
-                if (line.split(":")[0].equalsIgnoreCase(username)) return true;
-            }
-        } catch (IOException ignored) {}
-        return false;
+        return findPasswordHash(username) != null;
     }
 
-    static void register(String username, String password) {
+    /** Saves a new account. Returns false if the accounts file could not be written. */
+    static boolean register(String username, String password) {
         try (BufferedWriter w = new BufferedWriter(new FileWriter(ACCOUNTS_FILE, true))) {
             w.write(username + ":" + hash(password));
             w.newLine();
-        } catch (IOException ignored) {}
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     static boolean authenticate(String username, String password) {
-        String hashed = hash(password);
+        return hash(password).equals(findPasswordHash(username));
+    }
+
+    /** Returns the saved password hash for this username (case-insensitive), or null if there is none. */
+    private static String findPasswordHash(String username) {
         try (BufferedReader r = new BufferedReader(new FileReader(ACCOUNTS_FILE))) {
             String line;
             while ((line = r.readLine()) != null) {
                 String[] parts = line.split(":", 2);
-                if (parts.length == 2
-                        && parts[0].equalsIgnoreCase(username)
-                        && parts[1].equals(hashed)) return true;
+                if (parts[0].equalsIgnoreCase(username)) return parts.length == 2 ? parts[1] : "";
             }
         } catch (IOException ignored) {}
-        return false;
+        return null;
     }
 
     private static String hash(String input) {
@@ -210,128 +199,127 @@ public class LoginScreen {
             for (byte b : bytes) sb.append(String.format("%02x", b));
             return sb.toString();
         } catch (Exception e) {
-            return input;
+            // Never fall back to saving the plain password
+            throw new IllegalStateException("SHA-256 unavailable", e);
         }
     }
 
     // ── UI helpers ───────────────────────────────────────────────────────────
 
-    private static JPanel card() {
-        JPanel p = new JPanel();
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setBackground(CARD_BG);
-        p.setBorder(BorderFactory.createCompoundBorder(
+    /** Centres a form box on a full-screen background and fills it with the given rows. */
+    private static JPanel centeredForm(Component... rows) {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(BG);
+
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(CARD_BG);
+        card.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(ACCENT, 2, true),
                 new EmptyBorder(30, 40, 30, 40)));
-        return p;
+        addRows(card, rows);
+
+        panel.add(card, new GridBagConstraints());
+        return panel;
+    }
+
+    private static JLabel label(String text, int style, int size, Color color, boolean centered) {
+        JLabel l = new JLabel(text, centered ? SwingConstants.CENTER : SwingConstants.LEADING);
+        l.setFont(new Font("SansSerif", style, size));
+        l.setForeground(color);
+        return l;
     }
 
     private static JLabel heading(String text) {
-        JLabel l = new JLabel(text, SwingConstants.CENTER);
-        l.setFont(new Font("SansSerif", Font.BOLD, 26));
-        l.setForeground(Color.WHITE);
-        l.setAlignmentX(Component.CENTER_ALIGNMENT);
-        return l;
+        return label(text, Font.BOLD, 26, Color.WHITE, true);
     }
 
     private static JLabel sub(String text) {
-        JLabel l = new JLabel(text, SwingConstants.CENTER);
-        l.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        l.setForeground(new Color(140, 140, 165));
-        l.setAlignmentX(Component.CENTER_ALIGNMENT);
-        return l;
+        return label(text, Font.PLAIN, 13, SUB_FG, true);
     }
 
     private static JLabel labelFor(String text) {
-        JLabel l = new JLabel(text);
-        l.setFont(new Font("SansSerif", Font.BOLD, 13));
-        l.setForeground(new Color(180, 180, 200));
-        l.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return l;
+        return label(text, Font.BOLD, 13, LABEL_FG, false);
     }
 
-    private static JTextField inputField(String placeholder) {
+    /** An empty message line; " " keeps its height so the form doesn't jump when text appears. */
+    private static JLabel messageLabel(Color color) {
+        return label(" ", Font.PLAIN, 12, color, true);
+    }
+
+    private static JTextField inputField() {
         JTextField f = new JTextField();
         style(f);
         return f;
     }
 
-    private static JPasswordField passField(String placeholder) {
+    private static JPasswordField passField() {
         JPasswordField f = new JPasswordField();
         style(f);
         return f;
     }
 
     private static void style(JTextField f) {
-        f.setBackground(new Color(45, 45, 65));
+        f.setBackground(FIELD_BG);
         f.setForeground(Color.WHITE);
         f.setCaretColor(Color.WHITE);
         f.setFont(new Font("SansSerif", Font.PLAIN, 14));
         f.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(new Color(80, 80, 110), 1),
+                new LineBorder(FIELD_BORDER, 1),
                 new EmptyBorder(6, 10, 6, 10)));
         f.setPreferredSize(new Dimension(300, 38));
         f.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
-        f.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
+    /** Pressing Enter in any of the fields clicks the button. */
+    private static void submitOnEnter(JButton button, JTextField... fields) {
+        for (JTextField f : fields) f.addActionListener(e -> button.doClick());
+    }
+
+    private static void clearForm(JLabel[] messages, JTextField... fields) {
+        for (JLabel m : messages) m.setText(" ");
+        for (JTextField f : fields) f.setText("");
+    }
+
+    /** The standard button, full width with white text. */
     private static JButton bigButton(String text, Color accent) {
-        JButton b = new JButton(text);
-        b.setFont(new Font("SansSerif", Font.BOLD, 15));
-        b.setForeground(Color.WHITE);
-        b.setBackground(new Color(50, 50, 75));
-        b.setFocusPainted(false);
-        b.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(accent, 2, true),
-                new EmptyBorder(10, 0, 10, 0)));
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JButton b = UI.button(text, accent, 15, Color.WHITE, new Insets(10, 0, 10, 0));
         b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        b.addMouseListener(new java.awt.event.MouseAdapter() {
-            Color orig = b.getBackground();
-            public void mouseEntered(java.awt.event.MouseEvent e) { b.setBackground(new Color(70, 70, 105)); }
-            public void mouseExited(java.awt.event.MouseEvent e)  { b.setBackground(orig); }
-        });
         return b;
     }
 
     private static JButton linkButton(String text) {
         JButton b = new JButton("<html><u>" + text + "</u></html>");
         b.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        b.setForeground(new Color(120, 160, 255));
+        b.setForeground(LINK_FG);
         b.setBackground(CARD_BG);
         b.setBorderPainted(false);
         b.setFocusPainted(false);
         b.setContentAreaFilled(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setAlignmentX(Component.CENTER_ALIGNMENT);
         return b;
-    }
-
-    private static JLabel errorLabel() {
-        JLabel l = new JLabel(" ", SwingConstants.CENTER);
-        l.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        l.setForeground(new Color(220, 80, 80));
-        l.setAlignmentX(Component.CENTER_ALIGNMENT);
-        return l;
-    }
-
-    private static JLabel successLabel() {
-        JLabel l = new JLabel(" ", SwingConstants.CENTER);
-        l.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        l.setForeground(new Color(100, 220, 130));
-        l.setAlignmentX(Component.CENTER_ALIGNMENT);
-        return l;
     }
 
     private static Component spacer(int h) {
         return Box.createVerticalStrut(h);
     }
 
+    /**
+     * Stacks the rows top to bottom. Every row is left-aligned and labels and
+     * buttons stretch to the full width (centring their own text), because
+     * BoxLayout lines rows up badly when their alignments are mixed.
+     */
     private static void addRows(JPanel card, Component... components) {
         for (Component c : components) {
+            if (c instanceof JComponent) {
+                JComponent jc = (JComponent) c;
+                jc.setAlignmentX(Component.LEFT_ALIGNMENT);
+                if (jc instanceof JLabel || jc instanceof JButton) {
+                    jc.setMaximumSize(new Dimension(Integer.MAX_VALUE, jc.getPreferredSize().height));
+                }
+            }
             card.add(c);
-            if (c instanceof JTextField || c instanceof JPasswordField) {
+            if (c instanceof JTextField) {
                 card.add(Box.createVerticalStrut(10));
             }
         }

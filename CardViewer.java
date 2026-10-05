@@ -25,11 +25,11 @@ public class CardViewer {
 
         // Header
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(20, 20, 30));
+        header.setBackground(UI.BG);
         header.setBorder(new EmptyBorder(12, 14, 8, 14));
 
         if (onBack != null) {
-            JButton backBtn = MenuScreen.backButton();
+            JButton backBtn = UI.backButton();
             backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
             backBtn.setBorder(BorderFactory.createCompoundBorder(
                     new LineBorder(new Color(180, 180, 200), 2, true),

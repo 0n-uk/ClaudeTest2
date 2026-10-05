@@ -8,7 +8,7 @@ import javax.swing.border.*;
 
 public class BattleScreen {
 
-    private static final Color BG        = new Color(20, 20, 30);
+    private static final Color BG        = UI.BG;
     private static final Color HDR_BG    = new Color(15, 15, 25);
     private static final Color OPP_BG    = new Color(35, 22, 22);
     private static final Color MY_BG     = new Color(22, 32, 22);
@@ -1784,7 +1784,7 @@ public class BattleScreen {
 
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(new Color(35, 35, 52));
+        card.setBackground(UI.CARD_BG);
         Color accent = won ? new Color(100, 220, 130) : new Color(220, 80, 80);
         card.setBorder(BorderFactory.createCompoundBorder(
             new LineBorder(accent, 3, true), new EmptyBorder(30, 60, 30, 60)));
@@ -1794,7 +1794,7 @@ public class BattleScreen {
         JLabel sub = lbl(won ? "Your champion prevails!" : "Your champion has fallen.",
                          Font.ITALIC, 14, new Color(160, 160, 185));
         sub.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JButton btn = MenuScreen.menuButton("Return to Menu", accent);
+        JButton btn = UI.menuButton("Return to Menu", accent);
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
         btn.addActionListener(e -> onComplete.run());
 

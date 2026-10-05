@@ -6,8 +6,8 @@ import java.util.function.Consumer;
 
 public class BattleDeckSelectScreen {
 
-    private static final Color BG      = new Color(20, 20, 30);
-    private static final Color CARD_BG = new Color(35, 35, 52);
+    private static final Color BG      = UI.BG;
+    private static final Color CARD_BG = UI.CARD_BG;
     private static final Color ACCENT  = new Color(100, 160, 220);
 
     public static JPanel buildPanel(User user, Runnable onBack, Consumer<String> onDeckSelected) {
@@ -16,10 +16,10 @@ public class BattleDeckSelectScreen {
 
         // Header
         JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(20, 20, 30));
+        header.setBackground(UI.BG);
         header.setBorder(new EmptyBorder(12, 14, 8, 14));
 
-        JButton backBtn = MenuScreen.backButton();
+        JButton backBtn = UI.backButton();
         backBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
         backBtn.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(180, 180, 200), 2, true),
@@ -54,7 +54,7 @@ public class BattleDeckSelectScreen {
                 List<Card> cards = user.loadDeck(deckName);
                 String label = deckName + "  (" + cards.size() + " cards)";
 
-                JButton btn = MenuScreen.menuButton(label, ACCENT);
+                JButton btn = UI.menuButton(label, ACCENT);
                 btn.setFont(new Font("SansSerif", Font.BOLD, 16));
                 btn.setBackground(CARD_BG);
                 btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, btn.getPreferredSize().height + 8));
