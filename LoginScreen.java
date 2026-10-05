@@ -8,16 +8,20 @@ import javax.swing.border.*;
 
 public class LoginScreen {
 
-    private static final Color BG            = UI.BG;
-    private static final Color CARD_BG       = UI.CARD_BG;
+    // White, hand-drawn style to match the menu and the button images
+    private static final Color BG            = Color.WHITE;
+    private static final Color CARD_BG       = Color.WHITE;
+    private static final Color INK           = new Color(30, 30, 30);
     private static final Color ACCENT        = new Color(100, 140, 255);
-    private static final Color SUCCESS_GREEN = new Color(100, 220, 130);
-    private static final Color ERROR_RED     = new Color(220, 80, 80);
-    private static final Color SUB_FG        = new Color(140, 140, 165);
-    private static final Color LABEL_FG      = new Color(180, 180, 200);
-    private static final Color FIELD_BG      = new Color(45, 45, 65);
-    private static final Color FIELD_BORDER  = new Color(80, 80, 110);
-    private static final Color LINK_FG       = new Color(120, 160, 255);
+    private static final Color SUCCESS_GREEN = new Color(30, 150, 70);
+    private static final Color ERROR_RED     = new Color(200, 40, 40);
+    private static final Color SUB_FG        = new Color(110, 110, 130);
+    private static final Color LABEL_FG      = new Color(60, 60, 80);
+    private static final Color LINK_FG       = new Color(40, 90, 220);
+
+    private static final int LOGIN_BTN_WIDTH    = 180;
+    private static final int REGISTER_BTN_WIDTH = 220;
+    private static final int HEADING_IMG_WIDTH  = 280;
 
     /** Set when user logs in; used by window-close handler to clean up state. */
     static volatile User currentUser = null;
@@ -61,6 +65,7 @@ public class LoginScreen {
         JLabel error = messageLabel(ERROR_RED);
 
         JButton loginBtn = bigButton("Log In", ACCENT);
+        UI.applyButtonImage(loginBtn, GamePaths.BUTTONS_DIR + "LoginButton.png", LOGIN_BTN_WIDTH);
         loginBtn.addActionListener(e -> {
             String user = userField.getText().trim();
             String pass = new String(passField.getPassword());
@@ -69,7 +74,7 @@ public class LoginScreen {
                 return;
             }
             if (authenticate(user, pass)) {
-                navigateToMenu(root, layout, frame, new User(user));
+                navigateToMenu(root, layout, frame, new User(savedName(user)));
             } else {
                 error.setText("Incorrect username or password.");
                 passField.setText("");
@@ -83,8 +88,13 @@ public class LoginScreen {
             layout.show(root, "register");
         });
 
+        // The drawn "Welcome! Sign in plz" heading replaces both text lines when the image is there
+        ImageIcon headingImg = UI.loadScaledIcon(GamePaths.BUTTONS_DIR + "LoginMenu.png", HEADING_IMG_WIDTH);
+        Component title    = headingImg != null ? new JLabel(headingImg) : heading("Welcome Back");
+        Component subtitle = headingImg != null ? spacer(0)              : sub("Sign in to your account");
+
         return centeredForm(
-            heading("Welcome Back"), sub("Sign in to your account"), spacer(10),
+            title, subtitle, spacer(10),
             labelFor("Username"), userField,
             labelFor("Password"), passField,
             spacer(4), error, loginBtn, spacer(4), toRegister);
@@ -100,6 +110,7 @@ public class LoginScreen {
         JLabel success = messageLabel(SUCCESS_GREEN);
 
         JButton registerBtn = bigButton("Register", SUCCESS_GREEN);
+        UI.applyButtonImage(registerBtn, GamePaths.BUTTONS_DIR + "RegisterButton.png", REGISTER_BTN_WIDTH);
         registerBtn.addActionListener(e -> {
             error.setText(" "); success.setText(" ");
             String user  = userField.getText().trim();
@@ -161,7 +172,16 @@ public class LoginScreen {
     private static final String ACCOUNTS_FILE = GamePaths.ACCOUNTS_FILE;
 
     static boolean userExists(String username) {
-        return findPasswordHash(username) != null;
+        return findAccount(username) != null;
+    }
+
+    /**
+     * The username exactly as it was registered. Logins are case-insensitive, so
+     * this keeps "test" and "Test" pointing at the same card and deck files.
+     */
+    static String savedName(String username) {
+        String[] account = findAccount(username);
+        return account != null ? account[0] : username;
     }
 
     /** Saves a new account. Returns false if the accounts file could not be written. */
@@ -176,16 +196,17 @@ public class LoginScreen {
     }
 
     static boolean authenticate(String username, String password) {
-        return hash(password).equals(findPasswordHash(username));
+        String[] account = findAccount(username);
+        return account != null && account.length == 2 && hash(password).equals(account[1]);
     }
 
-    /** Returns the saved password hash for this username (case-insensitive), or null if there is none. */
-    private static String findPasswordHash(String username) {
+    /** Returns { savedName, passwordHash } for this username (case-insensitive), or null if there is none. */
+    private static String[] findAccount(String username) {
         try (BufferedReader r = new BufferedReader(new FileReader(ACCOUNTS_FILE))) {
             String line;
             while ((line = r.readLine()) != null) {
                 String[] parts = line.split(":", 2);
-                if (parts[0].equalsIgnoreCase(username)) return parts.length == 2 ? parts[1] : "";
+                if (parts[0].equalsIgnoreCase(username)) return parts;
             }
         } catch (IOException ignored) {}
         return null;
@@ -215,7 +236,7 @@ public class LoginScreen {
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(CARD_BG);
         card.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(ACCENT, 2, true),
+                new LineBorder(INK, 3, true),
                 new EmptyBorder(30, 40, 30, 40)));
         addRows(card, rows);
 
@@ -231,7 +252,7 @@ public class LoginScreen {
     }
 
     private static JLabel heading(String text) {
-        return label(text, Font.BOLD, 26, Color.WHITE, true);
+        return label(text, Font.BOLD, 26, INK, true);
     }
 
     private static JLabel sub(String text) {
@@ -260,12 +281,12 @@ public class LoginScreen {
     }
 
     private static void style(JTextField f) {
-        f.setBackground(FIELD_BG);
-        f.setForeground(Color.WHITE);
-        f.setCaretColor(Color.WHITE);
+        f.setBackground(Color.WHITE);
+        f.setForeground(INK);
+        f.setCaretColor(INK);
         f.setFont(new Font("SansSerif", Font.PLAIN, 14));
         f.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(FIELD_BORDER, 1),
+                new LineBorder(INK, 2),
                 new EmptyBorder(6, 10, 6, 10)));
         f.setPreferredSize(new Dimension(300, 38));
         f.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
