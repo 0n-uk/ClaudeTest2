@@ -12,7 +12,7 @@ public class ChampionSelectScreen {
     private static final Color SEL_BG  = new Color(50, 60, 90);
 
     public static JPanel buildPanel(Runnable onBack, Consumer<String> onChampionSelected) {
-        Map<String, ChampionLine> lines = ChampionLine.loadAll();
+        Map<String, ChampionLine> lines = GameData.championLines();
 
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(BG);

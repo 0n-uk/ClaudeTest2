@@ -13,7 +13,7 @@ public class MatchmakingScreen {
                                     Runnable onCancel, Consumer<String> onMatchFound) {
         String username = user.getUsername();
 
-        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
+        Map<String, ChampionLine> champLines = GameData.championLines();
         ChampionLine cl = champLines.get(champLine);
         String champName = (cl != null && cl.size() > 0) ? cl.getStageByIndex(0).getName() + " line" : champLine;
 

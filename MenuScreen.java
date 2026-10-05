@@ -38,7 +38,7 @@ public class MenuScreen {
         JButton battleBtn  = imageMenuButton("Battle",     new Color(220, 80,  80),  "BattleButton.png");
 
         viewAllBtn.addActionListener(e -> {
-            List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
+            List<Card> cards = GameData.allCards();
             UI.showScreen(root, layout, frame, "viewer",
                 CardViewer.buildPanel(cards, "Card Collection", backToMenu, root, layout));
         });

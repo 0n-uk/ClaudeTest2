@@ -30,8 +30,8 @@ public class BattleScreen {
 
     public static JPanel buildPanel(User user, String battleId, Runnable onComplete) {
 
-        Map<String, Card>         cardMap    = BattleManager.buildCardMap();
-        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
+        Map<String, Card>         cardMap    = GameData.cardMap();
+        Map<String, ChampionLine> champLines = GameData.championLines();
         for (Card c : user.getOwnedCards()) cardMap.putIfAbsent(c.getId(), c);
 
         BattleState[] stRef        = { BattleState.load(battleId) };

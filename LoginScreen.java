@@ -1,8 +1,5 @@
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import javax.swing.*;
 import javax.swing.border.*;
 
@@ -73,8 +70,8 @@ public class LoginScreen {
                 error.setText("Please enter your username and password.");
                 return;
             }
-            if (authenticate(user, pass)) {
-                navigateToMenu(root, layout, frame, new User(savedName(user)));
+            if (GameData.authenticate(user, pass)) {
+                navigateToMenu(root, layout, frame, new User(GameData.savedName(user)));
             } else {
                 error.setText("Incorrect username or password.");
                 passField.setText("");
@@ -133,10 +130,10 @@ public class LoginScreen {
             if (!pass.equals(pass2)) {
                 error.setText("Passwords do not match."); return;
             }
-            if (userExists(user)) {
+            if (GameData.accountExists(user)) {
                 error.setText("Username already taken."); return;
             }
-            if (!register(user, pass)) {
+            if (!GameData.register(user, pass)) {
                 error.setText("Could not save your account. Please try again."); return;
             }
             registerBtn.setEnabled(false);
@@ -165,64 +162,6 @@ public class LoginScreen {
     private static void navigateToMenu(JPanel root, CardLayout layout, JFrame frame, User user) {
         currentUser = user;
         UI.showScreen(root, layout, frame, "menu", MenuScreen.buildMenuPanel(root, layout, frame, user));
-    }
-
-    // ── Credential storage ───────────────────────────────────────────────────
-
-    private static final String ACCOUNTS_FILE = GamePaths.ACCOUNTS_FILE;
-
-    static boolean userExists(String username) {
-        return findAccount(username) != null;
-    }
-
-    /**
-     * The username exactly as it was registered. Logins are case-insensitive, so
-     * this keeps "test" and "Test" pointing at the same card and deck files.
-     */
-    static String savedName(String username) {
-        String[] account = findAccount(username);
-        return account != null ? account[0] : username;
-    }
-
-    /** Saves a new account. Returns false if the accounts file could not be written. */
-    static boolean register(String username, String password) {
-        try (BufferedWriter w = new BufferedWriter(new FileWriter(ACCOUNTS_FILE, true))) {
-            w.write(username + ":" + hash(password));
-            w.newLine();
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    static boolean authenticate(String username, String password) {
-        String[] account = findAccount(username);
-        return account != null && account.length == 2 && hash(password).equals(account[1]);
-    }
-
-    /** Returns { savedName, passwordHash } for this username (case-insensitive), or null if there is none. */
-    private static String[] findAccount(String username) {
-        try (BufferedReader r = new BufferedReader(new FileReader(ACCOUNTS_FILE))) {
-            String line;
-            while ((line = r.readLine()) != null) {
-                String[] parts = line.split(":", 2);
-                if (parts[0].equalsIgnoreCase(username)) return parts;
-            }
-        } catch (IOException ignored) {}
-        return null;
-    }
-
-    private static String hash(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] bytes = md.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : bytes) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) {
-            // Never fall back to saving the plain password
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
     }
 
     // ── UI helpers ───────────────────────────────────────────────────────────

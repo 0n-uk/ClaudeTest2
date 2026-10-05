@@ -18,7 +18,7 @@ public class User {
     public List<Card> getOwnedCards() {
         File file = new File(CARDS_DIR + "/" + username + ".txt");
         if (!file.exists()) return new ArrayList<>();
-        return CardViewer.loadCards(file.getPath());
+        return GameData.loadCardFile(file.getPath());
     }
 
     public void addCard(Card card) {
@@ -54,7 +54,7 @@ public class User {
     public List<Card> loadDeck(String deckName) {
         File f = getDeckFile(deckName);
         if (!f.exists()) return new ArrayList<>();
-        return CardViewer.loadCards(f.getPath());
+        return GameData.loadCardFile(f.getPath());
     }
 
     public void saveDeck(String deckName, List<Card> cards) {

@@ -70,7 +70,7 @@ public class BattleManager {
     private static void createBattle(String battleId,
                                       String p1, String p1DeckName, String p1ChampLine,
                                       String p2, String p2DeckName, String p2ChampLine) {
-        Map<String, ChampionLine> champLines = ChampionLine.loadAll();
+        Map<String, ChampionLine> champLines = GameData.championLines();
 
         BattleState bs  = new BattleState();
         bs.battleId     = battleId;
@@ -110,21 +110,6 @@ public class BattleManager {
         if (stage1 == null) return;
         String[] back = isP1 ? bs.p1Back : bs.p2Back;
         back[BattleState.CHAMP_SLOT] = BattleState.makeSlot(stage1.getId(), stage1.getHp());
-    }
-
-    // ── Card map ──────────────────────────────────────────────────────────────
-
-    public static Map<String, Card> buildCardMap() {
-        Map<String, Card> map = new HashMap<>();
-        try {
-            List<Card> cards = CardViewer.loadCards(GamePaths.CARDS_FILE);
-            for (Card c : cards) map.put(c.getId(), c);
-        } catch (Exception ignored) {}
-        Map<String, ChampionLine> lines = ChampionLine.loadAll();
-        for (ChampionLine line : lines.values())
-            for (Champion c : line.getStages()) map.put(c.getId(), c);
-        map.put(AbilityResolver.SCRAP_ID, AbilityResolver.SCRAP_CARD);
-        return map;
     }
 
     // ── Heartbeat ─────────────────────────────────────────────────────────────

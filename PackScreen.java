@@ -39,7 +39,7 @@ public class PackScreen {
         timers.clear();
         wrapper.removeAll();
 
-        List<Card> all = CardViewer.loadCards(GamePaths.CARDS_FILE);
+        List<Card> all = GameData.allCards();
 
         Set<String> starterIds = new HashSet<>(Arrays.asList(
             "gb001", "hd001", "stk001", "__SCRAP__", "sb001",

@@ -1,5 +1,4 @@
 import java.awt.*;
-import java.io.*;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
@@ -9,7 +8,7 @@ public class CardViewer {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            List<Card> cards = loadCards(GamePaths.CARDS_FILE);
+            List<Card> cards = GameData.allCards();
             JFrame frame = new JFrame("Card Viewer");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(900, 650);
@@ -67,44 +66,6 @@ public class CardViewer {
         }
 
         return panel;
-    }
-
-    static List<Card> loadCards(String filename) {
-        List<Card> cards = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty()) continue;
-                Card card = parseLine(line);
-                if (card != null) cards.add(card);
-            }
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Could not load " + filename + ": " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-        }
-        return cards;
-    }
-
-    private static Card parseLine(String line) {
-        try {
-            String id      = extract(line, "id=", ",").replace("'", "");
-            String name    = extract(line, "name='", "'");
-            String type    = extract(line, "type='", "'");
-            int attack     = Integer.parseInt(extract(line, "attack=", ","));
-            int hp         = Integer.parseInt(extract(line, "hp=", ","));
-            int cost       = Integer.parseInt(extract(line, "cost=", ","));
-            String ability = extract(line, "ability='", "'");
-            return new Card(id, name, type, attack, hp, cost, ability);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String extract(String line, String after, String before) {
-        int start = line.indexOf(after) + after.length();
-        int end = line.indexOf(before, start);
-        return line.substring(start, end).trim();
     }
 
     static JPanel buildCardPanel(Card card) {
