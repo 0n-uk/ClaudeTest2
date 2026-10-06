@@ -13,12 +13,12 @@ public class CardViewer {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(900, 650);
             frame.setLocationRelativeTo(null);
-            frame.add(buildPanel(cards, "Card Collection", null, null, null));
+            frame.add(buildPanel(cards, "Card Collection", null));
             frame.setVisible(true);
         });
     }
 
-    static JPanel buildPanel(List<Card> cards, String customTitle, Runnable onBack, JPanel root, CardLayout layout) {
+    static JPanel buildPanel(List<Card> cards, String customTitle, Runnable onBack) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(30, 30, 40));
 

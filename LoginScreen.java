@@ -1,14 +1,13 @@
 import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
 public class LoginScreen {
 
     // White, hand-drawn style to match the menu and the button images
-    private static final Color BG            = Color.WHITE;
-    private static final Color CARD_BG       = Color.WHITE;
-    private static final Color INK           = new Color(30, 30, 30);
+    private static final Color BG            = UI.LIGHT_BG;
+    private static final Color CARD_BG       = UI.LIGHT_BG;
+    private static final Color INK           = UI.INK;
     private static final Color ACCENT        = new Color(100, 140, 255);
     private static final Color SUCCESS_GREEN = new Color(30, 150, 70);
     private static final Color ERROR_RED     = new Color(200, 40, 40);
@@ -20,43 +19,15 @@ public class LoginScreen {
     private static final int REGISTER_BTN_WIDTH = 220;
     private static final int HEADING_IMG_WIDTH  = 280;
 
-    /** Set when user logs in; used by window-close handler to clean up state. */
-    static volatile User currentUser = null;
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame(UI.GAME_TITLE);
-            frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-            frame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    if (currentUser != null) {
-                        BattleManager.cancelQueue(currentUser.getUsername());
-                        BattleManager.removeHeartbeat(currentUser.getUsername());
-                    }
-                    System.exit(0);
-                }
-            });
-            frame.setSize(900, 650);
-            frame.setLocationRelativeTo(null);
-
-            CardLayout layout = new CardLayout();
-            JPanel root = new JPanel(layout);
-            root.setBackground(BG);
-
-            root.add(buildLoginPanel(root, layout, frame),    "login");
-            root.add(buildRegisterPanel(root, layout, frame), "register");
-            layout.show(root, "login");
-
-            frame.add(root);
-            frame.setVisible(true);
-            MusicPlayer.play();
-        });
+    /** Adds the Log In and Register forms to the game window. */
+    static void addTo(GameWindow win) {
+        win.show(GameWindow.REGISTER, buildRegisterPanel(win));
+        win.show(GameWindow.LOGIN,    buildLoginPanel(win));
     }
 
     // ── Login panel ──────────────────────────────────────────────────────────
 
-    static JPanel buildLoginPanel(JPanel root, CardLayout layout, JFrame frame) {
+    private static JPanel buildLoginPanel(GameWindow win) {
         JTextField     userField = inputField();
         JPasswordField passField = passField();
         JLabel error = messageLabel(ERROR_RED);
@@ -70,8 +41,9 @@ public class LoginScreen {
                 error.setText("Please enter your username and password.");
                 return;
             }
-            if (GameData.authenticate(user, pass)) {
-                navigateToMenu(root, layout, frame, new User(GameData.savedName(user)));
+            String savedName = GameData.login(user, pass);
+            if (savedName != null) {
+                win.logIn(new User(savedName));
             } else {
                 error.setText("Incorrect username or password.");
                 passField.setText("");
@@ -82,7 +54,7 @@ public class LoginScreen {
         JButton toRegister = linkButton("Don't have an account? Register");
         toRegister.addActionListener(e -> {
             clearForm(new JLabel[]{ error }, userField, passField);
-            layout.show(root, "register");
+            win.show(GameWindow.REGISTER);
         });
 
         // The drawn "Welcome! Sign in plz" heading replaces both text lines when the image is there
@@ -99,7 +71,7 @@ public class LoginScreen {
 
     // ── Register panel ───────────────────────────────────────────────────────
 
-    static JPanel buildRegisterPanel(JPanel root, CardLayout layout, JFrame frame) {
+    private static JPanel buildRegisterPanel(GameWindow win) {
         JTextField     userField  = inputField();
         JPasswordField passField  = passField();
         JPasswordField pass2Field = passField();
@@ -114,31 +86,16 @@ public class LoginScreen {
             String pass  = new String(passField.getPassword());
             String pass2 = new String(pass2Field.getPassword());
 
-            if (user.isEmpty() || pass.isEmpty()) {
-                error.setText("Username and password cannot be empty."); return;
-            }
-            if (user.length() < 3) {
-                error.setText("Username must be at least 3 characters."); return;
-            }
-            // ':' separates the name from the password in the accounts file
-            if (user.contains(":") || user.matches(".*\\s.*")) {
-                error.setText("Username cannot contain spaces or ':'."); return;
-            }
-            if (pass.length() < 4) {
-                error.setText("Password must be at least 4 characters."); return;
-            }
-            if (!pass.equals(pass2)) {
-                error.setText("Passwords do not match."); return;
-            }
-            if (GameData.accountExists(user)) {
-                error.setText("Username already taken."); return;
+            String problem = GameData.checkNewAccount(user, pass, pass2);
+            if (problem != null) {
+                error.setText(problem); return;
             }
             if (!GameData.register(user, pass)) {
                 error.setText("Could not save your account. Please try again."); return;
             }
             registerBtn.setEnabled(false);
             success.setText("Account created! Logging you in...");
-            Timer t = new Timer(1000, ev -> navigateToMenu(root, layout, frame, new User(user)));
+            Timer t = new Timer(1000, ev -> win.logIn(new User(user)));
             t.setRepeats(false); t.start();
         });
         submitOnEnter(registerBtn, userField, passField, pass2Field);
@@ -146,7 +103,7 @@ public class LoginScreen {
         JButton toLogin = linkButton("Already have an account? Log In");
         toLogin.addActionListener(e -> {
             clearForm(new JLabel[]{ error, success }, userField, passField, pass2Field);
-            layout.show(root, "login");
+            win.show(GameWindow.LOGIN);
         });
 
         return centeredForm(
@@ -155,13 +112,6 @@ public class LoginScreen {
             labelFor("Password"),         passField,
             labelFor("Confirm Password"), pass2Field,
             spacer(4), error, success, registerBtn, spacer(4), toLogin);
-    }
-
-    // ── Navigation ───────────────────────────────────────────────────────────
-
-    private static void navigateToMenu(JPanel root, CardLayout layout, JFrame frame, User user) {
-        currentUser = user;
-        UI.showScreen(root, layout, frame, "menu", MenuScreen.buildMenuPanel(root, layout, frame, user));
     }
 
     // ── UI helpers ───────────────────────────────────────────────────────────

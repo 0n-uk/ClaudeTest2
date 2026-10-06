@@ -2,7 +2,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
-import javax.swing.JOptionPane;
 
 /**
  * Reads and writes the game's shared text files: the card list, the champion
@@ -42,15 +41,17 @@ public class GameData {
         List<Card> result = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
+            int lineNo = 0;
             while ((line = reader.readLine()) != null) {
+                lineNo++;
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 Card card = parseCard(line);
                 if (card != null) result.add(card);
+                else badLine(filename, lineNo, line);
             }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Could not load " + filename + ": " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            System.err.println("Could not load " + filename + ": " + e.getMessage());
         }
         return result;
     }
@@ -82,14 +83,19 @@ public class GameData {
         Map<String, List<Champion>> buckets = new LinkedHashMap<>();
         try (BufferedReader r = new BufferedReader(new FileReader(filename))) {
             String line;
+            int lineNo = 0;
             while ((line = r.readLine()) != null) {
+                lineNo++;
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 Champion c = parseChampion(line);
                 if (c != null)
                     buckets.computeIfAbsent(c.getLineId(), k -> new ArrayList<>()).add(c);
+                else badLine(filename, lineNo, line);
             }
-        } catch (IOException ignored) {}
+        } catch (IOException e) {
+            System.err.println("Could not load " + filename + ": " + e.getMessage());
+        }
 
         Map<String, ChampionLine> result = new LinkedHashMap<>();
         for (Map.Entry<String, List<Champion>> e : buckets.entrySet()) {
@@ -117,6 +123,11 @@ public class GameData {
     }
 
     // ── Line parsing helpers ─────────────────────────────────────────────────
+
+    /** Reports a line that couldn't be read, so a typo in a data file is easy to find. */
+    private static void badLine(String filename, int lineNo, String line) {
+        System.err.println("Skipping unreadable line " + lineNo + " in " + filename + ": " + line);
+    }
 
     /** The text between {@code after} and the next {@code before}; "" if {@code after} is missing. */
     private static String field(String line, String after, String before) {
@@ -149,17 +160,30 @@ public class GameData {
     }
 
     /**
-     * The username exactly as it was registered. Logins are case-insensitive, so
-     * this keeps "test" and "Test" pointing at the same card and deck files.
+     * Checks a username and password. Returns the username exactly as it was
+     * registered, or null if they don't match. Logins are case-insensitive, so
+     * the registered spelling keeps "test" and "Test" on the same card and deck files.
      */
-    static String savedName(String username) {
+    static String login(String username, String password) {
         String[] account = findAccount(username);
-        return account != null ? account[0] : username;
+        boolean ok = account != null && account.length == 2 && hash(password).equals(account[1]);
+        return ok ? account[0] : null;
     }
 
-    static boolean authenticate(String username, String password) {
-        String[] account = findAccount(username);
-        return account != null && account.length == 2 && hash(password).equals(account[1]);
+    /**
+     * Checks a new account against the rules. Returns a message to show the
+     * player, or null if the account can be created.
+     */
+    static String checkNewAccount(String username, String password, String confirm) {
+        if (username.isEmpty() || password.isEmpty()) return "Username and password cannot be empty.";
+        if (username.length() < 3)                     return "Username must be at least 3 characters.";
+        // ':' separates the name from the password in the accounts file
+        if (username.contains(":") || username.matches(".*\\s.*"))
+                                                       return "Username cannot contain spaces or ':'.";
+        if (password.length() < 4)                     return "Password must be at least 4 characters.";
+        if (!password.equals(confirm))                 return "Passwords do not match.";
+        if (accountExists(username))                   return "Username already taken.";
+        return null;
     }
 
     /** Saves a new account. Returns false if the accounts file could not be written. */

@@ -4,14 +4,14 @@ import java.util.List;
 
 public class MenuScreen {
 
-    private static final Color BG         = Color.WHITE;
+    private static final Color BG         = UI.LIGHT_BG;
     private static final Color TITLE_FG   = new Color(30, 30, 60);
     private static final Color WELCOME_FG = new Color(80, 80, 100);
 
     private static final int TITLE_WIDTH  = 400;
     private static final int BUTTON_WIDTH = 300;
 
-    static JPanel buildMenuPanel(JPanel root, CardLayout layout, JFrame frame, User user) {
+    static JPanel buildMenuPanel(GameWindow win, User user) {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(BG);
 
@@ -29,7 +29,7 @@ public class MenuScreen {
         welcome.setFont(new Font("SansSerif", Font.ITALIC, 16));
         welcome.setForeground(WELCOME_FG);
 
-        Runnable backToMenu = () -> layout.show(root, "menu");
+        Runnable backToMenu = win.backTo(GameWindow.MENU);
 
         JButton viewAllBtn = imageMenuButton("View Cards", new Color(80, 180, 220),  "ViewCardsButton.png");
         JButton viewOwnBtn = imageMenuButton("View Owned", new Color(220, 160, 80),  "ViewOwnedButton.png");
@@ -39,23 +39,22 @@ public class MenuScreen {
 
         viewAllBtn.addActionListener(e -> {
             List<Card> cards = GameData.allCards();
-            UI.showScreen(root, layout, frame, "viewer",
-                CardViewer.buildPanel(cards, "Card Collection", backToMenu, root, layout));
+            win.show(GameWindow.VIEWER, CardViewer.buildPanel(cards, "Card Collection", backToMenu));
         });
 
         viewOwnBtn.addActionListener(e -> {
             List<Card> owned = user.getOwnedCards();
-            UI.showScreen(root, layout, frame, "owned",
-                CardViewer.buildPanel(owned, owned.isEmpty() ? null : "My Collection", backToMenu, root, layout));
+            win.show(GameWindow.OWNED,
+                CardViewer.buildPanel(owned, owned.isEmpty() ? null : "My Collection", backToMenu));
         });
 
         packsBtn.addActionListener(e ->
-            UI.showScreen(root, layout, frame, "packs", PackScreen.buildPanel(user, backToMenu)));
+            win.show(GameWindow.PACKS, PackScreen.buildPanel(user, backToMenu)));
 
         deckBtn.addActionListener(e ->
-            UI.showScreen(root, layout, frame, "deck", DeckBuilderScreen.buildPanel(user, backToMenu)));
+            win.show(GameWindow.DECK, DeckBuilderScreen.buildPanel(user, backToMenu)));
 
-        battleBtn.addActionListener(e -> openDeckSelect(root, layout, frame, user));
+        battleBtn.addActionListener(e -> openDeckSelect(win, user));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -75,36 +74,34 @@ public class MenuScreen {
 
     // ── Battle flow: deck select → champion select → matchmaking → battle ──
 
-    private static void openDeckSelect(JPanel root, CardLayout layout, JFrame frame, User user) {
-        UI.showScreen(root, layout, frame, "deckselect", BattleDeckSelectScreen.buildPanel(
+    private static void openDeckSelect(GameWindow win, User user) {
+        win.show(GameWindow.DECK_SELECT, BattleDeckSelectScreen.buildPanel(
             user,
-            () -> layout.show(root, "menu"),
-            deckName -> openChampSelect(root, layout, frame, user, deckName)));
+            win.backTo(GameWindow.MENU),
+            deckName -> openChampSelect(win, user, deckName)));
     }
 
-    private static void openChampSelect(JPanel root, CardLayout layout, JFrame frame, User user, String deckName) {
-        UI.showScreen(root, layout, frame, "champselect", ChampionSelectScreen.buildPanel(
-            () -> layout.show(root, "deckselect"),
-            champLine -> openMatchmaking(root, layout, frame, user, deckName, champLine)));
+    private static void openChampSelect(GameWindow win, User user, String deckName) {
+        win.show(GameWindow.CHAMP_SELECT, ChampionSelectScreen.buildPanel(
+            win.backTo(GameWindow.DECK_SELECT),
+            champLine -> openMatchmaking(win, user, deckName, champLine)));
     }
 
-    private static void openMatchmaking(JPanel root, CardLayout layout, JFrame frame, User user,
-                                        String deckName, String champLine) {
+    private static void openMatchmaking(GameWindow win, User user, String deckName, String champLine) {
         JPanel matchmaking = MatchmakingScreen.buildPanel(
             user, deckName, champLine,
-            backToMenuWithMusic(root, layout),
-            battleId -> openBattle(root, layout, frame, user, battleId));
+            backToMenuWithMusic(win),
+            battleId -> openBattle(win, user, battleId));
         MusicPlayer.stop();
-        UI.showScreen(root, layout, frame, "matchmaking", matchmaking);
+        win.show(GameWindow.MATCHMAKING, matchmaking);
     }
 
-    private static void openBattle(JPanel root, CardLayout layout, JFrame frame, User user, String battleId) {
-        UI.showScreen(root, layout, frame, "battle",
-            BattleScreen.buildPanel(user, battleId, backToMenuWithMusic(root, layout)));
+    private static void openBattle(GameWindow win, User user, String battleId) {
+        win.show(GameWindow.BATTLE, BattleScreen.buildPanel(user, battleId, backToMenuWithMusic(win)));
     }
 
-    private static Runnable backToMenuWithMusic(JPanel root, CardLayout layout) {
-        return () -> { MusicPlayer.play(); layout.show(root, "menu"); };
+    private static Runnable backToMenuWithMusic(GameWindow win) {
+        return () -> { MusicPlayer.playMenu(); win.show(GameWindow.MENU); };
     }
 
     /** A menu button that shows an image from the buttons folder, or plain text if the image is missing. */
