@@ -41,8 +41,9 @@ public class LoginScreen {
                 error.setText("Please enter your username and password.");
                 return;
             }
-            if (GameData.authenticate(user, pass)) {
-                win.logIn(new User(GameData.savedName(user)));
+            String savedName = GameData.login(user, pass);
+            if (savedName != null) {
+                win.logIn(new User(savedName));
             } else {
                 error.setText("Incorrect username or password.");
                 passField.setText("");
@@ -85,24 +86,9 @@ public class LoginScreen {
             String pass  = new String(passField.getPassword());
             String pass2 = new String(pass2Field.getPassword());
 
-            if (user.isEmpty() || pass.isEmpty()) {
-                error.setText("Username and password cannot be empty."); return;
-            }
-            if (user.length() < 3) {
-                error.setText("Username must be at least 3 characters."); return;
-            }
-            // ':' separates the name from the password in the accounts file
-            if (user.contains(":") || user.matches(".*\\s.*")) {
-                error.setText("Username cannot contain spaces or ':'."); return;
-            }
-            if (pass.length() < 4) {
-                error.setText("Password must be at least 4 characters."); return;
-            }
-            if (!pass.equals(pass2)) {
-                error.setText("Passwords do not match."); return;
-            }
-            if (GameData.accountExists(user)) {
-                error.setText("Username already taken."); return;
+            String problem = GameData.checkNewAccount(user, pass, pass2);
+            if (problem != null) {
+                error.setText(problem); return;
             }
             if (!GameData.register(user, pass)) {
                 error.setText("Could not save your account. Please try again."); return;
