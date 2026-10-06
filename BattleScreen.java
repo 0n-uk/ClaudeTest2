@@ -1,8 +1,6 @@
 import java.awt.*;
-import java.io.File;
 import java.util.*;
 import java.util.List;
-import javax.sound.sampled.*;
 import javax.swing.*;
 import javax.swing.border.*;
 
@@ -23,8 +21,6 @@ public class BattleScreen {
     private static final Font  FONT_BOLD_10   = new Font("SansSerif", Font.BOLD,   10);
     private static final Font  FONT_ITALIC_8  = new Font("SansSerif", Font.ITALIC,  8);
     private static final Font  FONT_ITALIC_10 = new Font("SansSerif", Font.ITALIC, 10);
-
-    private static Clip battleMusic;
 
     // ── Entry point ───────────────────────────────────────────────────────────
 
@@ -52,16 +48,7 @@ public class BattleScreen {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(BG);
 
-        // Load and play battle music
-        try {
-            File audioFile = new File(GamePaths.BATTLE_MUSIC);
-            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioFile);
-            battleMusic = AudioSystem.getClip();
-            battleMusic.open(audioInputStream);
-            battleMusic.loop(Clip.LOOP_CONTINUOUSLY);
-        } catch (Exception e) {
-            System.err.println("Error loading battle music: " + e.getMessage());
-        }
+        MusicPlayer.playBattle();
 
         javax.swing.Timer[] timerRef   = { null };
         javax.swing.Timer[] hbTimerRef = { null };
@@ -100,11 +87,7 @@ public class BattleScreen {
             if ("finished".equals(st.phase)) {
                 if (timerRef[0]  != null) timerRef[0].stop();
                 if (hbTimerRef[0] != null) { hbTimerRef[0].stop(); BattleManager.removeHeartbeat(user.getUsername()); }
-                // Stop battle music
-                if (battleMusic != null) {
-                    battleMusic.stop();
-                    battleMusic.close();
-                }
+                MusicPlayer.stop();
                 wrapper.add(resultPanel(user.getUsername().equals(st.winner), onComplete),
                             BorderLayout.CENTER);
                 wrapper.revalidate(); wrapper.repaint();

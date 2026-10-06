@@ -104,7 +104,7 @@ public class MenuScreen {
     }
 
     private static Runnable backToMenuWithMusic(JPanel root, CardLayout layout) {
-        return () -> { MusicPlayer.play(); layout.show(root, "menu"); };
+        return () -> { MusicPlayer.playMenu(); layout.show(root, "menu"); };
     }
 
     /** A menu button that shows an image from the buttons folder, or plain text if the image is missing. */
