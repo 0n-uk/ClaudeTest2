@@ -47,7 +47,7 @@ public class BattleManager {
         for (File f : files) {
             String battleId = f.getName().replaceAll("\\.txt$", "");
             BattleState bs = BattleState.load(battleId);
-            if (bs == null) continue;
+            if (bs == null || isSolo(bs)) continue;
             if ("active".equals(bs.phase)
                     && (username.equals(bs.player1) || username.equals(bs.player2))) {
                 return battleId;
@@ -70,6 +70,17 @@ public class BattleManager {
     private static void createBattle(String battleId,
                                       String p1, String p1DeckName, String p1ChampLine,
                                       String p2, String p2DeckName, String p2ChampLine) {
+        setUpBattle(battleId, p1, cardIds(new User(p1).loadDeck(p1DeckName)), p1ChampLine,
+                              p2, cardIds(new User(p2).loadDeck(p2DeckName)), p2ChampLine).save();
+    }
+
+    /**
+     * A new battle, not yet saved: each deck is shuffled and deals 4 cards, each stage-1
+     * champion goes in the middle of its back row, and a random player goes first.
+     */
+    static BattleState setUpBattle(String battleId,
+                                   String p1, List<String> p1Deck, String p1ChampLine,
+                                   String p2, List<String> p2Deck, String p2ChampLine) {
         Map<String, ChampionLine> champLines = GameData.championLines();
 
         BattleState bs  = new BattleState();
@@ -88,18 +99,55 @@ public class BattleManager {
 
         placeChampion(bs, true,  champLines, p1ChampLine);
         placeChampion(bs, false, champLines, p2ChampLine);
+        deal(p1Deck, bs.p1Hand, bs.p1Deck);
+        deal(p2Deck, bs.p2Hand, bs.p2Deck);
+        return bs;
+    }
 
-        List<Card> p1Cards = new User(p1).loadDeck(p1DeckName);
-        Collections.shuffle(p1Cards);
-        for (int i = 0; i < Math.min(4, p1Cards.size()); i++) bs.p1Hand.add(p1Cards.get(i).getId());
-        for (int i = 4; i < p1Cards.size(); i++)              bs.p1Deck.add(p1Cards.get(i).getId());
+    /** Shuffles a deck, puts the first 4 cards in the hand and the rest in the draw pile. */
+    private static void deal(List<String> cards, List<String> hand, List<String> drawPile) {
+        List<String> shuffled = new ArrayList<>(cards);
+        Collections.shuffle(shuffled);
+        for (int i = 0; i < shuffled.size(); i++) (i < 4 ? hand : drawPile).add(shuffled.get(i));
+    }
 
-        List<Card> p2Cards = new User(p2).loadDeck(p2DeckName);
-        Collections.shuffle(p2Cards);
-        for (int i = 0; i < Math.min(4, p2Cards.size()); i++) bs.p2Hand.add(p2Cards.get(i).getId());
-        for (int i = 4; i < p2Cards.size(); i++)              bs.p2Deck.add(p2Cards.get(i).getId());
+    private static List<String> cardIds(List<Card> cards) {
+        List<String> ids = new ArrayList<>();
+        for (Card c : cards) ids.add(c.getId());
+        return ids;
+    }
 
-        bs.save();
+    // ── Solo battles against the bot ──────────────────────────────────────────
+
+    /**
+     * Starts a battle against the bot and returns its id. Solo battles live in the same folder as
+     * online ones so the battle screen can load them, but matchmaking skips them. Any solo battle
+     * this player left unfinished (for example by closing the window) is removed first.
+     */
+    static String createSoloBattle(String username, String deckName, String champLine) {
+        File[] old = new File(BattleState.ACTIVE_DIR).listFiles((d, n) -> n.endsWith(".txt"));
+        if (old != null) {
+            for (File f : old) {
+                BattleState bs = BattleState.load(f.getName().replaceAll("\\.txt$", ""));
+                if (bs != null && isSolo(bs) && username.equals(bs.player1)) f.delete();
+            }
+        }
+        String battleId = "solo_" + username + "_" + System.currentTimeMillis();
+        setUpBattle(battleId,
+                    username,       cardIds(new User(username).loadDeck(deckName)), champLine,
+                    BotPlayer.NAME, BotPlayer.buildDeck(),                         BotPlayer.pickChampionLine())
+            .save();
+        return battleId;
+    }
+
+    /** A battle against the bot. The bot's name has a space, which real usernames can't. */
+    static boolean isSolo(BattleState bs) {
+        return BotPlayer.NAME.equals(bs.player1) || BotPlayer.NAME.equals(bs.player2);
+    }
+
+    /** Deletes a finished solo battle's file. */
+    static void endSoloBattle(String battleId) {
+        new File(BattleState.ACTIVE_DIR + "/" + battleId + ".txt").delete();
     }
 
     private static void placeChampion(BattleState bs, boolean isP1,

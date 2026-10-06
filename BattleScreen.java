@@ -35,6 +35,7 @@ public class BattleScreen {
     private static final int SIDE_W   = 240;   // left panel when shown
     private static final int BOTTOM_H = 140;   // your hand, info and buttons
     private static final int INFO_W   = 150;   // your info on the left and the buttons on the right, so the hand is centred
+    private static final int BOT_PAUSE_MS = 800;   // Solo Battle: the wait between the bot's moves
 
     // Left panel views
     private static final String LOG   = "Log";
@@ -75,6 +76,7 @@ public class BattleScreen {
         final User     user;
         final String   battleId;
         final Runnable onComplete;
+        final boolean  solo;               // against the bot, not another player
         final Map<String, Card>         cardMap    = GameData.cardMap();
         final Map<String, ChampionLine> champLines = GameData.championLines();
 
@@ -82,7 +84,8 @@ public class BattleScreen {
         final JTextArea logArea = new JTextArea();
         JScrollPane     logScroll;
         String          lastLogged = "";
-        javax.swing.Timer pollTimer, heartbeatTimer;
+        javax.swing.Timer pollTimer, heartbeatTimer, botTimer;
+        int    botMoves;                   // moves the bot has made this turn
 
         BattleState st;
         String      lastFileText;      // battle file as last read; null forces a reload on the next tick
@@ -91,7 +94,6 @@ public class BattleScreen {
         int     selHand = -1;          // index in hand of the card being placed
         String  selField;              // posKey of the card about to attack or use its ability
         String  abilitySource;         // posKey of a card waiting for its ability target
-        String  abilityTgtType;        // card type that ability must target (null = any)
         int     abilityChoice;         // Upgrade Bot: 0 = ATK, 1 = HP
         boolean bypass;                // T3's Bypass is switched on
         String  msg = "";
@@ -106,9 +108,10 @@ public class BattleScreen {
         String copiedCard;             // card id whose ability Echo or Mimic is copying
         final List<String> scrapSelected = new ArrayList<>();
 
-        BattleView(User user, String battleId, Runnable onComplete) {
+        BattleView(User user, String battleId, boolean solo, Runnable onComplete) {
             this.user = user;
             this.battleId = battleId;
+            this.solo = solo;
             this.onComplete = onComplete;
         }
 
@@ -118,7 +121,6 @@ public class BattleScreen {
 
         void clearAbilityMode() {
             abilitySource  = null;
-            abilityTgtType = null;
             step           = null;
             stepCard       = null;
             copiedCard     = null;
@@ -157,8 +159,9 @@ public class BattleScreen {
 
     // ── Entry point ───────────────────────────────────────────────────────────
 
-    public static JPanel buildPanel(User user, String battleId, Runnable onComplete) {
-        BattleView v = new BattleView(user, battleId, onComplete);
+    /** The battle screen for an online battle, or for a Solo Battle against the bot when solo is true. */
+    public static JPanel buildPanel(User user, String battleId, boolean solo, Runnable onComplete) {
+        BattleView v = new BattleView(user, battleId, solo, onComplete);
         for (Card c : user.getOwnedCards()) v.cardMap.putIfAbsent(c.getId(), c);
         v.st = BattleState.load(battleId);
         v.lastFileText = BattleState.readRaw(battleId);
@@ -167,10 +170,16 @@ public class BattleScreen {
 
         MusicPlayer.playBattle();
 
-        // Heartbeat: tell the opponent we are still here
-        BattleManager.writeHeartbeat(user.getUsername());
-        v.heartbeatTimer = new javax.swing.Timer(2000, e -> BattleManager.writeHeartbeat(user.getUsername()));
-        v.heartbeatTimer.start();
+        if (solo) {
+            // The bot plays its turn one move at a time
+            v.botTimer = new javax.swing.Timer(BOT_PAUSE_MS, e -> botMove(v));
+            v.botTimer.start();
+        } else {
+            // Heartbeat: tell the opponent we are still here
+            BattleManager.writeHeartbeat(user.getUsername());
+            v.heartbeatTimer = new javax.swing.Timer(2000, e -> BattleManager.writeHeartbeat(user.getUsername()));
+            v.heartbeatTimer.start();
+        }
 
         v.pollTimer = new javax.swing.Timer(600, e -> poll(v));
         v.pollTimer.start();
@@ -181,7 +190,7 @@ public class BattleScreen {
 
     /** Every 600 ms: check the opponent is still connected, and redraw only if the battle file changed. */
     private static void poll(BattleView v) {
-        if (v.st != null && "active".equals(v.st.phase)) {
+        if (!v.solo && v.st != null && "active".equals(v.st.phase)) {
             String oppName = v.st.playerName(!v.amP1());
             if (!BattleManager.isAlive(oppName)) {
                 BattleManager.forfeitBattle(v.battleId, oppName);
@@ -195,6 +204,29 @@ public class BattleScreen {
         if (fresh != null) v.st = fresh;
         v.lastFileText = text;
         rebuild(v);
+    }
+
+    /**
+     * Solo Battle: on the bot's turn, each tick makes one bot move. When the bot has nothing
+     * useful left to do, a move ends its turn, or it hits its move limit, the turn passes back.
+     */
+    private static void botMove(BattleView v) {
+        BattleState st = v.st;
+        if (st == null || !"active".equals(st.phase) || v.myTurn()) return;
+        boolean botIsP1 = !v.amP1();
+
+        BotPlayer.Move move = v.botMoves < BotPlayer.MAX_MOVES_PER_TURN
+                ? BotPlayer.play(st, v.cardMap, v.champLines, botIsP1) : null;
+        v.botMoves++;
+        String log = move != null ? BattleRules.join(BotPlayer.NAME + " " + move.text + ".", move.outcome.log)
+                                  : BotPlayer.NAME + " ended its turn.";
+        if ((move == null || move.outcome.endsTurn) && "active".equals(st.phase)) {
+            log = v.rules().endTurn(botIsP1, log);
+            v.botMoves = 0;
+        }
+        v.msg = log;
+        st.save();
+        v.refresh();
     }
 
     private static JScrollPane battleLog(JTextArea logArea) {
@@ -225,8 +257,13 @@ public class BattleScreen {
 
         if ("finished".equals(st.phase)) {
             v.pollTimer.stop();
-            v.heartbeatTimer.stop();
-            BattleManager.removeHeartbeat(v.user.getUsername());
+            if (v.solo) {
+                v.botTimer.stop();
+                BattleManager.endSoloBattle(v.battleId);
+            } else {
+                v.heartbeatTimer.stop();
+                BattleManager.removeHeartbeat(v.user.getUsername());
+            }
             MusicPlayer.stop();
             wrapper.add(resultPanel(v.user.getUsername().equals(st.winner), v.onComplete), BorderLayout.CENTER);
             wrapper.revalidate();
@@ -515,7 +552,7 @@ public class BattleScreen {
         if (!v.myTurn()) return posKey.equals(v.selField) ? SlotMode.SELECTED : SlotMode.NONE;
 
         if (v.step != null) {
-            if (empty) return SlotMode.NONE;
+            if (empty && v.step != Step.COPY_TARGET_SELECT) return SlotMode.NONE;
             switch (v.step) {
                 case SCRAP_SELECT:
                     if (!mine || !AbilityResolver.SCRAP_ID.equals(cardId)) return SlotMode.NONE;
@@ -527,49 +564,24 @@ public class BattleScreen {
                 case MIMIC_SELECT:
                     return !mine && BattleRules.isCopyable(cardId) ? SlotMode.MIMIC : SlotMode.NONE;
                 case COPY_TARGET_SELECT:
-                    boolean enemy = "enemy".equals(AbilityResolver.TARGET_SIDE.get(v.copiedCard));
-                    return canAbilityTarget(st, card, mine, enemy, AbilityResolver.TARGET_TYPE.get(v.copiedCard),
-                                            fieldIsP1, isFront, idx) ? SlotMode.COPY : SlotMode.NONE;
+                    return v.rules().canAbilityTarget(v.copiedCard, v.amP1(), fieldIsP1, isFront, idx)
+                           ? SlotMode.COPY : SlotMode.NONE;
             }
         }
 
         if (v.abilitySource != null) {
-            String srcId = st.cardIdAt(v.abilitySource);
-            boolean ok = AbilityResolver.TARGETS_EMPTY_SLOT.contains(srcId)
-                    ? empty && !mine
-                    : canAbilityTarget(st, card, mine, "enemy".equals(AbilityResolver.TARGET_SIDE.get(srcId)),
-                                       v.abilityTgtType, fieldIsP1, isFront, idx);
+            boolean ok = v.rules().canAbilityTarget(st.cardIdAt(v.abilitySource), v.amP1(), fieldIsP1, isFront, idx);
             return ok ? SlotMode.ABILITY : SlotMode.NONE;
         }
 
         if (mine) {
             if (empty) return v.selHand >= 0 ? SlotMode.PLACE : SlotMode.NONE;
             if (posKey.equals(v.selField)) return SlotMode.SELECTED;
-            boolean canSelect = st.hasAction(fieldIsP1, isFront, idx) && !st.isFrozen(posKey) && v.selHand < 0;
-            return canSelect ? SlotMode.SELECT : SlotMode.NONE;
+            return v.rules().canAct(posKey) && v.selHand < 0 ? SlotMode.SELECT : SlotMode.NONE;
         }
 
         if (empty || v.selField == null) return SlotMode.NONE;
-        String atkId = st.cardIdAt(v.selField);
-        // Bat Eye: cannot be targeted by enemy frontline cards
-        if (CardIds.BAT_EYE.equals(cardId) && BattleState.posKeyIsFront(v.selField)) return SlotMode.NONE;
-        boolean ok;
-        if (CardIds.CATAPULT.equals(atkId))
-            ok = !isFront && st.isTargetableBypass(fieldIsP1, isFront, idx);   // backline only, over the frontline
-        else if (v.bypass || CardIds.DREAM_WANDERER.equals(atkId))
-            ok = st.isTargetableBypass(fieldIsP1, isFront, idx);               // may reach the backline
-        else
-            ok = st.isTargetable(fieldIsP1, isFront, idx);
-        return ok ? SlotMode.ATTACK : SlotMode.NONE;
-    }
-
-    /** Whether an ability (own or copied) may target this card. */
-    private static boolean canAbilityTarget(BattleState st, Card card, boolean mine, boolean targetsEnemy,
-                                            String requiredType, boolean fieldIsP1, boolean isFront, int idx) {
-        if (card == null || mine == targetsEnemy) return false;
-        if (!mine && AbilityResolver.isImmuneToAbilities(fieldIsP1, st)) return false;   // Sovereign
-        if (!mine && !isFront && st.isShieldedByGreatEnt(fieldIsP1, idx)) return false;
-        return requiredType == null || requiredType.equals(card.getType().toLowerCase());
+        return v.rules().canAttack(v.selField, fieldIsP1, isFront, idx, v.bypass) ? SlotMode.ATTACK : SlotMode.NONE;
     }
 
     private static void onSlotClick(BattleView v, SlotMode mode, boolean fieldIsP1, boolean isFront, int idx,
@@ -642,7 +654,8 @@ public class BattleScreen {
         p.setPreferredSize(new Dimension(0, 46));
 
         boolean myTurn = v.myTurn();
-        p.add(lbl(myTurn ? "YOUR TURN" : "Opponent's turn", font(Font.BOLD, 14),
+        String theirTurn = v.solo ? BotPlayer.NAME + "'s turn" : "Opponent's turn";
+        p.add(lbl(myTurn ? "YOUR TURN" : theirTurn, font(Font.BOLD, 14),
                   myTurn ? MY_NAME : OPP_NAME), BorderLayout.WEST);
         JLabel msg = lbl(v.msg, font(Font.ITALIC, 12), MSG_CLR);
         msg.setHorizontalAlignment(SwingConstants.CENTER);
@@ -883,7 +896,6 @@ public class BattleScreen {
                 v.abilityChoice = choice;
             }
             v.abilitySource  = srcKey;
-            v.abilityTgtType = AbilityResolver.TARGET_TYPE.get(srcId);
             v.selField       = null;
             v.msg = "Select a target for " + src.getName() + "'s ability";
             v.refresh();

@@ -36,6 +36,52 @@ class BattleRules {
         this.champLines = champLines;
     }
 
+    // ── Which moves are allowed ──────────────────────────────────────────────
+    // The battle screen and the bot both ask these, so they follow the same rules.
+
+    /** Whether the card at key can attack or use its ability now: it is there, has an action left and isn't frozen. */
+    boolean canAct(String key) {
+        return st.cardIdAt(key) != null
+            && st.hasAction(BattleState.posKeyIsP1(key), BattleState.posKeyIsFront(key), BattleState.posKeyIdx(key))
+            && !st.isFrozen(key);
+    }
+
+    /**
+     * Whether the card at atkKey may attack the enemy card in the target slot. Bat Eye can't be hit
+     * from the frontline, Catapult only hits the backline, and Bypass or Dream Wanderer reach past
+     * the frontline.
+     */
+    boolean canAttack(String atkKey, boolean tgtIsP1, boolean tgtFront, int tgtIdx, boolean bypass) {
+        String atkId = st.cardIdAt(atkKey);
+        String tgtId = st.cardIdAt(BattleState.posKey(tgtIsP1, tgtFront, tgtIdx));
+        if (atkId == null || tgtId == null || tgtIsP1 == BattleState.posKeyIsP1(atkKey)) return false;
+        if (CardIds.BAT_EYE.equals(tgtId) && BattleState.posKeyIsFront(atkKey)) return false;
+        if (CardIds.CATAPULT.equals(atkId))
+            return !tgtFront && st.isTargetableBypass(tgtIsP1, tgtFront, tgtIdx);
+        if (bypass || CardIds.DREAM_WANDERER.equals(atkId))
+            return st.isTargetableBypass(tgtIsP1, tgtFront, tgtIdx);
+        return st.isTargetable(tgtIsP1, tgtFront, tgtIdx);
+    }
+
+    /**
+     * Whether the ability of cardId, used by the amP1 side (directly, or copied by Echo Spirit or
+     * Mimic), may aim at this slot. Cursed Daruma aims at an empty enemy slot; every other ability
+     * aims at a card on the side and of the type it names.
+     */
+    boolean canAbilityTarget(String cardId, boolean amP1, boolean tgtIsP1, boolean tgtFront, int tgtIdx) {
+        boolean mine = tgtIsP1 == amP1;
+        String  tgtId = st.cardIdAt(BattleState.posKey(tgtIsP1, tgtFront, tgtIdx));
+        if (AbilityResolver.TARGETS_EMPTY_SLOT.contains(cardId)) return tgtId == null && !mine;
+
+        Card card = tgtId != null ? cardMap.get(tgtId) : null;
+        boolean targetsEnemy = "enemy".equals(AbilityResolver.TARGET_SIDE.get(cardId));
+        if (card == null || mine == targetsEnemy) return false;
+        if (!mine && AbilityResolver.isImmuneToAbilities(tgtIsP1, st)) return false;   // Sovereign
+        if (!mine && !tgtFront && st.isShieldedByGreatEnt(tgtIsP1, tgtIdx)) return false;
+        String requiredType = AbilityResolver.TARGET_TYPE.get(cardId);
+        return requiredType == null || requiredType.equals(card.getType().toLowerCase());
+    }
+
     // ── Placing a card ───────────────────────────────────────────────────────
 
     Outcome place(boolean amP1, int handIdx, boolean isFront, int idx) {
