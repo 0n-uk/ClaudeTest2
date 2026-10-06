@@ -11,7 +11,7 @@ import java.util.*;
  */
 public class User {
 
-    private static final String DATA_DIR    = GamePaths.USER_CARDS_DIR;
+    private static final String DATA_DIR    = GamePaths.PLAYER_DATA_DIR;
     private static final long   COOLDOWN_MS = 12L * 60 * 60 * 1000;
 
     private final String username;
@@ -42,7 +42,7 @@ public class User {
         File file = fileFor(".txt");
         try (BufferedWriter w = new BufferedWriter(new FileWriter(file, true))) {
             if (!endsWithNewline(file)) w.newLine();
-            w.write(card.toString());
+            w.write(card.toSaveLine());
             w.newLine();
         } catch (IOException e) {
             return failed("save a card to", file, e);
@@ -82,7 +82,7 @@ public class User {
         File file = deckFile(key);
         try (BufferedWriter w = new BufferedWriter(new FileWriter(file))) {
             for (Card c : cards) {
-                w.write(c.toString());
+                w.write(c.toSaveLine());
                 w.newLine();
             }
         } catch (IOException e) {

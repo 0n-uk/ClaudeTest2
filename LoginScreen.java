@@ -5,9 +5,9 @@ import javax.swing.border.*;
 public class LoginScreen {
 
     // White, hand-drawn style to match the menu and the button images
-    private static final Color BG            = Color.WHITE;
-    private static final Color CARD_BG       = Color.WHITE;
-    private static final Color INK           = new Color(30, 30, 30);
+    private static final Color BG            = UI.LIGHT_BG;
+    private static final Color CARD_BG       = UI.LIGHT_BG;
+    private static final Color INK           = UI.INK;
     private static final Color ACCENT        = new Color(100, 140, 255);
     private static final Color SUCCESS_GREEN = new Color(30, 150, 70);
     private static final Color ERROR_RED     = new Color(200, 40, 40);

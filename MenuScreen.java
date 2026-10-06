@@ -4,7 +4,7 @@ import java.util.List;
 
 public class MenuScreen {
 
-    private static final Color BG         = Color.WHITE;
+    private static final Color BG         = UI.LIGHT_BG;
     private static final Color TITLE_FG   = new Color(30, 30, 60);
     private static final Color WELCOME_FG = new Color(80, 80, 100);
 

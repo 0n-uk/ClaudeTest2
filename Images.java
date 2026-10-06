@@ -36,7 +36,7 @@ public class Images {
 
     /** An image from the "Buttons & Menus" folder scaled to a width, keeping its shape. Null if missing. */
     static ImageIcon menuImage(String fileName, int width) {
-        String path = GamePaths.BUTTONS_DIR + fileName;
+        String path = GamePaths.MENU_IMAGES_DIR + fileName;
         BufferedImage img = load(path);
         if (img == null) return null;
         int height = (int) ((double) img.getHeight() / img.getWidth() * width);

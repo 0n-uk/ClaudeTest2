@@ -2,7 +2,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
-import javax.swing.JOptionPane;
 
 /**
  * Reads and writes the game's shared text files: the card list, the champion
@@ -42,15 +41,17 @@ public class GameData {
         List<Card> result = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             String line;
+            int lineNo = 0;
             while ((line = reader.readLine()) != null) {
+                lineNo++;
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 Card card = parseCard(line);
                 if (card != null) result.add(card);
+                else badLine(filename, lineNo, line);
             }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Could not load " + filename + ": " + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            System.err.println("Could not load " + filename + ": " + e.getMessage());
         }
         return result;
     }
@@ -82,14 +83,19 @@ public class GameData {
         Map<String, List<Champion>> buckets = new LinkedHashMap<>();
         try (BufferedReader r = new BufferedReader(new FileReader(filename))) {
             String line;
+            int lineNo = 0;
             while ((line = r.readLine()) != null) {
+                lineNo++;
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 Champion c = parseChampion(line);
                 if (c != null)
                     buckets.computeIfAbsent(c.getLineId(), k -> new ArrayList<>()).add(c);
+                else badLine(filename, lineNo, line);
             }
-        } catch (IOException ignored) {}
+        } catch (IOException e) {
+            System.err.println("Could not load " + filename + ": " + e.getMessage());
+        }
 
         Map<String, ChampionLine> result = new LinkedHashMap<>();
         for (Map.Entry<String, List<Champion>> e : buckets.entrySet()) {
@@ -117,6 +123,11 @@ public class GameData {
     }
 
     // ── Line parsing helpers ─────────────────────────────────────────────────
+
+    /** Reports a line that couldn't be read, so a typo in a data file is easy to find. */
+    private static void badLine(String filename, int lineNo, String line) {
+        System.err.println("Skipping unreadable line " + lineNo + " in " + filename + ": " + line);
+    }
 
     /** The text between {@code after} and the next {@code before}; "" if {@code after} is missing. */
     private static String field(String line, String after, String before) {

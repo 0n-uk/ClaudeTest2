@@ -33,9 +33,18 @@ public class Card {
     public void setCost(int cost) { this.cost = cost; }
     public void setAbility(String ability) { this.ability = ability; }
 
-    @Override
-    public String toString() {
+    /**
+     * The line saved in cards.txt, collections and decks, and read back by
+     * GameData.loadCardFile. Kept separate from toString so changing how a
+     * card prints can never break save files.
+     */
+    public final String toSaveLine() {
         return "Card{id=" + id + ", name='" + name + "', type='" + type + "', attack=" + attack
                 + ", hp=" + hp + ", cost=" + cost + ", ability='" + ability + "'}";
+    }
+
+    @Override
+    public String toString() {
+        return toSaveLine();
     }
 }
