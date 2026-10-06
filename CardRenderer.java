@@ -76,7 +76,7 @@ public class CardRenderer {
                       : hpRatio > 0.25 ? new Color(220, 185, 40)
                                        : new Color(210, 60,  60);
 
-        // Name: champion colour override, otherwise type colour, darkened so it reads on the light card
+        // Name: champion colour override, otherwise type colour, made much darker so it reads on the light card
         Color nameColor = darker(isChamp ? new Color(225, 185, 60) : typeColor(card.getType()));
 
         JButton info = new JButton("i");
@@ -150,17 +150,9 @@ public class CardRenderer {
                 ImageIcon sym = Images.typeSymbol(card.getType(), box, box);
                 if (sym != null) g2.drawImage(sym.getImage(), 0, 0, box, box, null);
 
-                // 5. Name — top center, fitted between corner boxes
-                // (shrinks to the smallest readable size, then is cut short; the info pop-up has the full name)
-                int nameW = size - box * 2 - Math.round(6 * sc);
-                Font nameFont = fitFont(g2, card.getName(), nameW, Math.max(9f, 15f * sc), 8f);
-                g2.setFont(nameFont);
-                FontMetrics fm = g2.getFontMetrics(nameFont);
-                String name = shorten(card.getName(), fm, nameW);
-                int nx = box + (size - box * 2 - fm.stringWidth(name)) / 2;
-                int ny = (nameH + fm.getAscent() - fm.getDescent()) / 2;
-                g2.setColor(nameColor);
-                g2.drawString(name, nx, ny);
+                // 5. Name — top center between the corner boxes; a long name wraps onto a second line
+                drawName(g2, card.getName(), box + Math.round(3 * sc), size - box * 2 - Math.round(6 * sc),
+                         nameH, box, Math.max(9f, 15f * sc), nameColor);
 
                 // 6. Stage label for champions (small, in name area)
                 if (!stageStr.isEmpty()) {
@@ -209,6 +201,64 @@ public class CardRenderer {
         g2.drawString(text, tx, ty);
     }
 
+    /**
+     * Draws a card's name in a box {@code w} wide starting at {@code x}. It shrinks to fit on one line,
+     * down to the smallest readable size; if it still doesn't fit it wraps onto two lines (using up to
+     * {@code maxH} pixels of height), and only if that fails too is it cut short.
+     */
+    private static void drawName(Graphics2D g2, String name, int x, int w, int lineH, int maxH,
+                                 float startPt, Color color) {
+        final float minPt = 8f;
+        g2.setColor(color);
+        Font one = fitFont(g2, name, w, startPt, minPt);
+        FontMetrics fm = g2.getFontMetrics(one);
+        int space = name.lastIndexOf(' ');
+        if (fm.stringWidth(name) <= w || space < 0) {
+            String t = shorten(name, fm, w);
+            g2.setFont(one);
+            g2.drawString(t, x + (w - fm.stringWidth(t)) / 2, (lineH + fm.getAscent() - fm.getDescent()) / 2);
+            return;
+        }
+
+        // Break at the space that makes the longer line as short as possible
+        String[] lines = null;
+        int best = Integer.MAX_VALUE;
+        for (int i = name.indexOf(' '); i >= 0; i = name.indexOf(' ', i + 1)) {
+            String a = name.substring(0, i).trim(), b = name.substring(i + 1).trim();
+            int longer = Math.max(fm.stringWidth(a), fm.stringWidth(b));
+            if (longer < best) { best = longer; lines = new String[]{ a, b }; }
+        }
+
+        // Biggest size where both lines fit across and together fit down
+        Font f = cardFont.deriveFont(Font.PLAIN, minPt);
+        for (float pt = pixelSize(startPt); pt >= minPt; pt--) {
+            Font t = cardFont.deriveFont(Font.PLAIN, pt);
+            FontMetrics tm = g2.getFontMetrics(t);
+            int textH = tm.getAscent() - tm.getDescent();
+            if (Math.max(tm.stringWidth(lines[0]), tm.stringWidth(lines[1])) <= w
+                    && textH * 2 + Math.max(1, textH / 4) <= maxH - 2) {
+                f = t;
+                break;
+            }
+        }
+        g2.setFont(f);
+        fm = g2.getFontMetrics(f);
+        int textH = fm.getAscent() - fm.getDescent();
+        int gap   = Math.max(1, textH / 4);
+        int top   = Math.max(1, (maxH - (textH * 2 + gap)) / 2);
+        for (int i = 0; i < 2; i++) {
+            String t = shorten(lines[i], fm, w);
+            int tw = fm.stringWidth(t), tx = x + (w - tw) / 2, ty = top + textH + i * (textH + gap);
+            if (i == 1) {
+                // The second line sits over the art, so give it a light backing like the name strip
+                g2.setColor(new Color(250, 243, 205, 230));
+                g2.fillRoundRect(tx - 2, ty - textH - gap / 2, tw + 4, textH + gap, 4, 4);
+                g2.setColor(color);
+            }
+            g2.drawString(t, tx, ty);
+        }
+    }
+
     /** Cuts text short with ".." so it fits in maxWidth. */
     private static String shorten(String text, FontMetrics fm, int maxWidth) {
         if (fm.stringWidth(text) <= maxWidth) return text;
@@ -218,7 +268,7 @@ public class CardRenderer {
     }
 
     private static Color darker(Color c) {
-        return new Color(c.getRed() * 11 / 20, c.getGreen() * 11 / 20, c.getBlue() * 11 / 20);
+        return new Color(c.getRed() * 2 / 5, c.getGreen() * 2 / 5, c.getBlue() * 2 / 5);
     }
 
     private static Font fitFont(Graphics2D g2, String text, int maxWidth, float startSize, float minSize) {
