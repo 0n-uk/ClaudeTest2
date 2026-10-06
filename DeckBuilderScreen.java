@@ -326,7 +326,7 @@ public class DeckBuilderScreen {
 
         if (count > 1) {
             JLabel badge = new JLabel("×" + count, SwingConstants.CENTER);
-            badge.setFont(CardRenderer.handFont.deriveFont(Font.BOLD, 11f));
+            badge.setFont(CardRenderer.cardFont.deriveFont(Font.PLAIN, 12f));
             badge.setForeground(new Color(230, 210, 130));
             badge.setOpaque(true);
             badge.setBackground(new Color(25, 25, 40));

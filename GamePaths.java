@@ -18,6 +18,10 @@ public class GamePaths {
     public static final String CARD_BACKGROUND  = IMAGES_DIR + "/cardbackground.png";
     public static final String CARD_FOREGROUND  = IMAGES_DIR + "/cardforeground.png";
 
+    // Fonts
+    public static final String FONTS_DIR = RESOURCES + "/fonts";
+    public static final String CARD_FONT = FONTS_DIR + "/PixelifySans.ttf";   // SIL Open Font License, see OFL.txt
+
     // Music
     public static final String MUSIC_DIR    = RESOURCES + "/music";
     public static final String MENU_MUSIC   = MUSIC_DIR + "/Simple Scales.wav";

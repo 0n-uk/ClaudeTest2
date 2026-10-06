@@ -12,29 +12,23 @@ public class CardRenderer {
     static final int SPRITE_X = 5;
     static final int SPRITE_Y = 10;
     static final int NAME_H   = 20;
-    static final int INFO_W   = 36;
-    static final int INFO_H   = 18;
+    static final int INFO_W   = 44;
+    static final int INFO_H   = 24;
 
-    static Font handFont;
+    /** The pixel font every card's text is drawn in (falls back to Monospaced if the file is missing). */
+    static Font cardFont;
     private static BufferedImage cardBg;
     private static BufferedImage cardFg;
 
     static {
         Font loaded = null;
-        for (String path : new String[]{
-                "PatrickHand.ttf",
-                "/usr/share/fonts/truetype/freefont/FreeSerif.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"}) {
-            try {
-                File f = new File(path);
-                if (f.exists()) {
-                    loaded = Font.createFont(Font.TRUETYPE_FONT, f);
-                    GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(loaded);
-                    break;
-                }
-            } catch (Exception ignored) {}
+        try {
+            loaded = Font.createFont(Font.TRUETYPE_FONT, new File(GamePaths.CARD_FONT));
+            GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(loaded);
+        } catch (Exception e) {
+            System.err.println("Could not load card font " + GamePaths.CARD_FONT + ": " + e.getMessage());
         }
-        handFont = (loaded != null) ? loaded : new Font("Serif", Font.PLAIN, 12);
+        cardFont = (loaded != null) ? loaded : new Font(Font.MONOSPACED, Font.PLAIN, 12);
         cardBg = Images.cardBackground();
         cardFg = Images.cardForeground();
     }
@@ -82,12 +76,12 @@ public class CardRenderer {
                       : hpRatio > 0.25 ? new Color(220, 185, 40)
                                        : new Color(210, 60,  60);
 
-        // Name: champion colour override, otherwise type colour
-        Color nameColor = isChamp ? new Color(225, 185, 60) : typeColor(card.getType());
+        // Name: champion colour override, otherwise type colour, made much darker so it reads on the light card
+        Color nameColor = darker(isChamp ? new Color(225, 185, 60) : typeColor(card.getType()));
 
-        JButton info = new JButton("[i]");
+        JButton info = new JButton("i");
         info.setForeground(new Color(230, 210, 150));
-        info.setBackground(new Color(20, 20, 30, 180));
+        info.setBackground(new Color(45, 38, 30));
         info.setOpaque(true);
         info.setContentAreaFilled(true);
         info.setBorder(BorderFactory.createLineBorder(new Color(180, 160, 100), 1, true));
@@ -110,7 +104,7 @@ public class CardRenderer {
                 float sc    = (float) size / CARD_W;
                 int   infoW = Math.round(INFO_W * sc);
                 int   infoH = Math.round(INFO_H * sc);
-                info.setFont(handFont.deriveFont(Font.BOLD, Math.max(7f, 11f * sc)));
+                info.setFont(cardFont.deriveFont(Font.PLAIN, pixelSize(Math.max(9f, 16f * sc))));
                 info.setBounds(originX() + (size - infoW) / 2,
                                originY() + size - infoH - Math.round(2 * sc), infoW, infoH);
             }
@@ -156,23 +150,14 @@ public class CardRenderer {
                 ImageIcon sym = Images.typeSymbol(card.getType(), box, box);
                 if (sym != null) g2.drawImage(sym.getImage(), 0, 0, box, box, null);
 
-                // 5. Name — top center, fitted between corner boxes
-                float startPt = Math.max(6f, 13f * sc);
-                Font nameFont = fitFont(g2, card.getName(), size - box * 2 - Math.round(6 * sc),
-                                        Font.BOLD, startPt, Math.max(4f, 6f * sc));
-                g2.setFont(nameFont);
-                FontMetrics fm = g2.getFontMetrics(nameFont);
-                int nx = box + (size - box * 2 - fm.stringWidth(card.getName())) / 2;
-                int ny = (nameH + fm.getAscent() - fm.getDescent()) / 2;
-                g2.setColor(new Color(0, 0, 0, 120));
-                g2.drawString(card.getName(), nx + 1, ny + 1);
-                g2.setColor(nameColor);
-                g2.drawString(card.getName(), nx, ny);
+                // 5. Name — top center between the corner boxes; a long name wraps onto a second line
+                drawName(g2, card.getName(), box + Math.round(3 * sc), size - box * 2 - Math.round(6 * sc),
+                         nameH, box, Math.max(9f, 15f * sc), nameColor);
 
                 // 6. Stage label for champions (small, in name area)
                 if (!stageStr.isEmpty()) {
-                    float stagePt = Math.max(4f, 8f * sc);
-                    Font stageFont = handFont.deriveFont(Font.ITALIC, stagePt);
+                    float stagePt = Math.max(7f, 9f * sc);
+                    Font stageFont = cardFont.deriveFont(Font.PLAIN, pixelSize(stagePt));
                     g2.setFont(stageFont);
                     g2.setColor(new Color(225, 185, 60));
                     g2.drawString(stageStr, size - box - g2.getFontMetrics(stageFont).stringWidth(stageStr) - Math.round(2*sc), Math.round(9*sc));
@@ -200,28 +185,106 @@ public class CardRenderer {
     // ── Drawing helpers ───────────────────────────────────────────────────────
 
     private static void drawStat(Graphics2D g2, String text, int bx, int by, int box, Color color) {
-        float pt = text.length() > 2 ? Math.max(4f, box * 0.30f) : Math.max(5f, box * 0.40f);
-        Font f = handFont.deriveFont(Font.BOLD, pt);
+        float pt = text.length() > 2 ? Math.max(7f, box * 0.40f) : Math.max(8f, box * 0.55f);
+        Font f = cardFont.deriveFont(Font.PLAIN, pixelSize(pt));
         g2.setFont(f);
         FontMetrics fm = g2.getFontMetrics(f);
         int tx = bx + (box - fm.stringWidth(text)) / 2;
         int ty = by + (box + fm.getAscent() - fm.getDescent()) / 2;
-        g2.setColor(new Color(0, 0, 0, 100));
-        g2.drawString(text, tx + 1, ty + 1);
+        // A dark outline so the coloured number stands out on the light card (just a shadow when small)
+        g2.setColor(new Color(30, 25, 20));
+        int r = box >= 24 ? 1 : 0;
+        for (int dx = -r; dx <= 1; dx++)
+            for (int dy = -r; dy <= 1; dy++)
+                if (dx != 0 || dy != 0) g2.drawString(text, tx + dx, ty + dy);
         g2.setColor(color);
         g2.drawString(text, tx, ty);
     }
 
-    private static Font fitFont(Graphics2D g2, String text, int maxWidth,
-                                 int style, float startSize, float minSize) {
-        float size = startSize;
-        Font f = handFont.deriveFont(style, size);
+    /**
+     * Draws a card's name in a box {@code w} wide starting at {@code x}. It shrinks to fit on one line,
+     * down to the smallest readable size; if it still doesn't fit it wraps onto two lines (using up to
+     * {@code maxH} pixels of height), and only if that fails too is it cut short.
+     */
+    private static void drawName(Graphics2D g2, String name, int x, int w, int lineH, int maxH,
+                                 float startPt, Color color) {
+        final float minPt = 8f;
+        g2.setColor(color);
+        Font one = fitFont(g2, name, w, startPt, minPt);
+        FontMetrics fm = g2.getFontMetrics(one);
+        int space = name.lastIndexOf(' ');
+        if (fm.stringWidth(name) <= w || space < 0) {
+            String t = shorten(name, fm, w);
+            g2.setFont(one);
+            g2.drawString(t, x + (w - fm.stringWidth(t)) / 2, (lineH + fm.getAscent() - fm.getDescent()) / 2);
+            return;
+        }
+
+        // Break at the space that makes the longer line as short as possible
+        String[] lines = null;
+        int best = Integer.MAX_VALUE;
+        for (int i = name.indexOf(' '); i >= 0; i = name.indexOf(' ', i + 1)) {
+            String a = name.substring(0, i).trim(), b = name.substring(i + 1).trim();
+            int longer = Math.max(fm.stringWidth(a), fm.stringWidth(b));
+            if (longer < best) { best = longer; lines = new String[]{ a, b }; }
+        }
+
+        // Biggest size where both lines fit across and together fit down
+        Font f = cardFont.deriveFont(Font.PLAIN, minPt);
+        for (float pt = pixelSize(startPt); pt >= minPt; pt--) {
+            Font t = cardFont.deriveFont(Font.PLAIN, pt);
+            FontMetrics tm = g2.getFontMetrics(t);
+            int textH = tm.getAscent() - tm.getDescent();
+            if (Math.max(tm.stringWidth(lines[0]), tm.stringWidth(lines[1])) <= w
+                    && textH * 2 + Math.max(1, textH / 4) <= maxH - 2) {
+                f = t;
+                break;
+            }
+        }
+        g2.setFont(f);
+        fm = g2.getFontMetrics(f);
+        int textH = fm.getAscent() - fm.getDescent();
+        int gap   = Math.max(1, textH / 4);
+        int top   = Math.max(1, (maxH - (textH * 2 + gap)) / 2);
+        for (int i = 0; i < 2; i++) {
+            String t = shorten(lines[i], fm, w);
+            int tw = fm.stringWidth(t), tx = x + (w - tw) / 2, ty = top + textH + i * (textH + gap);
+            if (i == 1) {
+                // The second line sits over the art, so give it a light backing like the name strip
+                g2.setColor(new Color(250, 243, 205, 230));
+                g2.fillRoundRect(tx - 2, ty - textH - gap / 2, tw + 4, textH + gap, 4, 4);
+                g2.setColor(color);
+            }
+            g2.drawString(t, tx, ty);
+        }
+    }
+
+    /** Cuts text short with ".." so it fits in maxWidth. */
+    private static String shorten(String text, FontMetrics fm, int maxWidth) {
+        if (fm.stringWidth(text) <= maxWidth) return text;
+        String t = text;
+        while (t.length() > 1 && fm.stringWidth(t.trim() + "..") > maxWidth) t = t.substring(0, t.length() - 1);
+        return t.trim() + "..";
+    }
+
+    private static Color darker(Color c) {
+        return new Color(c.getRed() * 2 / 5, c.getGreen() * 2 / 5, c.getBlue() * 2 / 5);
+    }
+
+    private static Font fitFont(Graphics2D g2, String text, int maxWidth, float startSize, float minSize) {
+        float size = pixelSize(startSize);
+        Font f = cardFont.deriveFont(Font.PLAIN, size);
         while (size > minSize) {
             if (g2.getFontMetrics(f).stringWidth(text) <= maxWidth) break;
-            size -= 0.5f;
-            f = handFont.deriveFont(style, size);
+            size -= 1f;
+            f = cardFont.deriveFont(Font.PLAIN, size);
         }
         return f;
+    }
+
+    /** Pixel fonts only look sharp at whole-number sizes. */
+    private static float pixelSize(float pt) {
+        return Math.max(1, Math.round(pt));
     }
 
     private static void drawFallbackBg(Graphics2D g2, int size, int box) {
@@ -240,7 +303,7 @@ public class CardRenderer {
 
     static void showAbilityPopup(Component parent, String name, String ability) {
         JLabel label = new JLabel("<html><b>" + name + "</b><br><br>" + ability + "</html>");
-        label.setFont(handFont.deriveFont(13f));
+        label.setFont(cardFont.deriveFont(Font.PLAIN, 16f));
         JOptionPane.showMessageDialog(parent, label, "Ability", JOptionPane.PLAIN_MESSAGE);
     }
 
