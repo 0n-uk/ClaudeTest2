@@ -52,32 +52,23 @@ public class CardRenderer {
     }
 
     /**
-     * Battle-slot card: shows current HP (coloured by health ratio),
+     * Battle card: shows current HP (coloured by health ratio),
      * effective ATK (coloured when buffed/debuffed), and stage label for champions.
+     * The card has no fixed size: it is drawn as the biggest square that fits its
+     * panel, centred, so it never stretches.
      */
-    static JPanel buildBattleCard(Card card, int size, int currentHp,
+    static JPanel buildBattleCard(Card card, int currentHp,
                                    int displayAtk, int atkBonus,
                                    boolean isChamp, String stageStr) {
-        return buildCardCore(card, size, currentHp, displayAtk, atkBonus, isChamp, stageStr);
+        return buildCardCore(card, 0, currentHp, displayAtk, atkBonus, isChamp, stageStr);
     }
 
     // ── Core renderer ─────────────────────────────────────────────────────────
 
-    private static JPanel buildCardCore(Card card, int size,
+    /** Builds a card drawn at {@code fixedSize} pixels, or fitted to its panel when fixedSize is 0. */
+    private static JPanel buildCardCore(Card card, int fixedSize,
                                          int currentHp, int displayAtk, int atkBonus,
                                          boolean isChamp, String stageStr) {
-        float sc     = (float) size / CARD_W;
-        int   box    = Math.round(BOX      * sc);
-        int   spX    = Math.round(SPRITE_X * sc);
-        int   spY    = Math.round(SPRITE_Y * sc);
-        int   spW    = size - spX * 2;
-        int   spH    = size - spY;
-        int   nameH  = Math.round(NAME_H * sc);
-        int   infoW  = Math.round(INFO_W * sc);
-        int   infoH  = Math.round(INFO_H * sc);
-        int   infoX  = (size - infoW) / 2;
-        int   infoY  = size - infoH - Math.round(2 * sc);
-
         BufferedImage sprite = Images.cardArt(card.getId());
         String abilityText = card.getAbility().isEmpty() ? "No ability." : card.getAbility();
 
@@ -94,11 +85,51 @@ public class CardRenderer {
         // Name: champion colour override, otherwise type colour
         Color nameColor = isChamp ? new Color(225, 185, 60) : typeColor(card.getType());
 
+        JButton info = new JButton("[i]");
+        info.setForeground(new Color(230, 210, 150));
+        info.setBackground(new Color(20, 20, 30, 180));
+        info.setOpaque(true);
+        info.setContentAreaFilled(true);
+        info.setBorder(BorderFactory.createLineBorder(new Color(180, 160, 100), 1, true));
+        info.setFocusPainted(false);
+        info.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        info.addActionListener(e -> showAbilityPopup(info, card.getName(), abilityText));
+
         JPanel panel = new JPanel(null) {
+            /** The side of the square the card is drawn in. */
+            private int side() {
+                return fixedSize > 0 ? fixedSize : Math.min(getWidth(), getHeight());
+            }
+            /** Where the card's square starts: the corner for a fixed size, centred when fitted. */
+            private int originX() { return fixedSize > 0 ? 0 : (getWidth()  - side()) / 2; }
+            private int originY() { return fixedSize > 0 ? 0 : (getHeight() - side()) / 2; }
+
+            @Override
+            public void doLayout() {
+                int   size  = side();
+                float sc    = (float) size / CARD_W;
+                int   infoW = Math.round(INFO_W * sc);
+                int   infoH = Math.round(INFO_H * sc);
+                info.setFont(handFont.deriveFont(Font.BOLD, Math.max(7f, 11f * sc)));
+                info.setBounds(originX() + (size - infoW) / 2,
+                               originY() + size - infoH - Math.round(2 * sc), infoW, infoH);
+            }
+
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
+                int size = side();
+                if (size <= 0) return;
+                float sc  = (float) size / CARD_W;
+                int   box = Math.round(BOX      * sc);
+                int   spX = Math.round(SPRITE_X * sc);
+                int   spY = Math.round(SPRITE_Y * sc);
+                int   spW = size - spX * 2;
+                int   spH = size - spY;
+                int   nameH = Math.round(NAME_H * sc);
+
                 Graphics2D g2 = (Graphics2D) g.create();
+                g2.translate(originX(), originY());
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
@@ -160,24 +191,9 @@ public class CardRenderer {
                 g2.dispose();
             }
         };
-        panel.setPreferredSize(new Dimension(size, size));
+        if (fixedSize > 0) panel.setPreferredSize(new Dimension(fixedSize, fixedSize));
         panel.setOpaque(false);
-
-        // Info button — absolute positioned
-        JButton info = new JButton("[i]");
-        float infoPt = Math.max(7f, 11f * sc);
-        info.setFont(handFont.deriveFont(Font.BOLD, infoPt));
-        info.setForeground(new Color(230, 210, 150));
-        info.setBackground(new Color(20, 20, 30, 180));
-        info.setOpaque(true);
-        info.setContentAreaFilled(true);
-        info.setBorder(BorderFactory.createLineBorder(new Color(180, 160, 100), 1, true));
-        info.setFocusPainted(false);
-        info.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        info.setBounds(infoX, infoY, infoW, infoH);
-        info.addActionListener(e -> showAbilityPopup(info, card.getName(), abilityText));
         panel.add(info);
-
         return panel;
     }
 
