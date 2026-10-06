@@ -176,6 +176,16 @@ public class BattleState {
         return bs;
     }
 
+    /** The battle file's raw text, used to tell whether anything changed since the last read. */
+    static String readRaw(String battleId) {
+        try {
+            return new String(java.nio.file.Files.readAllBytes(
+                    new File(ACTIVE_DIR + "/" + battleId + ".txt").toPath()));
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     void save() {
         new File(ACTIVE_DIR).mkdirs();
         File f = new File(ACTIVE_DIR + "/" + battleId + ".txt");
@@ -296,6 +306,33 @@ public class BattleState {
         return isFront ? (isP1 ? p1Front : p2Front) : (isP1 ? p1Back : p2Back);
     }
 
+    /** The row that a position key such as "p1f3" points into. */
+    String[] rowOf(String posKey) {
+        return getRow(posKeyIsP1(posKey), posKeyIsFront(posKey));
+    }
+
+    /** The card id at a position key, or null if the slot is empty. */
+    String cardIdAt(String posKey) {
+        return posKey == null ? null : slotId(rowOf(posKey)[posKeyIdx(posKey)]);
+    }
+
+    // ── Per-player accessors ─────────────────────────────────────────────────
+
+    String       playerName(boolean isP1) { return isP1 ? player1 : player2; }
+    List<String> hand(boolean isP1)       { return isP1 ? p1Hand : p2Hand; }
+    List<String> deck(boolean isP1)       { return isP1 ? p1Deck : p2Deck; }
+    List<String> discard(boolean isP1)    { return isP1 ? p1Discard : p2Discard; }
+    int          souls(boolean isP1)      { return isP1 ? p1Souls : p2Souls; }
+    int          soulCap(boolean isP1)    { return isP1 ? p1SoulCap : p2SoulCap; }
+
+    void setSouls(boolean isP1, int value) {
+        if (isP1) p1Souls = value; else p2Souls = value;
+    }
+
+    void setSoulCap(boolean isP1, int value) {
+        if (isP1) p1SoulCap = value; else p2SoulCap = value;
+    }
+
     void clearCardState(String posKey) {
         fieldAtkBonus.remove(posKey);
         burnedCards.remove(posKey);
@@ -324,6 +361,15 @@ public class BattleState {
         Integer sp = sporedCards.remove(from);       if (sp != null) sporedCards.put(to, sp);
         Integer fk = fungalBeastKills.remove(from);  if (fk != null) fungalBeastKills.put(to, fk);
         Integer dc = decayedCards.remove(from);      if (dc != null) decayedCards.put(to, dc);
+        if (turtleBotCharged.remove(from))    turtleBotCharged.add(to);
+    }
+
+    /** Swaps every per-card effect between two positions (used when two cards trade places). */
+    void swapCardState(String a, String b) {
+        String temp = "swap";
+        migrateCardState(a, temp);
+        migrateCardState(b, a);
+        migrateCardState(temp, b);
     }
 
     boolean hasAction(boolean isP1, boolean isFront, int slot) {
