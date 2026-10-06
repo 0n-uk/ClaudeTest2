@@ -14,17 +14,32 @@ public class BattleScreen {
 
     private static final Color BG        = UI.BG;
     private static final Color HDR_BG    = new Color(15, 15, 25);
-    private static final Color OPP_BG    = new Color(35, 22, 22);
-    private static final Color MY_BG     = new Color(22, 32, 22);
+    private static final Color SIDE_BG   = new Color(18, 18, 28);
+    private static final Color LINE      = new Color(60, 60, 90);
+    private static final Color OPP_BG    = new Color(45, 25, 25);
+    private static final Color MY_BG     = new Color(25, 42, 28);
     private static final Color EMPTY_BG  = new Color(28, 28, 45);
     private static final Color SLOT_BG   = new Color(42, 42, 65);
+    private static final Color EMPTY_LINE = new Color(85, 85, 120);
     private static final Color SEL_ATK   = new Color(80, 160, 255);
     private static final Color SEL_TGT   = new Color(220, 60,  60);
     private static final Color SEL_ABL   = new Color(220, 180, 60);
     private static final Color CHAMP_CLR = new Color(220, 180, 60);
+    private static final Color OPP_NAME  = new Color(230, 110, 110);
+    private static final Color MY_NAME   = new Color(110, 220, 140);
+    private static final Color SOUL_CLR  = new Color(210, 170, 90);
+    private static final Color MUTED     = new Color(150, 150, 175);
+    private static final Color MSG_CLR   = new Color(220, 200, 100);
+    private static final Color PAPER     = new Color(245, 242, 235);   // light rows, so the hand-drawn symbols show
 
-    private static final Font FONT_BOLD_10  = new Font("SansSerif", Font.BOLD,   10);
-    private static final Font FONT_ITALIC_8 = new Font("SansSerif", Font.ITALIC,  8);
+    private static final int SIDE_W   = 240;   // left panel when shown
+    private static final int BOTTOM_H = 140;   // your hand, info and buttons
+    private static final int INFO_W   = 150;   // your info on the left and the buttons on the right, so the hand is centred
+
+    // Left panel views
+    private static final String LOG   = "Log";
+    private static final String DECK  = "Deck";
+    private static final String GRAVE = "Graveyard";
 
     /** The abilities that take more than one click, and which click they are waiting for. */
     private enum Step { SCRAP_SELECT, BOT_TARGET, ECHO_COPY_SELECT, MIMIC_SELECT, COPY_TARGET_SELECT }
@@ -80,6 +95,10 @@ public class BattleScreen {
         int     abilityChoice;         // Upgrade Bot: 0 = ATK, 1 = HP
         boolean bypass;                // T3's Bypass is switched on
         String  msg = "";
+
+        // Left panel
+        boolean sideHidden;
+        String  sideTab = LOG;
 
         // Abilities that take several clicks (Furnace Bot, Iron Tusks Bot, Echo Spirit, Mimic)
         Step   step;
@@ -187,11 +206,7 @@ public class BattleScreen {
         logArea.setLineWrap(true);
         logArea.setMargin(new Insets(6, 8, 6, 8));
         JScrollPane scroll = new JScrollPane(logArea);
-        scroll.setPreferredSize(new Dimension(175, 0));
-        scroll.setBorder(BorderFactory.createTitledBorder(
-                new LineBorder(new Color(60, 60, 90), 1), "Battle Log",
-                TitledBorder.CENTER, TitledBorder.TOP,
-                font(Font.BOLD, 12), new Color(160, 160, 200)));
+        scroll.setBorder(new LineBorder(LINE, 1));
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         return scroll;
     }
@@ -219,88 +234,221 @@ public class BattleScreen {
             return;
         }
 
-        boolean amP1 = v.amP1();
-        wrapper.add(header(st.playerName(!amP1), st.souls(!amP1), st.soulCap(!amP1),
-                           st.deck(!amP1).size(), v.myTurn(), v.msg), BorderLayout.NORTH);
+        JPanel middle = new JPanel(new BorderLayout());
+        middle.setBackground(BG);
+        middle.add(board(v),       BorderLayout.CENTER);
+        middle.add(actionStrip(v), BorderLayout.SOUTH);
 
-        JPanel field = new JPanel();
-        field.setLayout(new BoxLayout(field, BoxLayout.Y_AXIS));
-        field.setBackground(BG);
-        field.setBorder(new EmptyBorder(4, 8, 4, 8));
-        field.add(fieldRow(v, !amP1, false, OPP_BG));
-        field.add(Box.createVerticalStrut(3));
-        field.add(fieldRow(v, !amP1, true,  OPP_BG));
-        JPanel sep = new JPanel();
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 4));
-        sep.setBackground(new Color(60, 60, 90));
-        field.add(Box.createVerticalStrut(5));
-        field.add(sep);
-        field.add(Box.createVerticalStrut(5));
-        field.add(fieldRow(v, amP1, true,  MY_BG));
-        field.add(Box.createVerticalStrut(3));
-        field.add(fieldRow(v, amP1, false, MY_BG));
-
-        wrapper.add(v.logScroll, BorderLayout.WEST);
-        wrapper.add(field, BorderLayout.CENTER);
-
-        JPanel south = new JPanel(new BorderLayout(0, 4));
-        south.setBackground(BG);
-        south.setBorder(new EmptyBorder(4, 8, 8, 8));
-        south.add(handPanel(v), BorderLayout.CENTER);
-        south.add(controls(v),  BorderLayout.SOUTH);
-        wrapper.add(south, BorderLayout.SOUTH);
+        wrapper.add(opponentBar(v), BorderLayout.NORTH);
+        wrapper.add(sidePanel(v),   BorderLayout.WEST);
+        wrapper.add(middle,         BorderLayout.CENTER);
+        wrapper.add(playerBar(v),   BorderLayout.SOUTH);
 
         wrapper.revalidate();
         wrapper.repaint();
     }
 
-    // ── Header ────────────────────────────────────────────────────────────────
+    // ── Top: the opponent ─────────────────────────────────────────────────────
 
-    private static JPanel header(String oppName, int oppSouls, int oppSoulCap,
-                                 int oppDeck, boolean myTurn, String msg) {
-        JPanel p = new JPanel(new BorderLayout(10, 0));
+    /** The opponent's name, soul and deck size, across the top. */
+    private static JPanel opponentBar(BattleView v) {
+        boolean opp = !v.amP1();
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.CENTER, 22, 0));
         p.setBackground(HDR_BG);
-        p.setBorder(new EmptyBorder(8, 14, 8, 14));
-
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 14, 0));
-        left.setOpaque(false);
-        left.add(lbl("Opponent: " + oppName, font(Font.BOLD, 14), new Color(220, 100, 100)));
-        left.add(lbl("Soul " + oppSouls + "/" + oppSoulCap, font(Font.PLAIN, 12), new Color(200, 160, 80)));
-        left.add(lbl("Deck: " + oppDeck, font(Font.PLAIN, 12), new Color(140, 140, 165)));
-
-        JPanel center = new JPanel(new BorderLayout());
-        center.setOpaque(false);
-        JLabel turn = lbl(myTurn ? "YOUR TURN" : "Opponent's Turn", font(Font.BOLD, 15),
-                          myTurn ? new Color(100, 220, 130) : new Color(220, 100, 100));
-        turn.setHorizontalAlignment(SwingConstants.CENTER);
-        center.add(turn, BorderLayout.CENTER);
-        if (!msg.isEmpty()) {
-            JLabel msgL = lbl(msg, font(Font.ITALIC, 11), new Color(220, 200, 100));
-            msgL.setHorizontalAlignment(SwingConstants.CENTER);
-            center.add(msgL, BorderLayout.SOUTH);
-        }
-
-        p.add(left,   BorderLayout.WEST);
-        p.add(center, BorderLayout.CENTER);
+        p.setBorder(new CompoundBorder(new MatteBorder(0, 0, 1, 0, LINE), new EmptyBorder(8, 14, 8, 14)));
+        p.add(lbl(v.st.playerName(opp), font(Font.BOLD, 16), OPP_NAME));
+        p.add(lbl("Soul " + v.st.souls(opp) + "/" + v.st.soulCap(opp), font(Font.BOLD, 13), SOUL_CLR));
+        p.add(lbl("Deck " + v.st.deck(opp).size(), font(Font.BOLD, 13), MUTED));
         return p;
     }
 
-    // ── Board ─────────────────────────────────────────────────────────────────
+    // ── Left: battle log, deck and graveyard ──────────────────────────────────
 
-    private static JPanel fieldRow(BattleView v, boolean fieldIsP1, boolean isFront, Color bg) {
-        JPanel row = new JPanel();
-        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        row.setBackground(bg);
-        row.setBorder(new EmptyBorder(3, 0, 3, 0));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 176)); // 170 card + 3+3 border
-        for (int i = 0; i < 5; i++) {
-            if (i > 0) row.add(Box.createHorizontalStrut(4));
-            row.add(slot(v, fieldIsP1, isFront, i));
+    /** The left panel: buttons on top switch between the log, your deck and the graveyard; the arrow hides it. */
+    private static JPanel sidePanel(BattleView v) {
+        JPanel p = new JPanel(new BorderLayout(0, 6));
+        p.setBackground(SIDE_BG);
+        p.setBorder(new CompoundBorder(new MatteBorder(0, 0, 0, 1, LINE), new EmptyBorder(6, 6, 6, 6)));
+
+        JButton arrow = UI.button(v.sideHidden ? "▶" : "◀", LINE, 12, Color.WHITE, new Insets(4, 6, 4, 6));
+        arrow.setToolTipText(v.sideHidden ? "Show the battle log" : "Hide this panel");
+        arrow.addActionListener(e -> {
+            v.sideHidden = !v.sideHidden;
+            rebuild(v);
+        });
+        if (v.sideHidden) {
+            p.add(arrow, BorderLayout.NORTH);
+            return p;
         }
-        return row;
+        p.setPreferredSize(new Dimension(SIDE_W, 0));
+
+        JPanel tabs = new JPanel(new GridLayout(1, 3, 4, 0));
+        tabs.setOpaque(false);
+        tabs.add(tabButton(v, LOG));
+        tabs.add(tabButton(v, DECK));
+        tabs.add(tabButton(v, GRAVE));
+        JPanel top = new JPanel(new BorderLayout(4, 0));
+        top.setOpaque(false);
+        top.add(tabs,  BorderLayout.CENTER);
+        top.add(arrow, BorderLayout.EAST);
+        p.add(top, BorderLayout.NORTH);
+
+        boolean amP1 = v.amP1();
+        switch (v.sideTab) {
+            case DECK: {
+                JPanel list = listPanel();
+                list.add(sectionLabel("Your deck: " + v.st.deck(amP1).size() + " cards"));
+                list.add(sectionLabel("(sorted by cost, not draw order)"));
+                addCardRows(v, list, v.st.deck(amP1), "Your deck is empty.");
+                p.add(scroll(list), BorderLayout.CENTER);
+                break;
+            }
+            case GRAVE: {
+                JPanel list = listPanel();
+                list.add(sectionLabel("Yours (" + v.st.discard(amP1).size() + ")"));
+                addCardRows(v, list, v.st.discard(amP1), "Nothing yet.");
+                list.add(Box.createVerticalStrut(10));
+                list.add(sectionLabel(v.st.playerName(!amP1) + "'s (" + v.st.discard(!amP1).size() + ")"));
+                addCardRows(v, list, v.st.discard(!amP1), "Nothing yet.");
+                p.add(scroll(list), BorderLayout.CENTER);
+                break;
+            }
+            default:
+                p.add(v.logScroll, BorderLayout.CENTER);
+        }
+        return p;
     }
 
-    private static JPanel slot(BattleView v, boolean fieldIsP1, boolean isFront, int idx) {
+    private static JButton tabButton(BattleView v, String name) {
+        boolean on = name.equals(v.sideTab);
+        JButton b = UI.button(name, on ? SEL_ATK : LINE, 11, on ? Color.WHITE : MUTED, new Insets(4, 0, 4, 0));
+        b.addActionListener(e -> {
+            v.sideTab = name;
+            rebuild(v);
+        });
+        return b;
+    }
+
+    /** One row per card name with how many there are, cheapest first. Clicking a row shows the card's ability. */
+    private static void addCardRows(BattleView v, JPanel list, List<String> ids, String emptyText) {
+        if (ids.isEmpty()) {
+            list.add(sectionLabel(emptyText));
+            return;
+        }
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String id : ids) counts.merge(id, 1, Integer::sum);
+        List<String> order = new ArrayList<>(counts.keySet());
+        order.sort(Comparator.comparingInt((String id) -> {
+                                 Card c = v.cardMap.get(id);
+                                 return c != null ? c.getCost() : 99;
+                             })
+                             .thenComparing(id -> {
+                                 Card c = v.cardMap.get(id);
+                                 return c != null ? c.getName() : id;
+                             }));
+
+        for (String id : order) {
+            Card c = v.cardMap.get(id);
+            int  n = counts.get(id);
+            JPanel row = new JPanel(new BorderLayout(6, 0));
+            row.setBackground(PAPER);
+            row.setBorder(new CompoundBorder(new MatteBorder(0, 0, 3, 0, SIDE_BG), new EmptyBorder(3, 5, 3, 7)));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            row.add(new JLabel(Images.typeSymbol(c != null ? c.getType() : "", 18, 18)), BorderLayout.WEST);
+            row.add(lbl((c != null ? c.getName() : id) + (n > 1 ? "  ×" + n : ""),
+                        font(Font.BOLD, 12), UI.INK), BorderLayout.CENTER);
+            if (c != null) {
+                row.add(lbl(String.valueOf(c.getCost()), font(Font.BOLD, 12), new Color(50, 100, 190)), BorderLayout.EAST);
+                row.setToolTipText("Click to read " + c.getName() + "'s ability");
+                row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                row.addMouseListener(new MouseAdapter() {
+                    @Override public void mouseClicked(MouseEvent e) {
+                        CardRenderer.showAbilityPopup(row, c.getName(),
+                                c.getAbility().isEmpty() ? "No ability." : c.getAbility());
+                    }
+                });
+            }
+            list.add(row);
+        }
+    }
+
+    private static JPanel listPanel() {
+        JPanel list = new JPanel();
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        list.setBackground(SIDE_BG);
+        list.setBorder(new EmptyBorder(4, 4, 4, 4));
+        return list;
+    }
+
+    private static JLabel sectionLabel(String text) {
+        JLabel l = lbl(text, font(Font.BOLD, 12), MUTED);
+        l.setBorder(new EmptyBorder(2, 0, 4, 0));
+        l.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return l;
+    }
+
+    /** Scrolls a list; the list keeps its natural height at the top instead of being stretched. */
+    private static JScrollPane scroll(JPanel list) {
+        JPanel holder = new JPanel(new BorderLayout());
+        holder.setBackground(SIDE_BG);
+        holder.add(list, BorderLayout.NORTH);
+        JScrollPane sp = new JScrollPane(holder, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                                         ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        sp.setBorder(new LineBorder(LINE, 1));
+        sp.getViewport().setBackground(SIDE_BG);
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        return sp;
+    }
+
+    // ── Centre: the board ─────────────────────────────────────────────────────
+
+    /**
+     * The 4 × 5 grid of slots: the opponent's back and front rows on top, yours below.
+     * Every slot is the same square, as big as the space allows, and the grid is centred.
+     */
+    private static JPanel board(BattleView v) {
+        boolean amP1 = v.amP1();
+        JPanel p = new JPanel(null) {
+            static final int PAD = 10, GAP = 6, MID = 18;   // MID: the extra gap between the two sides
+
+            private int side() {
+                return Math.max(10, Math.min((getWidth()  - 2 * PAD - 4 * GAP) / 5,
+                                             (getHeight() - 2 * PAD - 3 * GAP - MID) / 4));
+            }
+            private int x0() { return (getWidth()  - (5 * side() + 4 * GAP)) / 2; }
+            private int y0() { return (getHeight() - (4 * side() + 3 * GAP + MID)) / 2; }
+
+            @Override public void doLayout() {
+                int s = side();
+                for (int i = 0; i < getComponentCount(); i++) {
+                    int row = i / 5, col = i % 5;
+                    getComponent(i).setBounds(x0() + col * (s + GAP),
+                                              y0() + row * (s + GAP) + (row >= 2 ? MID : 0), s, s);
+                }
+            }
+
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int s = side(), w = 5 * s + 4 * GAP + 16, h = 2 * s + GAP + 12;
+                int x = x0() - 8, y = y0() - 6;
+                g2.setColor(OPP_BG);
+                g2.fillRoundRect(x, y, w, h, 16, 16);
+                g2.setColor(MY_BG);
+                g2.fillRoundRect(x, y + h + MID - 12, w, h, 16, 16);
+                g2.dispose();
+            }
+        };
+        p.setBackground(BG);
+        boolean[][] rows = { { !amP1, false }, { !amP1, true }, { amP1, true }, { amP1, false } };
+        for (boolean[] r : rows)
+            for (int i = 0; i < 5; i++) p.add(slot(v, r[0], r[1], i));
+        return p;
+    }
+
+    private static Slot slot(BattleView v, boolean fieldIsP1, boolean isFront, int idx) {
         BattleState st  = v.st;
         String  sv      = st.getRow(fieldIsP1, isFront)[idx];
         boolean empty   = sv == null || sv.isEmpty();
@@ -310,37 +458,24 @@ public class BattleScreen {
         String  posKey  = BattleState.posKey(fieldIsP1, isFront, idx);
         SlotMode mode   = slotMode(v, fieldIsP1, isFront, idx, cardId, card);
 
-        Color accent = isChamp ? CHAMP_CLR
-                     : AbilityResolver.SCRAP_ID.equals(cardId) ? new Color(140, 140, 160)
-                     : card != null ? CardRenderer.typeColor(card.getType()) : new Color(80, 80, 110);
-        Color bg     = mode.bg     != null ? mode.bg     : (empty ? EMPTY_BG : SLOT_BG);
-        Color border = mode.border != null ? mode.border : (empty ? new Color(40, 40, 62) : accent);
+        Color accent  = isChamp ? CHAMP_CLR
+                      : AbilityResolver.SCRAP_ID.equals(cardId) ? new Color(140, 140, 160)
+                      : card != null ? CardRenderer.typeColor(card.getType()) : EMPTY_LINE;
+        Color fill    = mode.bg     != null ? mode.bg     : (empty ? EMPTY_BG : SLOT_BG);
+        Color outline = mode.border != null ? mode.border : accent;
+        int   stroke  = mode.thick ? 3 : (card != null ? 2 : 1);
 
-        JPanel p = new JPanel(new BorderLayout(0, 0));
-        p.setBackground(bg);
-        p.setPreferredSize(new Dimension(170, 170));
-        p.setMaximumSize(new Dimension(170, 170));
-        p.setBorder(new LineBorder(border, mode.thick ? 2 : 1, true));
-
-        if (empty) {
-            if (mode == SlotMode.PLACE) {
-                JLabel pl = lbl("Place here", font(Font.ITALIC, 11), new Color(100, 220, 130));
-                pl.setHorizontalAlignment(SwingConstants.CENTER);
-                p.add(pl, BorderLayout.CENTER);
-            }
-            if (st.sealedSlots.containsKey(posKey)) {
-                JLabel sealL = lbl("Sealed(" + st.sealedSlots.get(posKey) + ")", FONT_ITALIC_8, new Color(210, 70, 70));
-                sealL.setHorizontalAlignment(SwingConstants.CENTER);
-                p.add(sealL, BorderLayout.SOUTH);
-            }
-        } else if (card != null) {
-            // CENTER: unified card renderer (name, type, ATK, HP, cost, info button)
+        JComponent shown = null;
+        if (card != null) {
             int atkBonus = st.fieldAtkBonus.getOrDefault(posKey, 0);
             String stage = isChamp ? "S" + ((Champion) card).getStage() : "";
-            p.add(CardRenderer.buildBattleCard(card, 170, BattleState.slotHp(sv), card.getAttack() + atkBonus,
-                                               atkBonus, isChamp, stage), BorderLayout.CENTER);
-            p.add(statusBadges(v, fieldIsP1, isFront, idx, posKey), BorderLayout.SOUTH);
+            shown = CardRenderer.buildBattleCard(card, BattleState.slotHp(sv), card.getAttack() + atkBonus,
+                                                 atkBonus, isChamp, stage);
         }
+        Slot p = new Slot(shown, fill, outline, stroke);
+        if (empty && mode == SlotMode.PLACE) p.hint = "Place here";
+        if (card != null) statusBadges(v, p, fieldIsP1, isFront, idx, posKey);
+        else p.badge(st.sealedSlots.containsKey(posKey), "Sealed(" + st.sealedSlots.get(posKey) + ")", new Color(230, 90, 90));
 
         if (mode != SlotMode.NONE) {
             p.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -353,32 +488,21 @@ public class BattleScreen {
         return p;
     }
 
-    /** Status effects shown under a card, one small line each. */
-    private static JPanel statusBadges(BattleView v, boolean fieldIsP1, boolean isFront, int idx, String posKey) {
+    /** Status effects, shown as small labels over the card. */
+    private static void statusBadges(BattleView v, Slot slot, boolean fieldIsP1, boolean isFront, int idx, String posKey) {
         BattleState st = v.st;
-        JPanel south = new JPanel();
-        south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
-        south.setOpaque(false);
         int txTurns = st.transformCounters.getOrDefault(posKey, 0);
-        badge(south, st.isFrozen(posKey),                       "Frozen(" + st.frozenCards.get(posKey) + ")",  new Color(100, 200, 255));
-        badge(south, st.burnedCards.containsKey(posKey),        "Burned",                                      new Color(255, 130, 50));
-        badge(south, st.poisonedCards.contains(posKey),         "Poisoned",                                    new Color(140, 200, 80));
-        badge(south, st.sporedCards.containsKey(posKey),        "Spored(" + st.sporedCards.get(posKey) + ")",  new Color(180, 140, 255));
-        badge(south, st.decayedCards.containsKey(posKey),       "Decay(" + st.decayedCards.get(posKey) + ")",  new Color(180, 120, 40));
-        badge(south, st.sealedSlots.containsKey(posKey),        "Sealed(" + st.sealedSlots.get(posKey) + ")",  new Color(210, 70, 70));
-        badge(south, st.focusedCards.contains(posKey),          "Focus!",                                      new Color(255, 220, 80));
-        badge(south, txTurns > 0,                               "→" + txTurns + "t",                           new Color(160, 220, 100));
-        badge(south, st.fieldLockedCards.contains(posKey),      "Locked",                                      new Color(200, 160, 60));
-        badge(south, !isFront && st.isShieldedByGreatEnt(fieldIsP1, idx), "Shielded",                          new Color(100, 200, 100));
-        badge(south, fieldIsP1 == v.amP1() && !st.hasAction(fieldIsP1, isFront, idx), "Used",                  new Color(100, 100, 120));
-        return south;
-    }
-
-    private static void badge(JPanel panel, boolean show, String text, Color color) {
-        if (!show) return;
-        JLabel l = lbl(text, FONT_ITALIC_8, color);
-        l.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(l);
+        slot.badge(st.isFrozen(posKey),                       "Frozen(" + st.frozenCards.get(posKey) + ")",  new Color(100, 200, 255));
+        slot.badge(st.burnedCards.containsKey(posKey),        "Burned",                                      new Color(255, 130, 50));
+        slot.badge(st.poisonedCards.contains(posKey),         "Poisoned",                                    new Color(140, 200, 80));
+        slot.badge(st.sporedCards.containsKey(posKey),        "Spored(" + st.sporedCards.get(posKey) + ")",  new Color(180, 140, 255));
+        slot.badge(st.decayedCards.containsKey(posKey),       "Decay(" + st.decayedCards.get(posKey) + ")",  new Color(200, 140, 60));
+        slot.badge(st.sealedSlots.containsKey(posKey),        "Sealed(" + st.sealedSlots.get(posKey) + ")",  new Color(230, 90, 90));
+        slot.badge(st.focusedCards.contains(posKey),          "Focus!",                                      new Color(255, 220, 80));
+        slot.badge(txTurns > 0,                               "→" + txTurns + "t",                           new Color(160, 220, 100));
+        slot.badge(st.fieldLockedCards.contains(posKey),      "Locked",                                      new Color(200, 160, 60));
+        slot.badge(!isFront && st.isShieldedByGreatEnt(fieldIsP1, idx), "Shielded",                          new Color(100, 200, 100));
+        slot.badge(fieldIsP1 == v.amP1() && !st.hasAction(fieldIsP1, isFront, idx), "Used",                  new Color(170, 170, 190));
     }
 
     /** Works out what clicking this slot would do, given the current selection. */
@@ -509,113 +633,24 @@ public class BattleScreen {
         }
     }
 
-    // ── Hand ──────────────────────────────────────────────────────────────────
+    // ── Below the board: whose turn, the last message, ability buttons ───────
 
-    private static JPanel handPanel(BattleView v) {
-        BattleState st = v.st;
-        boolean amP1   = v.amP1();
-        boolean myTurn = v.myTurn();
-        List<String> handIds = new ArrayList<>(st.hand(amP1));
-        int souls = st.souls(amP1);
-
-        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        p.setBackground(new Color(20, 22, 35));
-        p.setBorder(BorderFactory.createCompoundBorder(
-            new LineBorder(new Color(50, 50, 80), 1),
-            new EmptyBorder(4, 6, 4, 6)));
-
-        p.add(lbl("Hand (" + handIds.size() + ")  ·  Soul " + souls + "/" + st.soulCap(amP1)
-                  + "  ·  Deck " + st.deck(amP1).size(),
-                  font(Font.BOLD, 12), new Color(160, 160, 190)));
-
-        for (int i = 0; i < handIds.size(); i++) {
-            final int fi = i;
-            Card c = v.cardMap.get(handIds.get(i));
-            if (c == null) continue;
-            int     cost      = AbilityResolver.effectiveCost(c, st, amP1, v.champLines);
-            boolean canAfford = souls >= cost;
-            boolean sel       = v.selHand == i;
-            // Disable hand selection when in ability targeting mode
-            boolean clickable = canAfford && myTurn && v.abilitySource == null;
-            Color accent  = CardRenderer.typeColor(c.getType());
-            Color bgColor = sel ? SEL_ATK : (canAfford && myTurn ? SLOT_BG : EMPTY_BG);
-            Color border  = sel ? SEL_ATK : (canAfford && myTurn ? accent : new Color(55, 55, 75));
-
-            JPanel card = new JPanel(new BorderLayout(0, 0));
-            card.setBackground(bgColor);
-            card.setPreferredSize(new Dimension(110, 96));
-            card.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(border, sel ? 2 : 1, true), new EmptyBorder(4, 5, 4, 5)));
-            if (clickable) card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-            Color nameClr = canAfford && myTurn ? Color.WHITE : new Color(100, 100, 120);
-            Color costClr = canAfford ? new Color(100, 160, 220) : new Color(220, 80, 80);
-            boolean isFree = st.freeplayCards.contains(c.getId() + "_" + (amP1 ? "p1" : "p2"));
-            String costTxt = isFree ? "FREE" : String.valueOf(cost);
-
-            boolean isConglamorat = CardIds.CONGLAMORAT.equals(c.getId());
-            int handBaseAtk = isConglamorat ? cost : c.getAttack();
-            int handBaseHp  = isConglamorat ? cost : c.getHp();
-
-            // NORTH: type symbol + name + cost
-            JPanel hTop = new JPanel(new BorderLayout(2, 0));
-            hTop.setOpaque(false);
-            hTop.setAlignmentX(Component.LEFT_ALIGNMENT);
-            hTop.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
-            JLabel hName = new JLabel(c.getName(), SwingConstants.CENTER);
-            hName.setFont(FONT_BOLD_10);
-            hName.setForeground(nameClr);
-            JLabel hCost = new JLabel(costTxt, SwingConstants.RIGHT);
-            hCost.setFont(FONT_BOLD_10);
-            hCost.setForeground(costClr);
-            hTop.add(new JLabel(Images.typeSymbol(c.getType(), 15, 15)), BorderLayout.WEST);
-            hTop.add(hName, BorderLayout.CENTER);
-            hTop.add(hCost, BorderLayout.EAST);
-            card.add(hTop, BorderLayout.NORTH);
-
-            // CENTER: card image scaled to fill
-            card.add(new ScaledImagePanel(Images.cardArt(c.getId()), bgColor), BorderLayout.CENTER);
-
-            // SOUTH: ATK + info button + HP
-            JPanel hBot = new JPanel(new BorderLayout(2, 0));
-            hBot.setOpaque(false);
-            JLabel hAtk = new JLabel("⚔" + handBaseAtk);
-            hAtk.setFont(FONT_BOLD_10);
-            hAtk.setForeground(new Color(220, 80, 80));
-            JLabel hHp = new JLabel(handBaseHp + "♥", SwingConstants.RIGHT);
-            hHp.setFont(FONT_BOLD_10);
-            hHp.setForeground(new Color(80, 200, 100));
-            hBot.add(hAtk, BorderLayout.WEST);
-            hBot.add(infoButton(bgColor, c.getName(), c.getAbility()), BorderLayout.CENTER);
-            hBot.add(hHp,  BorderLayout.EAST);
-            card.add(hBot, BorderLayout.SOUTH);
-
-            if (clickable) {
-                card.addMouseListener(new MouseAdapter() {
-                    @Override public void mouseClicked(MouseEvent e) {
-                        v.selField = null;
-                        v.selHand  = (v.selHand == fi) ? -1 : fi;
-                        v.msg = v.selHand >= 0 ? "Select an empty slot to place this card" : "";
-                        v.refresh();
-                    }
-                });
-            }
-            p.add(card);
-        }
-        return p;
-    }
-
-    // ── Buttons ───────────────────────────────────────────────────────────────
-
-    private static JPanel controls(BattleView v) {
-        JPanel p = new JPanel(new BorderLayout(8, 0));
+    private static JPanel actionStrip(BattleView v) {
+        JPanel p = new JPanel(new BorderLayout(12, 0));
         p.setBackground(BG);
-        p.setBorder(new EmptyBorder(4, 0, 0, 0));
+        p.setBorder(new EmptyBorder(4, 14, 6, 14));
+        p.setPreferredSize(new Dimension(0, 46));
+
+        boolean myTurn = v.myTurn();
+        p.add(lbl(myTurn ? "YOUR TURN" : "Opponent's turn", font(Font.BOLD, 14),
+                  myTurn ? MY_NAME : OPP_NAME), BorderLayout.WEST);
+        JLabel msg = lbl(v.msg, font(Font.ITALIC, 12), MSG_CLR);
+        msg.setHorizontalAlignment(SwingConstants.CENTER);
+        p.add(msg, BorderLayout.CENTER);
 
         JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btns.setOpaque(false);
-
-        if (v.myTurn()) {
+        if (myTurn) {
             if (v.step != null || v.abilitySource != null) {
                 JButton cancel = smallButton("Cancel Ability", new Color(180, 120, 60));
                 cancel.addActionListener(e -> {
@@ -638,16 +673,36 @@ public class BattleScreen {
 
             JButton champAbility = championButton(v);
             if (champAbility != null) btns.add(champAbility);
-
-            JButton endBtn = smallButton("End Turn", new Color(100, 180, 255));
-            endBtn.addActionListener(e -> {
-                v.msg = "";
-                v.endTurn();
-            });
-            btns.add(endBtn);
         }
+        p.add(btns, BorderLayout.EAST);
+        return p;
+    }
 
-        JButton forfeit = smallButton("Forfeit", new Color(220, 80, 80));
+    // ── Bottom: you, your hand, End Turn and Forfeit ─────────────────────────
+
+    private static JPanel playerBar(BattleView v) {
+        boolean me = v.amP1();
+        JPanel p = new JPanel(new BorderLayout(12, 0));
+        p.setBackground(HDR_BG);
+        p.setBorder(new CompoundBorder(new MatteBorder(1, 0, 0, 0, LINE), new EmptyBorder(6, 14, 6, 14)));
+        p.setPreferredSize(new Dimension(0, BOTTOM_H));
+
+        JPanel info = new JPanel();
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+        info.setOpaque(false);
+        info.add(lbl(v.user.getUsername(), font(Font.BOLD, 16), MY_NAME));
+        info.add(Box.createVerticalStrut(6));
+        info.add(lbl("Soul " + v.st.souls(me) + "/" + v.st.soulCap(me), font(Font.BOLD, 13), SOUL_CLR));
+        info.add(Box.createVerticalStrut(2));
+        info.add(lbl("Deck " + v.st.deck(me).size(), font(Font.BOLD, 13), MUTED));
+
+        JButton endBtn = UI.button("End Turn", new Color(100, 180, 255), 14, Color.WHITE, new Insets(8, 0, 8, 0));
+        endBtn.setEnabled(v.myTurn());
+        endBtn.addActionListener(e -> {
+            v.msg = "";
+            v.endTurn();
+        });
+        JButton forfeit = UI.button("Forfeit", new Color(220, 80, 80), 14, Color.WHITE, new Insets(8, 0, 8, 0));
         forfeit.addActionListener(e -> {
             int answer = JOptionPane.showConfirmDialog(forfeit, "Forfeit this battle? Your opponent wins.",
                                                        "Forfeit", JOptionPane.YES_NO_OPTION);
@@ -656,11 +711,102 @@ public class BattleScreen {
             v.st.save();
             v.refresh();
         });
+        JPanel btns = new JPanel(new GridLayout(2, 1, 0, 10));
+        btns.setOpaque(false);
+        btns.add(endBtn);
         btns.add(forfeit);
 
-        p.add(btns, BorderLayout.EAST);
+        p.add(column(info, GridBagConstraints.WEST),     BorderLayout.WEST);
+        p.add(hand(v),                                    BorderLayout.CENTER);
+        p.add(column(btns, GridBagConstraints.CENTER),   BorderLayout.EAST);
         return p;
     }
+
+    /** A fixed-width column with its contents centred vertically. */
+    private static JPanel column(JComponent content, int anchor) {
+        JPanel col = new JPanel(new GridBagLayout());
+        col.setOpaque(false);
+        col.setPreferredSize(new Dimension(INFO_W, 0));
+        GridBagConstraints c = new GridBagConstraints();
+        c.anchor  = anchor;
+        c.weightx = 1;
+        c.fill    = anchor == GridBagConstraints.CENTER ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
+        col.add(content, c);
+        return col;
+    }
+
+    /** Your hand: equal squares in a row, centred, shrinking so every card fits without overlapping. */
+    private static JPanel hand(BattleView v) {
+        BattleState st = v.st;
+        boolean amP1   = v.amP1();
+        boolean myTurn = v.myTurn();
+        List<String> handIds = new ArrayList<>(st.hand(amP1));
+        int souls = st.souls(amP1);
+
+        JPanel p = new JPanel(null) {
+            static final int GAP = 8;
+
+            @Override public void doLayout() {
+                int n = getComponentCount();
+                if (n == 0) return;
+                int s = Math.max(10, Math.min(getHeight(), (getWidth() - GAP * (n - 1)) / n));
+                int x = (getWidth() - (n * s + (n - 1) * GAP)) / 2;
+                int y = (getHeight() - s) / 2;
+                for (int i = 0; i < n; i++) getComponent(i).setBounds(x + i * (s + GAP), y, s, s);
+            }
+
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (getComponentCount() > 0) return;
+                g.setFont(font(Font.ITALIC, 12));
+                g.setColor(MUTED);
+                String t = "No cards in hand";
+                FontMetrics fm = g.getFontMetrics();
+                g.drawString(t, (getWidth() - fm.stringWidth(t)) / 2, getHeight() / 2);
+            }
+        };
+        p.setOpaque(false);
+
+        for (int i = 0; i < handIds.size(); i++) {
+            final int fi = i;
+            Card c = v.cardMap.get(handIds.get(i));
+            if (c == null) continue;
+            int     cost      = AbilityResolver.effectiveCost(c, st, amP1, v.champLines);
+            boolean canAfford = souls >= cost;
+            boolean sel       = v.selHand == i;
+            // Disable hand selection when in ability targeting mode
+            boolean clickable = canAfford && myTurn && v.abilitySource == null;
+            boolean isFree    = st.freeplayCards.contains(c.getId() + "_" + (amP1 ? "p1" : "p2"));
+
+            boolean isConglamorat = CardIds.CONGLAMORAT.equals(c.getId());
+            int handAtk = isConglamorat ? cost : c.getAttack();
+            int handHp  = isConglamorat ? cost : c.getHp();
+
+            Color outline = sel ? SEL_ATK : (canAfford && myTurn ? CardRenderer.typeColor(c.getType()) : EMPTY_LINE);
+            Slot card = new Slot(CardRenderer.buildBattleCard(c, handHp, handAtk, handAtk - c.getAttack(), false, ""),
+                                 sel ? new Color(30, 55, 95) : SLOT_BG, outline, sel ? 3 : 2);
+            card.dim = !(canAfford && myTurn);
+            Color costClr = canAfford ? new Color(120, 180, 240) : new Color(240, 100, 100);
+            card.badge(isFree,                          "FREE",          costClr);
+            card.badge(!isFree && cost != c.getCost(), "Costs " + cost, costClr);
+
+            if (clickable) {
+                card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                card.addMouseListener(new MouseAdapter() {
+                    @Override public void mouseClicked(MouseEvent e) {
+                        v.selField = null;
+                        v.selHand  = (v.selHand == fi) ? -1 : fi;
+                        v.msg = v.selHand >= 0 ? "Select an empty slot to place this card" : "";
+                        v.refresh();
+                    }
+                });
+            }
+            p.add(card);
+        }
+        return p;
+    }
+
+    // ── Ability buttons ───────────────────────────────────────────────────────
 
     /** Done button: Iron Tusks Bot fortifies now; Furnace Bot moves on to picking a bot. */
     private static void finishScrapSelect(BattleView v) {
@@ -864,41 +1010,106 @@ public class BattleScreen {
         return UI.button(text, accent, 13, Color.WHITE, new Insets(6, 16, 6, 16));
     }
 
-    private static JButton infoButton(Color bg, String cardName, String abilityText) {
-        JButton btn = new JButton("ℹ");
-        btn.setFont(FONT_BOLD_10);
-        btn.setForeground(new Color(220, 200, 120));
-        btn.setBackground(bg);
-        btn.setBorder(BorderFactory.createEmptyBorder(0, 2, 0, 2));
-        btn.setContentAreaFilled(false);
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        String ability = abilityText.isEmpty() ? "No ability." : abilityText;
-        btn.addActionListener(e -> CardRenderer.showAbilityPopup(btn, cardName, ability));
-        return btn;
-    }
-
     /** A pop-up with one button per option. Returns the chosen index, or -1 if closed. */
     private static int choose(String question, String title, String[] options) {
         return JOptionPane.showOptionDialog(null, question, title, JOptionPane.DEFAULT_OPTION,
                                             JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
     }
 
-    private static class ScaledImagePanel extends JPanel {
-        private final java.awt.image.BufferedImage img;
-        ScaledImagePanel(java.awt.image.BufferedImage img, Color bg) {
-            this.img = img;
-            setBackground(bg);
-            setOpaque(true);
+    /**
+     * A square outline that a card fits in. The card is scaled to fit inside the
+     * outline, centred and never stretched. Status labels are drawn over the card.
+     */
+    private static final class Slot extends JPanel {
+        private final JComponent card;      // null for an empty slot
+        private final Color fill, outline;
+        private final int stroke;
+        private final List<String> badges      = new ArrayList<>();
+        private final List<Color>  badgeColors = new ArrayList<>();
+        String  hint;                       // text in an empty slot, e.g. "Place here"
+        boolean dim;                        // darkened, e.g. a card you can't afford
+
+        Slot(JComponent card, Color fill, Color outline, int stroke) {
+            super(null);
+            setOpaque(false);
+            this.card = card;
+            this.fill = fill;
+            this.outline = outline;
+            this.stroke = stroke;
+            if (card != null) add(card);
         }
+
+        void badge(boolean show, String text, Color color) {
+            if (!show) return;
+            badges.add(text);
+            badgeColors.add(color);
+        }
+
+        /** The square the slot is drawn in: as big as fits, centred. */
+        private Rectangle square() {
+            int s = Math.min(getWidth(), getHeight());
+            return new Rectangle((getWidth() - s) / 2, (getHeight() - s) / 2, s, s);
+        }
+
+        @Override public void doLayout() {
+            if (card == null) return;
+            Rectangle r = square();
+            int in = stroke + 3;
+            card.setBounds(r.x + in, r.y + in, r.width - 2 * in, r.height - 2 * in);
+        }
+
         @Override protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (img != null) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                                    RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                g2.drawImage(img, 0, 0, getWidth(), getHeight(), null);
+            Rectangle r = square();
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(fill);
+            g2.fillRoundRect(r.x, r.y, r.width - 1, r.height - 1, 10, 10);
+            g2.dispose();
+        }
+
+        @Override public void paint(Graphics g) {
+            super.paint(g);   // fill, then the card
+            Rectangle r = square();
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,      RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            if (dim) {
+                g2.setColor(new Color(10, 10, 20, 140));
+                g2.fillRoundRect(r.x, r.y, r.width - 1, r.height - 1, 10, 10);
             }
+
+            if (hint != null) {
+                g2.setFont(font(Font.ITALIC, Math.max(9, r.width / 9)));
+                g2.setColor(outline);
+                FontMetrics fm = g2.getFontMetrics();
+                g2.drawString(hint, r.x + (r.width - fm.stringWidth(hint)) / 2,
+                              r.y + (r.height + fm.getAscent() - fm.getDescent()) / 2);
+            }
+
+            // Status labels: dark pills stacked down from just under the card's name
+            Font bf = font(Font.BOLD, Math.max(9, r.width / 12));
+            g2.setFont(bf);
+            FontMetrics fm = g2.getFontMetrics();
+            int h = fm.getHeight() + 2;
+            int y = card != null ? r.y + r.height / 4 : r.y + (r.height - h) / 2;
+            for (int i = 0; i < badges.size() && y + h <= r.y + r.height - 4; i++) {
+                String t = badges.get(i);
+                int w = fm.stringWidth(t) + 10;
+                int x = r.x + (r.width - w) / 2;
+                g2.setColor(new Color(10, 10, 20, 200));
+                g2.fillRoundRect(x, y, w, h, h, h);
+                g2.setColor(badgeColors.get(i));
+                g2.drawString(t, x + 5, y + 1 + fm.getAscent());
+                y += h + 2;
+            }
+
+            g2.setColor(outline);
+            g2.setStroke(new BasicStroke(stroke));
+            int o = stroke / 2;
+            g2.drawRoundRect(r.x + o, r.y + o, r.width - 1 - stroke, r.height - 1 - stroke, 10, 10);
+            g2.dispose();
         }
     }
+
 }
