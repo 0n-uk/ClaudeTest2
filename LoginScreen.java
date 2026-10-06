@@ -44,6 +44,8 @@ public class LoginScreen {
             String savedName = GameData.login(user, pass);
             if (savedName != null) {
                 win.logIn(new User(savedName));
+            } else if (!new java.io.File(GamePaths.ACCOUNTS_FILE).exists()) {
+                error.setText("Can't find the accounts file. Run the game from its project folder.");
             } else {
                 error.setText("Incorrect username or password.");
                 passField.setText("");
