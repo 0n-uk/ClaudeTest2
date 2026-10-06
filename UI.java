@@ -3,7 +3,7 @@ import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
 
-/** Look-and-feel and navigation helpers shared by every screen. */
+/** Look-and-feel helpers shared by every screen. */
 public class UI {
 
     public static final String GAME_TITLE = "Card Game";
@@ -14,21 +14,6 @@ public class UI {
     public static final Color BTN_BG      = new Color(50, 50, 75);
     public static final Color BTN_HOVER   = new Color(70, 70, 105);
     public static final Color BACK_ACCENT = new Color(180, 180, 200);
-
-    /**
-     * Adds a screen to the root panel under the given name and shows it.
-     * Any screen previously added under the same name is removed first, so
-     * re-opening a screen replaces it instead of piling up old copies.
-     */
-    static void showScreen(JPanel root, CardLayout layout, JFrame frame, String name, JPanel screen) {
-        for (Component c : root.getComponents()) {
-            if (name.equals(c.getName())) root.remove(c);
-        }
-        screen.setName(name);
-        root.add(screen, name);
-        layout.show(root, name);
-        frame.revalidate();
-    }
 
     /** The standard button: navy background, rounded border in the accent colour, lighter on hover. */
     static JButton button(String text, Color accent, int fontSize, Color textColor, Insets padding) {
